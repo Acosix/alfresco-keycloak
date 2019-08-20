@@ -70,7 +70,7 @@ This project currently does not contain any integration tests, as a proper setup
 
 This module depends on the following projects / libraries:
 
-- various [Keycloak]https://github.com/keycloak/keycloak) adapter and client libraries (Apache License, Version 2.0)
+- various [Keycloak](https://github.com/keycloak/keycloak) adapter and client libraries (Apache License, Version 2.0)
     - keycloak-adapter-core
     - keycloak-servlet-adapter-spi
     - keycloak-servlet-filter-adapter
