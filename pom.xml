@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>de.acosix.alfresco.maven</groupId>
+        <artifactId>de.acosix.alfresco.maven.project.parent-6.1.2</artifactId>
+        <version>1.2.0</version>
+    </parent>
+
+    <groupId>de.acosix.alfresco.keycloak</groupId>
+    <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+
+    <name>Acosix Alfresco Keycloak - Parent</name>
+    <description>Addon to provide Keycloak-related customisations / extensions to out-of-the-box Alfresco authentication and authorization functionality</description>
+    <url>https://github.com/Acosix/alfresco-keycloak</url>
+
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+
+    <scm>
+        <connection>scm:git:git@github.com:Acosix/alfresco-keycloak.git</connection>
+        <developerConnection>scm:git:git@github.com:Acosix/alfresco-keycloak.git</developerConnection>
+        <url>git@github.com:Acosix/alfresco-keycloak.git</url>
+    </scm>
+
+    <developers>
+        <developer>
+            <id>AFaust</id>
+            <name>Axel Faust</name>
+            <email>axel.faust@acosix.de</email>
+            <organization>Acosix GmbH</organization>
+            <roles>
+                <role>Founder</role>
+                <role>Architect</role>
+                <role>Developer</role>
+            </roles>
+            <properties>
+                <twitter>twitter.com/ReluctantBird83</twitter>
+            </properties>
+        </developer>
+    </developers>
+
+    <properties>
+        <messages.path>acosix/keycloak</messages.path>
+        <messages.packageId>acosix.keycloak</messages.packageId>
+        <moduleId>acosix-keycloak</moduleId>
+
+        <!-- Java 7 is out of support -->
+        <maven.compiler.source>1.8</maven.compiler.source>
+        <maven.compiler.target>1.8</maven.compiler.target>
+
+        <keycloak.version>6.0.1</keycloak.version>
+        <!-- lowest common denominator of Repository / Share in 6.1 -->
+        <apache.httpclient.version>4.5.1</apache.httpclient.version>
+        <apache.httpcore.version>4.4.3</apache.httpcore.version>
+
+        <acosix.utility.version>1.0.7.0</acosix.utility.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-common</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-core</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-adapter-core</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-adapter-spi</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-servlet-adapter-spi</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-servlet-filter-adapter</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-authz-client</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+            
+            <!-- HttpClient already bundled by both Repository and Share web apps -->
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${apache.httpclient.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpcore</artifactId>
+                <version>${apache.httpcore.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.common</artifactId>
+                <version>${acosix.utility.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.core.repo</artifactId>
+                <version>${acosix.utility.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.core.repo</artifactId>
+                <version>${acosix.utility.version}</version>
+                <classifier>installable</classifier>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
+                <version>${acosix.utility.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
+                <version>${acosix.utility.version}</version>
+                <classifier>installable</classifier>
+                <scope>test</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <repositories>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <build>
+
+    </build>
+
+    <modules>
+        <module>repository</module>
+        <module>share</module>
+    </modules>
+</project>

@@ -1,0 +1,60 @@
+<?xml version='1.0' encoding='UTF-8' ?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<alfresco-config>
+
+    <plug-ins>
+        <element-readers>
+            <element-reader element-name="keycloak-auth-config"
+                class="${project.artifactId}.config.KeycloakAuthenticationConfigElementReader" />
+            <element-reader element-name="keycloak-adapter-config"
+                class="${project.artifactId}.config.KeycloakAdapterConfigElementReader" />
+        </element-readers>
+    </plug-ins>
+
+    <!-- sensible default configuration (similar to Repository identity-service-authentication.properties -->
+    <config evaluator="string-compare" condition="Keycloak">
+        <keycloak-auth-config>
+            <enhance-login-form>true</enhance-login-form>
+            <enable-sso-filter>true</enable-sso-filter>
+            <force-keycloak-sso>false</force-keycloak-sso>
+            <!-- use 8443 as default SSL redirect based on Tomcat default server.xml configuration -->
+            <ssl-redirect-port>8443</ssl-redirect-port>
+            <body-buffer-limit>10485760</body-buffer-limit>
+            <session-mapper-limit>1000</session-mapper-limit>
+        </keycloak-auth-config>
+        <keycloak-adapter-config>
+            <auth-server-url>http://localhost:8180/auth</auth-server-url>
+            <realm>alfresco</realm>
+            <resource>alfresco</resource>
+            <ssl-required>none</ssl-required>
+            <!-- other than content-app / Identity Service, Share must/should be a confidential client to exchange code for access token + refresh -->
+            <public-client>false</public-client>
+            <credentials>
+                <provider>secret</provider>
+            </credentials>
+        </keycloak-adapter-config>
+    </config>
+    
+    <!-- add to the global configuration -->
+    <config evaluator="string-compare">
+        <user>
+            <!-- make sure groups of a user are kept up-to-date in at least 60 seconds intervals (lazily refreshed on next request) -->
+            <cached-user-groups-timeout>60000</cached-user-groups-timeout>
+        </user>
+    </config>
+
+</alfresco-config>

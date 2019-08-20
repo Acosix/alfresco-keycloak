@@ -1,0 +1,65 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<assembly
+    xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.3 http://maven.apache.org/xsd/assembly-1.1.3.xsd">
+    <id>share-it-docker</id>
+    <formats>
+        <format>dir</format>
+    </formats>
+    <includeBaseDirectory>false</includeBaseDirectory>
+    <fileSets>
+        <fileSet>
+            <directory>${project.build.directory}</directory>
+            <outputDirectory>WEB-INF/lib</outputDirectory>
+            <includes>
+                <include>${project.artifactId}-${project.version}-installable.jar</include>
+            </includes>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/src/test/resources</directory>
+            <outputDirectory>WEB-INF/classes</outputDirectory>
+            <includes>
+                <include>**/*.properties</include>
+                <include>**/*.xml</include>
+            </includes>
+            <filtered>true</filtered>
+            <lineEnding>lf</lineEnding>
+        </fileSet>
+    </fileSets>
+    <dependencySets>
+        <dependencySet>
+            <outputDirectory>WEB-INF/lib</outputDirectory>
+            <includes>
+                <include>org.keycloak:*</include>
+                <include>org.jboss.logging:*</include>
+                <include>org.bouncycastle:*</include>
+                <include>com.fasterxml.jackson.core:*</include>
+            </includes>
+            <scope>compile</scope>
+        </dependencySet>
+        <dependencySet>
+            <outputDirectory>WEB-INF/lib</outputDirectory>
+            <includes>
+                <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
+                <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.share:jar:installable:*</include>
+            </includes>
+            <scope>test</scope>
+        </dependencySet>
+    </dependencySets>
+</assembly>

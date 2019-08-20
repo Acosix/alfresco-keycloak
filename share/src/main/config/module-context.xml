@@ -1,0 +1,77 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean class="de.acosix.alfresco.utility.share.spring.WebFrameworkConfigSourceInserter">
+        <property name="afterConfigSources">
+            <list>
+                <value>classpath:alfresco/share-config.xml</value>
+            </list>
+        </property>
+        <property name="beforeConfigSources">
+            <list>
+                <value>classpath:alfresco/web-extension/share-config-custom.xml</value>
+                <value>jar:*!/META-INF/share-config-custom.xml</value>
+            </list>
+        </property>
+        <property name="configSources">
+            <list>
+                <value>classpath:alfresco/module/${moduleId}/default-config.xml</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean class="org.springframework.extensions.config.ConfigBootstrap" init-method="register">
+        <property name="configService" ref="web.config" />
+        <property name="configs">
+            <list>
+                <value>classpath:alfresco/module/${moduleId}/module-config.xml</value>
+            </list>
+        </property>
+    </bean>
+    
+    <bean id="${moduleId}.SessionIdMapper" class="${project.artifactId}.web.DefaultSessionIdMapper">
+        <property name="configService" ref="web.config" />
+    </bean>
+
+    <bean id="${moduleId}.KeycloakAuthenticationFilter" abstract="true" class="${project.artifactId}.web.KeycloakAuthenticationFilter">
+        <property name="configService" ref="web.config" />
+        <property name="connectorService" ref="connector.service" />
+        <property name="pageViewResolver" ref="pageViewResolver" />
+        <property name="sessionIdMapper" ref="${moduleId}.SessionIdMapper" />
+        <property name="primaryEndpoint" value="alfresco" />
+        <property name="secondaryEndpoints">
+            <list>
+                <value>alfresco-api</value>
+                <value>alfresco-feed</value>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="${moduleId}.UserGroupsLoadFilter" class="${project.artifactId}.web.UserGroupsLoadFilter">
+        <property name="configService" ref="web.config" />
+        <property name="connectorService" ref="connector.service" />
+    </bean>
+    
+    <bean class="${project.artifactId}.spring.KeycloakAuthenticationFilterActivation">
+        <property name="moduleId" value="${moduleId}" />
+    </bean>
+
+</beans>

@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<web-fragment xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://java.sun.com/xml/ns/javaee"
+    xmlns:web="http://java.sun.com/xml/ns/javaee/web-app_2_5.xsd"
+    xsi:schemaLocation="http://java.sun.com/xml/ns/javaee/web-fragment_3_0.xsd" id="WebAppFragment_ID" version="3.0">
+
+    <!-- Servlet 3.0 Spec does not support ordering filter/filter-mapping before those from web.xml -->
+    <!-- So this only includes filters that do not rely on ordering -->
+    <name>${moduleId}.AddonFilters</name>
+
+    <ordering>
+        <after>
+            <others />
+        </after>
+    </ordering>
+
+    <filter>
+        <filter-name>>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <filter-class>org.springframework.extensions.webscripts.servlet.BeanProxyFilter</filter-class>
+        <init-param>
+            <param-name>beanName</param-name>
+            <param-value>${moduleId}.UserGroupsLoadFilter</param-value>
+        </init-param>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <url-pattern>/*</url-pattern>
+    </filter-mapping>
+</web-fragment>
