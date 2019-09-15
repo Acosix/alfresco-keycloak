@@ -21,11 +21,25 @@
     <parent>
         <groupId>de.acosix.alfresco.keycloak</groupId>
         <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-        <version>1.0.0</version>
+        <version>1.1.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>de.acosix.alfresco.keycloak.share</artifactId>
     <name>Acosix Alfresco Keycloak - Share Module</name>
+
+    <dependencyManagement>
+        <dependencies>
+
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>de.acosix.alfresco.keycloak.repo</artifactId>
+                <version>${project.version}</version>
+                <classifier>installable</classifier>
+                <scope>test</scope>
+            </dependency>
+
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
 
@@ -69,39 +83,50 @@
         <dependency>
             <groupId>de.acosix.alfresco.utility</groupId>
             <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>de.acosix.alfresco.utility</groupId>
             <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
             <classifier>installable</classifier>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.slf4j</groupId>
+                    <artifactId>slf4j-log4j12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>de.acosix.alfresco.keycloak.repo</artifactId>
-            <version>${project.version}</version>
             <classifier>installable</classifier>
-            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>junit</groupId>
+            <artifactId>junit</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.slf4j</groupId>
+            <artifactId>jcl-over-slf4j</artifactId>
         </dependency>
 
     </dependencies>
 
     <build>
-        <pluginManagement>
-            <plugins>
-                <plugin>
-                    <groupId>de.thetaphi</groupId>
-                    <artifactId>forbiddenapis</artifactId>
-                    <configuration>
-                        <excludes>
-                            <exclude>**/KeycloakAdapterConfigElement.class</exclude>
-                        </excludes>
-                    </configuration>
-                </plugin>
-            </plugins>
-        </pluginManagement>
-
         <plugins>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>

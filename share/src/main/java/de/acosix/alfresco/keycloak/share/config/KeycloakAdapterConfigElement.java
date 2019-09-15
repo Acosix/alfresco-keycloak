@@ -16,12 +16,15 @@
 package de.acosix.alfresco.keycloak.share.config;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
@@ -29,6 +32,8 @@ import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.ParameterCheck;
 import org.keycloak.representations.adapters.config.AdapterConfig;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.ConfigElement;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -42,11 +47,13 @@ import de.acosix.alfresco.utility.share.config.ConfigValueHolder;
 public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
 {
 
-    public static final String NAME = "keycloak-adapter-config";
+    public static final String NAME = KeycloakConfigConstants.KEYCLOAK_ADAPTER_CONFIG_NAME;
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAdapterConfigElement.class);
 
     private static final long serialVersionUID = -7211927327179092723L;
 
-    private static final Map<String, Field> FIELD_BY_CONFIG_NAME;
+    private static final Map<String, Method> SETTER_BY_CONFIG_NAME;
 
     private static final Map<String, Class<?>> VALUE_TYPE_BY_CONFIG_NAME;
 
@@ -54,7 +61,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
 
     static
     {
-        final Map<String, Field> fieldByConfigName = new HashMap<>();
+        final Map<String, Method> setterByConfigName = new HashMap<>();
         final Map<String, Class<?>> valueTypeByConfigName = new HashMap<>();
         final List<String> configNames = new ArrayList<>();
 
@@ -81,17 +88,35 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
                 if (annotation != null)
                 {
                     final String configName = annotation.value();
-                    Class<?> valueType = field.getType();
-                    if (valueType.isPrimitive())
-                    {
-                        valueType = primitiveWrapperTypeMap.get(valueType);
-                    }
 
-                    if (supportedValueTypes.contains(valueType))
+                    final String fieldName = field.getName();
+                    final StringBuilder setterNameBuilder = new StringBuilder(3 + fieldName.length());
+                    setterNameBuilder.append("set");
+                    setterNameBuilder.append(fieldName.substring(0, 1).toUpperCase(Locale.ENGLISH));
+                    setterNameBuilder.append(fieldName.substring(1));
+                    final String setterName = setterNameBuilder.toString();
+
+                    Class<?> valueType = field.getType();
+                    try
                     {
-                        fieldByConfigName.put(configName, field);
-                        valueTypeByConfigName.put(configName, valueType);
-                        configNames.add(configName);
+                        final Method setter = cls.getDeclaredMethod(setterName, valueType);
+
+                        if (valueType.isPrimitive())
+                        {
+                            valueType = primitiveWrapperTypeMap.get(valueType);
+                        }
+
+                        if (supportedValueTypes.contains(valueType))
+                        {
+                            setterByConfigName.put(configName, setter);
+                            valueTypeByConfigName.put(configName, valueType);
+                            configNames.add(configName);
+                        }
+                    }
+                    catch (final NoSuchMethodException nsme)
+                    {
+                        LOGGER.warn("Cannot support Keycloak adapter config field {} as no appropriate setter {} could be found in {}",
+                                fieldName, setterName, cls);
                     }
                 }
             }
@@ -99,7 +124,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             cls = cls.getSuperclass();
         }
 
-        FIELD_BY_CONFIG_NAME = Collections.unmodifiableMap(fieldByConfigName);
+        SETTER_BY_CONFIG_NAME = Collections.unmodifiableMap(setterByConfigName);
         VALUE_TYPE_BY_CONFIG_NAME = Collections.unmodifiableMap(valueTypeByConfigName);
         CONFIG_NAMES = Collections.unmodifiableList(configNames);
     }
@@ -281,18 +306,16 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         {
             for (final String configName : CONFIG_NAMES)
             {
-                final Field field = FIELD_BY_CONFIG_NAME.get(configName);
+                final Method setter = SETTER_BY_CONFIG_NAME.get(configName);
 
                 final Object value = this.configValueByField.get(configName);
                 if (value != null)
                 {
-                    // TODO Refactor towards use of setter to avoid setAccessible
-                    field.setAccessible(true);
-                    field.set(config, value);
+                    setter.invoke(config, value);
                 }
             }
         }
-        catch (final IllegalAccessException ex)
+        catch (final IllegalAccessException | InvocationTargetException ex)
         {
             throw new AlfrescoRuntimeException("Error building adapter configuration", ex);
         }

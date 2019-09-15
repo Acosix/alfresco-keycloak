@@ -81,6 +81,7 @@ import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilte
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
+import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
 import de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector;
 
 /**
@@ -229,8 +230,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             LOGGER.error("No remote configuration has been defined for the application");
         }
 
-        final KeycloakAdapterConfigElement keycloakAdapterConfig = (KeycloakAdapterConfigElement) this.configService.getConfig("Keycloak")
-                .getConfigElement(KeycloakAdapterConfigElement.NAME);
+        final KeycloakAdapterConfigElement keycloakAdapterConfig = (KeycloakAdapterConfigElement) this.configService
+                .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAdapterConfigElement.NAME);
         if (keycloakAdapterConfig != null)
         {
             final AdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
@@ -268,7 +269,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
 
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
-                .getConfig("Keycloak").getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+                .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
         if (keycloakAuthConfig != null)
         {
             this.filterEnabled = Boolean.TRUE.equals(keycloakAuthConfig.getEnableSsoFilter());
@@ -405,7 +406,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     currentSession.getId());
 
             final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
-                    .getConfig("Keycloak").getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+                    .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME)
+                    .getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
             final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res);
             final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
@@ -445,7 +447,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         LOGGER.debug("Processing Keycloak authentication on request to {}", req.getRequestURL());
 
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
-                .getConfig("Keycloak").getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+                .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
         final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
         final Integer sslRedirectPort = keycloakAuthConfig.getSslRedirectPort();
@@ -579,7 +581,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     protected void prepareLoginFormEnhancement(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res)
     {
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
-                .getConfig("Keycloak").getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+                .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
         final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
         final Integer sslRedirectPort = keycloakAuthConfig.getSslRedirectPort();
@@ -901,7 +903,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res);
 
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
-                .getConfig("Keycloak").getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+                .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
         final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, facade,

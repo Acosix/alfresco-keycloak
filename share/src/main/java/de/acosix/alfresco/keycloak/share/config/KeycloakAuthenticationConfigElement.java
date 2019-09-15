@@ -29,7 +29,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     private static final long serialVersionUID = 8587583775593697136L;
 
-    public static final String NAME = "keycloak-auth-config";
+    public static final String NAME = KeycloakConfigConstants.KEYCLOAK_AUTH_CONFIG_NAME;
 
     protected final ConfigValueHolder<Boolean> enhanceLoginForm = new ConfigValueHolder<>();
 
