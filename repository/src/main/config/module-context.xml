@@ -19,6 +19,32 @@
            http://www.springframework.org/schema/beans
            http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
 
+    <!-- this is required for this module to work at all -->
+    <bean id="${moduleId}-enhanceAuthenticationChildApplicationContextManager"
+        class="de.acosix.alfresco.utility.common.spring.ImplementationClassReplacingBeanDefinitionRegistryPostProcessor">
+        <property name="enabled" value="true" />
+        <property name="propertiesSource" ref="global-properties" />
 
+        <property name="targetBeanName" value="Authentication" />
+        <property name="originalClassName" value="org.alfresco.repo.management.subsystems.DefaultChildApplicationContextManager" />
+        <property name="replacementClassName"
+            value="de.acosix.alfresco.utility.repo.subsystems.SubsystemChildApplicationContextManager" />
+    </bean>
+
+    <bean name="${moduleId}-sessionIdMapper-ssoToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
+        <constructor-arg value="cache.${moduleId}.ssoToSessionCache" />
+    </bean>
+
+    <bean name="${moduleId}-sessionIdMapper-sessionToSsoCache" factory-bean="cacheFactory" factory-method="createCache">
+        <constructor-arg value="cache.${moduleId}.sessionToSsoCache" />
+    </bean>
+
+    <bean name="${moduleId}-sessionIdMapper-principalToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
+        <constructor-arg value="cache.${moduleId}.principalToSessionCache" />
+    </bean>
+
+    <bean name="${moduleId}-sessionIdMapper-sessionToPrincipalCache" factory-bean="cacheFactory" factory-method="createCache">
+        <constructor-arg value="cache.${moduleId}.sessionToPrincipalCache" />
+    </bean>
 
 </beans>

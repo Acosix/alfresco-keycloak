@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -549,7 +550,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     protected void prepareLoginFormEnhancement(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
             final FilterRequestAuthenticator authenticator)
     {
-        final RedirectCaptureServletHttpFacade captureFacade = new RedirectCaptureServletHttpFacade(req);
+        final ResponseHeaderCookieCaptureServletHttpFacade captureFacade = new ResponseHeaderCookieCaptureServletHttpFacade(req);
 
         authenticator.getChallenge().challenge(captureFacade);
 
@@ -603,7 +604,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         };
 
-        final RedirectCaptureServletHttpFacade captureFacade = new RedirectCaptureServletHttpFacade(wrappedReq);
+        final ResponseHeaderCookieCaptureServletHttpFacade captureFacade = new ResponseHeaderCookieCaptureServletHttpFacade(wrappedReq);
 
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, captureFacade,
                 bodyBufferLimit != null ? bodyBufferLimit.intValue() : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment, null);
@@ -786,6 +787,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     {
         boolean skip = false;
 
+        final String authHeader = req.getHeader(HEADER_AUTHORIZATION);
+
         final String servletPath = req.getServletPath();
         final String pathInfo = req.getPathInfo();
         final String servletRequestUri = servletPath + (pathInfo != null ? pathInfo : "");
@@ -824,24 +827,25 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             LOGGER.debug(
                     "Explicitly not skipping doFilter as state and code query parameters of OAuth2 redirect as well as state cookie are present");
         }
-        else if (req.getHeader(HEADER_AUTHORIZATION) != null && req.getHeader(HEADER_AUTHORIZATION).startsWith("Bearer "))
+        else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
             LOGGER.debug("Explicitly not skipping doFilter as Bearer authorization header is present");
         }
-        else if (req.getHeader(HEADER_AUTHORIZATION) != null)
+        else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("basic "))
         {
-            LOGGER.debug("Skipping doFilter as non-OIDC authorization header is present");
+            LOGGER.debug("Explicitly not skipping doFilter as Basic authorization header is present");
+        }
+        else if (authHeader != null)
+        {
+            LOGGER.debug("Skipping doFilter as non-OIDC / non-Basic authorization header is present");
             skip = true;
         }
-        else if (req.getHeader(HEADER_AUTHORIZATION) == null && (currentSession != null && AuthenticationUtil.isAuthenticated(req)))
+        else if (currentSession != null && AuthenticationUtil.isAuthenticated(req))
         {
-            final String userId = AuthenticationUtil.getUserId(req);
-            LOGGER.debug("Existing HTTP session is associated with user {}", userId);
-
             final KeycloakAccount keycloakAccount = (KeycloakAccount) currentSession.getAttribute(KeycloakAccount.class.getName());
             if (keycloakAccount != null)
             {
-                skip = this.validateAndRefreshKeycloakAuthentication(req, res, userId, keycloakAccount);
+                skip = this.validateAndRefreshKeycloakAuthentication(req, res, AuthenticationUtil.getUserId(req), keycloakAccount);
             }
             else
             {

@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.acosix.alfresco.keycloak.share.web;
+package de.acosix.alfresco.keycloak.repo.authentication;
 
 import java.io.ByteArrayOutputStream;
 import java.io.OutputStream;
@@ -36,12 +36,16 @@ import org.keycloak.adapters.spi.HttpFacade;
  *
  * @author Axel Faust
  */
-public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
+public class ResponseHeaderCookieCaptureServletHttpFacade extends ServletHttpFacade
 {
 
     protected final Map<Pair<String, String>, javax.servlet.http.Cookie> cookies = new HashMap<>();
 
     protected final Map<String, List<String>> headers = new HashMap<>();
+
+    protected int status = -1;
+
+    protected String message;
 
     /**
      * Creates a new instance of this class for the provided servlet request.
@@ -49,7 +53,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
      * @param request
      *            the servlet request to facade
      */
-    public RedirectCaptureServletHttpFacade(final HttpServletRequest request)
+    public ResponseHeaderCookieCaptureServletHttpFacade(final HttpServletRequest request)
     {
         super(request, null);
     }
@@ -83,6 +87,22 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
     }
 
     /**
+     * @return the status
+     */
+    public int getStatus()
+    {
+        return this.status;
+    }
+
+    /**
+     * @return the message
+     */
+    public String getMessage()
+    {
+        return this.message;
+    }
+
+    /**
      *
      * @author Axel Faust
      */
@@ -106,7 +126,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
         @Override
         public void addHeader(final String name, final String value)
         {
-            RedirectCaptureServletHttpFacade.this.headers.computeIfAbsent(name, key -> new ArrayList<>()).add(value);
+            ResponseHeaderCookieCaptureServletHttpFacade.this.headers.computeIfAbsent(name, key -> new ArrayList<>()).add(value);
         }
 
         /**
@@ -116,7 +136,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
         @Override
         public void setHeader(final String name, final String value)
         {
-            RedirectCaptureServletHttpFacade.this.headers.put(name, new ArrayList<>(Collections.singleton(value)));
+            ResponseHeaderCookieCaptureServletHttpFacade.this.headers.put(name, new ArrayList<>(Collections.singleton(value)));
         }
 
         /**
@@ -126,7 +146,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
         @Override
         public void resetCookie(final String name, final String path)
         {
-            RedirectCaptureServletHttpFacade.this.cookies.remove(new Pair<>(name, path));
+            ResponseHeaderCookieCaptureServletHttpFacade.this.cookies.remove(new Pair<>(name, path));
         }
 
         /**
@@ -146,7 +166,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
             cookie.setMaxAge(maxAge);
             cookie.setSecure(secure);
             cookie.setHttpOnly(httpOnly);
-            RedirectCaptureServletHttpFacade.this.cookies.put(new Pair<>(name, path), cookie);
+            ResponseHeaderCookieCaptureServletHttpFacade.this.cookies.put(new Pair<>(name, path), cookie);
         }
 
         /**
@@ -166,7 +186,7 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
         @Override
         public void sendError(final int code)
         {
-            // NO-OP
+            ResponseHeaderCookieCaptureServletHttpFacade.this.status = code;
         }
 
         /**
@@ -176,7 +196,8 @@ public class RedirectCaptureServletHttpFacade extends ServletHttpFacade
         @Override
         public void sendError(final int code, final String message)
         {
-            // NO-OP
+            ResponseHeaderCookieCaptureServletHttpFacade.this.status = code;
+            ResponseHeaderCookieCaptureServletHttpFacade.this.message = message;
         }
 
         /**

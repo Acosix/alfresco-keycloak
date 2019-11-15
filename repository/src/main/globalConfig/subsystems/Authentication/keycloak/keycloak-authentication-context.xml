@@ -1,0 +1,137 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<!-- 
+ Copyright 2019 Acosix GmbH
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+ http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
+ -->
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+           http://www.springframework.org/schema/beans
+           http://www.springframework.org/schema/beans/spring-beans-3.0.xsd">
+
+    <bean id="subsystem-properties" class="de.acosix.alfresco.utility.repo.subsystems.SubsystemEffectivePropertiesFactoryBean">
+        <property name="subsystemChildApplicationContextManager" ref="Authentication" />
+    </bean>
+
+    <bean id="keycloakAdapterConfig" class="${project.artifactId}.spring.KeycloakAdapterConfigBeanFactory">
+        <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="configPropertyPrefix" value="keycloak.adapter" />
+    </bean>
+
+    <bean id="keycloakDeployment" class="${project.artifactId}.spring.KeycloakDeploymentBeanFactory">
+        <property name="adapterConfig" ref="keycloakAdapterConfig" />
+        <property name="connectionTimeout" value="${keycloak.authentication.connectionTimeout}" />
+        <property name="socketTimeout" value="${keycloak.authentication.socketTimeout}" />
+    </bean>
+
+    <bean id="sessionIdMapper" class="${project.artifactId}.authentication.SimpleCacheBackedSessionIdMapper">
+        <property name="ssoToSession" ref="${moduleId}-sessionIdMapper-ssoToSessionCache" />
+        <property name="sessionToSso" ref="${moduleId}-sessionIdMapper-sessionToSsoCache" />
+        <property name="principalToSession" ref="${moduleId}-sessionIdMapper-principalToSessionCache" />
+        <property name="sessionToPrincipal" ref="${moduleId}-sessionIdMapper-sessionToPrincipalCache" />
+    </bean>
+
+    <bean id="authenticationComponent" class="${project.artifactId}.authentication.KeycloakAuthenticationComponent"
+        parent="authenticationComponentBase">
+        <property name="nodeService" ref="nodeService" />
+        <property name="personService" ref="personService" />
+        <property name="transactionService" ref="transactionService" />
+        <property name="active" value="${keycloak.authentication.enabled}" />
+        <property name="defaultAdministratorUserNameList" value="${keycloak.authentication.defaultAdministratorUserNames}" />
+        <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
+        <property name="allowGuestLogin" value="${keycloak.authentication.allowGuestLogin}" />
+        <property name="adapterConfig" ref="keycloakAdapterConfig" />
+        <property name="connectionTimeout" value="${keycloak.authentication.connectionTimeout}" />
+        <property name="socketTimeout" value="${keycloak.authentication.socketTimeout}" />
+    </bean>
+    
+    <!-- Wrapped version to be used within subsystem -->
+    <bean id="AuthenticationComponent" class="org.springframework.transaction.interceptor.TransactionProxyFactoryBean">
+        <property name="proxyInterfaces">
+            <list>
+                <value>org.alfresco.repo.security.authentication.AuthenticationComponent</value>
+            </list>
+        </property>
+        <property name="transactionManager" ref="transactionManager" />
+        <property name="target" ref="authenticationComponent" />
+        <property name="transactionAttributes">
+            <props>
+                <prop key="*">${server.transaction.mode.default}</prop>
+            </props>
+        </property>
+    </bean>
+    
+    <!-- Authentication service for chaining -->
+    <bean id="localAuthenticationService" class="org.alfresco.repo.security.authentication.AuthenticationServiceImpl">
+        <property name="ticketComponent" ref="ticketComponent" />
+        <property name="authenticationComponent" ref="authenticationComponent" />
+        <property name="sysAdminParams" ref="sysAdminParams" />
+        <property name="protectedUsersCache" ref="protectedUsersCache" />
+        <property name="protectionEnabled" value="${authentication.protection.enabled}" />
+        <property name="protectionLimit" value="${authentication.protection.limit}" />
+        <property name="protectionPeriodSeconds" value="${authentication.protection.periodSeconds}" />
+        <property name="personService" ref="personService" />
+    </bean>
+
+    <bean id="ftpAuthenticator" class="org.alfresco.filesys.auth.ftp.AlfrescoFtpAuthenticator" parent="ftpAuthenticatorBase">
+        <property name="active" value="${keycloak.authentication.authenticateFTP}" />
+    </bean>
+
+    <bean id="authenticationDao" class="org.alfresco.repo.security.authentication.RepositoryAuthenticationDao">
+        <property name="nodeService" ref="nodeService" />
+        <property name="authorityService" ref="authorityService" />
+        <property name="tenantService" ref="tenantService" />
+        <property name="namespaceService" ref="namespaceService" />
+        <property name="compositePasswordEncoder" ref="compositePasswordEncoder" />
+        <property name="policyComponent" ref="policyComponent" />
+        <property name="authenticationCache" ref="authenticationCache" />
+        <property name="singletonCache" ref="immutableSingletonCache" />
+        <property name="transactionService" ref="transactionService" />
+    </bean>
+
+    <bean id="remoteUserMapper" class="${project.artifactId}.authentication.KeycloakRemoteUserMapper">
+        <property name="active" value="${keycloak.authentication.enabled}" />
+        <property name="validationFailureSilent" value="${keycloak.authentication.silentValidationFailure}" />
+        <property name="keycloakDeployment" ref="keycloakDeployment" />
+        <property name="personService" ref="PersonService" />
+    </bean>
+
+    <bean id="webscriptAuthenticationFilter" class="org.alfresco.web.app.servlet.WebScriptSSOAuthenticationFilter">
+        <property name="active" value="${keycloak.authentication.enabled}" />
+        <property name="authenticationService" ref="AuthenticationService" />
+        <property name="authenticationComponent" ref="AuthenticationComponent" />
+        <property name="personService" ref="personService" />
+        <property name="nodeService" ref="NodeService" />
+        <property name="transactionService" ref="TransactionService" />
+        <property name="container" ref="webscripts.container" />
+    </bean>
+
+    <bean id="globalAuthenticationFilter" class="${project.artifactId}.authentication.KeycloakAuthenticationFilter">
+        <property name="active" value="${keycloak.authentication.sso.enabled}" />
+        <property name="allowTicketLogon" value="${keycloak.authentication.allowTicketLogons}" />
+        <property name="allowLocalBasicLogon" value="${keycloak.authentication.allowLocalBasicLogon}" />
+        <property name="loginPageUrl" value="${keycloak.authentication.loginPageUrl}" />
+        <property name="bodyBufferLimit" value="${keycloak.authentication.bodyBufferLimit}" />
+        <property name="sslRedirectPort" value="${keycloak.authentication.sslRedirectPort}" />
+        <property name="keycloakDeployment" ref="keycloakDeployment" />
+        <property name="sessionIdMapper" ref="sessionIdMapper" />
+
+        <property name="authenticationService" ref="AuthenticationService" />
+        <property name="authenticationComponent" ref="AuthenticationComponent" />
+        <property name="authenticationListener" ref="globalAuthenticationListener" />
+        <property name="personService" ref="personService" />
+        <property name="nodeService" ref="NodeService" />
+        <property name="transactionService" ref="TransactionService" />
+        <property name="remoteUserMapper" ref="RemoteUserMapper" />
+    </bean>
+</beans>

@@ -84,7 +84,7 @@ public class KeycloakAdapterConfigElementReader implements ConfigElementReader
                             configElement.setFieldValue(subElementName,
                                     valueType.getMethod("valueOf", String.class).invoke(null, textTrim));
                         }
-                        catch (NoSuchMethodException | IllegalAccessException | InvocationTargetException ex)
+                        catch (final NoSuchMethodException | IllegalAccessException | InvocationTargetException ex)
                         {
                             LOGGER.error(
                                     "Number-based value type {} does not provide a publicly accessible, static valueOf to handle conversion of value {}",

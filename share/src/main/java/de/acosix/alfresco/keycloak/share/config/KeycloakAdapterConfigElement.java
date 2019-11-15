@@ -306,11 +306,10 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         {
             for (final String configName : CONFIG_NAMES)
             {
-                final Method setter = SETTER_BY_CONFIG_NAME.get(configName);
-
                 final Object value = this.configValueByField.get(configName);
                 if (value != null)
                 {
+                    final Method setter = SETTER_BY_CONFIG_NAME.get(configName);
                     setter.invoke(config, value);
                 }
             }

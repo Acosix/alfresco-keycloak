@@ -78,6 +78,7 @@
         <apache.httpcore.version>4.4.3</apache.httpcore.version>
 
         <acosix.utility.version>1.0.7.0</acosix.utility.version>
+        <ootbee.support-tools.version>1.1.0.0</ootbee.support-tools.version>
     </properties>
 
     <dependencyManagement>
@@ -174,6 +175,20 @@
                 <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
                 <version>${acosix.utility.version}</version>
                 <classifier>installable</classifier>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.orderofthebee.support-tools</groupId>
+                <artifactId>support-tools-repo</artifactId>
+                <version>${ootbee.support-tools.version}</version>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.orderofthebee.support-tools</groupId>
+                <artifactId>support-tools-share</artifactId>
+                <version>${ootbee.support-tools.version}</version>
                 <scope>test</scope>
             </dependency>
         </dependencies>
