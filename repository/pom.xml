@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -28,9 +28,6 @@
     <name>Acosix Alfresco Keycloak - Repository Module</name>
 
     <properties>
-        <!-- Alfresco 6.x bundles an old version of adapter libraries -->
-        <!-- adapt dependencies to match -->
-        <keycloak.version>4.6.0.Final</keycloak.version>
         <docker.tests.keycloakPort>8380</docker.tests.keycloakPort>
     </properties>
 
@@ -39,6 +36,12 @@
         <dependency>
             <groupId>org.alfresco</groupId>
             <artifactId>alfresco-remote-api</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.keycloak</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
 
         <dependency>
@@ -46,17 +49,17 @@
             <artifactId>javax.servlet-api</artifactId>
         </dependency>
 
-        <!-- not included / packaged by Alfresco 6.x - only SPI -->
         <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-servlet-filter-adapter</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>de.acosix.alfresco.keycloak.repo.deps</artifactId>
+            <version>${project.version}</version>
             <exclusions>
                 <exclusion>
-                    <groupId>org.bouncycastle</groupId>
+                    <groupId>org.keycloak</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
                 <exclusion>
-                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <groupId>org.jboss.resteasy</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
@@ -115,7 +118,7 @@
                                 <!-- no change to Share image (we don't use it) -->
                             </image>
                             <image>
-                                <!-- no change to Search image (we don't use it) -->
+                                <!-- no change to Search image -->
                             </image>
                             <image>
                                 <name>jboss/keycloak</name>

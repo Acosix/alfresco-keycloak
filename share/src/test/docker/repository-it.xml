@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,18 +23,43 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <dependencySets>
-        <!-- 
-        <dependencySet>
-            <outputDirectory>WEB-INF/lib</outputDirectory>
+    <fileSets>
+        <fileSet>
+            <directory>${project.basedir}/src/test/docker/alfresco</directory>
+            <outputDirectory>WEB-INF/classes/alfresco</outputDirectory>
             <includes>
+                <include>*</include>
+                <include>**/*</include>
             </includes>
-            <scope>compile</scope>
-        </dependencySet>
-         -->
+            <excludes>
+                <exclude>*.js</exclude>
+                <exclude>**/*.js</exclude>
+                <exclude>*.ftl</exclude>
+                <exclude>**/*.ftl</exclude>
+                <exclude>*.keystore</exclude>
+                <exclude>**/*.keystore</exclude>
+            </excludes>
+            <filtered>true</filtered>
+            <lineEnding>lf</lineEnding>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/src/test/docker/alfresco</directory>
+            <outputDirectory>WEB-INF/classes/alfresco</outputDirectory>
+            <includes>
+                <include>*.js</include>
+                <include>**/*.js</include>
+                <include>*.ftl</include>
+                <include>**/*.ftl</include>
+                <include>*.keystore</include>
+                <include>**/*.keystore</include>
+            </includes>
+        </fileSet>
+    </fileSets>
+    <dependencySets>
         <dependencySet>
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
+                <include>${project.groupId}:de.acosix.alfresco.keycloak.repo.deps:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz1:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz2:*</include>

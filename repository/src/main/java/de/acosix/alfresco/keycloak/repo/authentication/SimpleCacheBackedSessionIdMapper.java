@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,8 +21,9 @@ import java.util.Set;
 
 import org.alfresco.repo.cache.SimpleCache;
 import org.alfresco.util.PropertyCheck;
-import org.keycloak.adapters.spi.SessionIdMapper;
 import org.springframework.beans.factory.InitializingBean;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.SessionIdMapper;
 
 /**
  * @author Axel Faust

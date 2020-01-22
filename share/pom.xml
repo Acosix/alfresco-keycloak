@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -127,11 +127,92 @@
     </dependencies>
 
     <build>
+        <pluginManagement>
+            <plugins>
+            
+                <!-- some image customisations -->
+                <!-- Maven + docker-maven-plugin result in somewhat weird inheritance handling -->
+                <!-- (relying on positional order of images for overrides) -->
+                <plugin>
+                    <groupId>io.fabric8</groupId>
+                    <artifactId>docker-maven-plugin</artifactId>
+                    <configuration>
+                        <images>
+                            <image>
+                                <!-- no change to postgres image (first image in parent POM) -->
+                            </image>
+                            <image>
+                                <!-- customise repository image (second image in parent POM) -->
+                                <run>
+                                    <env>
+                                        <DOCKER_HOST_NAME>${docker.tests.host.name}</DOCKER_HOST_NAME>
+                                    </env>
+                                    <!-- add log directory mount to just the contentstore -->
+                                    <!-- (cannot be done in parent POM due to hard requirement on specific project structure -->
+                                    <!-- for tests to easily check contentstore files, we also mount alf_data locally, not in a volume -->
+                                    <volumes>
+                                        <bind>
+                                            <volume>${moduleId}-repository-test-contentstore:/usr/local/tomcat/alf_data</volume>
+                                            <volume>${project.build.directory}/docker/repository-logs:/usr/local/tomcat/logs</volume>
+                                        </bind>
+                                    </volumes>
+                                    <dependsOn>
+                                        <container>postgres</container>
+                                        <container>keycloak</container>
+                                    </dependsOn>
+                                </run>
+                            </image>
+                            <image>
+                                <!-- no change to Share image -->
+                            </image>
+                            <image>
+                                <!-- no change to Search image -->
+                            </image>
+                            <image>
+                                <name>jboss/keycloak</name>
+                                <alias>keycloak</alias>
+                                <run>
+                                    <hostname>keycloak</hostname>
+                                    <env>
+                                        <KEYCLOAK_USER>admin</KEYCLOAK_USER>
+                                        <KEYCLOAK_PASSWORD>admin</KEYCLOAK_PASSWORD>
+                                        <KEYCLOAK_IMPORT>/tmp/test-realm.json</KEYCLOAK_IMPORT>
+                                        <DB_VENDOR>h2</DB_VENDOR>
+                                    </env>
+                                    <ports>
+                                        <port>${docker.tests.keycloakPort}:8080</port>
+                                    </ports>
+                                    <network>
+                                        <mode>custom</mode>
+                                        <name>${moduleId}-test</name>
+                                        <alias>keycloak</alias>
+                                    </network>
+                                    <volumes>
+                                        <bind>
+                                            <volume>${project.build.directory}/docker/test-realm.json:/tmp/test-realm.json</volume>
+                                        </bind>
+                                    </volumes>
+                                </run>
+                            </image>
+                        </images>
+                    </configuration>
+                </plugin>
+
+            </plugins>
+        </pluginManagement>
+
         <plugins>
+
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>yuicompressor-maven-plugin</artifactId>
             </plugin>
+
+            <plugin>
+                <groupId>io.fabric8</groupId>
+                <artifactId>docker-maven-plugin</artifactId>
+            </plugin>
+
         </plugins>
     </build>
 

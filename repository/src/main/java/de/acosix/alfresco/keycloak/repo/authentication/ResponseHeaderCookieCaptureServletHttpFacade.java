@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,8 +26,9 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import org.alfresco.util.Pair;
-import org.keycloak.adapters.servlet.ServletHttpFacade;
-import org.keycloak.adapters.spi.HttpFacade;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.servlet.ServletHttpFacade;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.HttpFacade;
 
 /**
  * This {@link HttpFacade} wraps servlet requests and responses in such a way that any response headers / cookies being set by Keycloak

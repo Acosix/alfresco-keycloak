@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@
 
     <parent>
         <groupId>de.acosix.alfresco.maven</groupId>
-        <artifactId>de.acosix.alfresco.maven.project.parent-6.1.2</artifactId>
-        <version>1.2.1-SNAPSHOT</version>
+        <artifactId>de.acosix.alfresco.maven.project.parent-6.0.7</artifactId>
+        <version>1.3.0-SNAPSHOT</version>
     </parent>
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
@@ -30,7 +30,7 @@
     <packaging>pom</packaging>
 
     <name>Acosix Alfresco Keycloak - Parent</name>
-    <description>Addon to provide Keycloak-related customisations / extensions to out-of-the-box Alfresco authentication and authorization functionality</description>
+    <description>Addon to provide Keycloak-related customisations / extensions to out-of-the-box Alfresco authentication and authorisation functionality</description>
     <url>https://github.com/Acosix/alfresco-keycloak</url>
 
     <licenses>
@@ -68,12 +68,14 @@
         <messages.packageId>acosix.keycloak</messages.packageId>
         <moduleId>acosix-keycloak</moduleId>
 
-        <!-- Java 7 is out of support -->
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
 
+        <maven.shade.version>3.2.1</maven.shade.version>
+
         <keycloak.version>6.0.1</keycloak.version>
-        <!-- lowest common denominator of Repository / Share in 6.1 -->
+        <resteasy.version>3.6.3.Final</resteasy.version>
+        <!-- lowest common denominator of Repository / Share in 6.0 -->
         <apache.httpclient.version>4.5.1</apache.httpclient.version>
         <apache.httpcore.version>4.4.3</apache.httpcore.version>
 
@@ -124,6 +126,30 @@
                 <groupId>org.keycloak</groupId>
                 <artifactId>keycloak-authz-client</artifactId>
                 <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.keycloak</groupId>
+                <artifactId>keycloak-admin-client</artifactId>
+                <version>${keycloak.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jboss.resteasy</groupId>
+                <artifactId>resteasy-client</artifactId>
+                <version>${resteasy.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jboss.resteasy</groupId>
+                <artifactId>resteasy-multipart-provider</artifactId>
+                <version>${resteasy.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.jboss.resteasy</groupId>
+                <artifactId>resteasy-jackson2-provider</artifactId>
+                <version>${resteasy.version}</version>
             </dependency>
             
             <!-- HttpClient already bundled by both Repository and Share web apps -->
@@ -205,11 +231,20 @@
     </repositories>
 
     <build>
-
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <version>${maven.shade.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
     </build>
 
     <modules>
+        <module>repository-dependencies</module>
         <module>repository</module>
+        <module>share-dependencies</module>
         <module>share</module>
     </modules>
 </project>

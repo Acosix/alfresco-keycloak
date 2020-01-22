@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -23,6 +23,13 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
+    <files>
+        <file>
+            <source>${project.basedir}/src/test/docker/share-log4j.properties</source>
+            <outputDirectory>WEB-INF/classes</outputDirectory>
+            <destName>log4j.properties</destName>
+        </file>
+    </files>
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}</directory>
@@ -32,24 +39,41 @@
             </includes>
         </fileSet>
         <fileSet>
-            <directory>${project.basedir}/src/test/resources</directory>
-            <outputDirectory>WEB-INF/classes</outputDirectory>
+            <directory>${project.basedir}/src/test/docker/alfresco</directory>
+            <outputDirectory>WEB-INF/classes/alfresco</outputDirectory>
             <includes>
-                <include>**/*.properties</include>
-                <include>**/*.xml</include>
+                <include>*</include>
+                <include>**/*</include>
             </includes>
+            <excludes>
+                <exclude>*.js</exclude>
+                <exclude>**/*.js</exclude>
+                <exclude>*.ftl</exclude>
+                <exclude>**/*.ftl</exclude>
+                <exclude>*.keystore</exclude>
+                <exclude>**/*.keystore</exclude>
+            </excludes>
             <filtered>true</filtered>
             <lineEnding>lf</lineEnding>
+        </fileSet>
+        <fileSet>
+            <directory>${project.basedir}/src/test/docker/alfresco</directory>
+            <outputDirectory>WEB-INF/classes/alfresco</outputDirectory>
+            <includes>
+                <include>*.js</include>
+                <include>**/*.js</include>
+                <include>*.ftl</include>
+                <include>**/*.ftl</include>
+                <include>*.keystore</include>
+                <include>**/*.keystore</include>
+            </includes>
         </fileSet>
     </fileSets>
     <dependencySets>
         <dependencySet>
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
-                <include>org.keycloak:*</include>
-                <include>org.jboss.logging:*</include>
-                <include>org.bouncycastle:*</include>
-                <include>com.fasterxml.jackson.core:*</include>
+                <include>${project.groupId}:de.acosix.alfresco.keycloak.share.deps:*</include>
             </includes>
             <scope>compile</scope>
         </dependencySet>

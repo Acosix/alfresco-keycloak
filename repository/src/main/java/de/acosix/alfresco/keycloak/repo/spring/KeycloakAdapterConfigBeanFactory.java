@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,7 +31,6 @@ import java.util.Set;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.PropertyCheck;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
@@ -40,6 +39,8 @@ import org.springframework.beans.factory.config.PlaceholderConfigurerSupport;
 import org.springframework.util.PropertyPlaceholderHelper;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
 
 /**
  * @author Axel Faust

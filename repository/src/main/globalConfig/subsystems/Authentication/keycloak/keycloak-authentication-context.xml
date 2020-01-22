@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -35,10 +35,10 @@
     </bean>
 
     <bean id="sessionIdMapper" class="${project.artifactId}.authentication.SimpleCacheBackedSessionIdMapper">
-        <property name="ssoToSession" ref="${moduleId}-sessionIdMapper-ssoToSessionCache" />
-        <property name="sessionToSso" ref="${moduleId}-sessionIdMapper-sessionToSsoCache" />
-        <property name="principalToSession" ref="${moduleId}-sessionIdMapper-principalToSessionCache" />
-        <property name="sessionToPrincipal" ref="${moduleId}-sessionIdMapper-sessionToPrincipalCache" />
+        <property name="ssoToSession" ref="${moduleId}.ssoToSessionCache" />
+        <property name="sessionToSso" ref="${moduleId}.sessionToSsoCache" />
+        <property name="principalToSession" ref="${moduleId}.principalToSessionCache" />
+        <property name="sessionToPrincipal" ref="${moduleId}.sessionToPrincipalCache" />
     </bean>
 
     <bean id="authenticationComponent" class="${project.artifactId}.authentication.KeycloakAuthenticationComponent"
@@ -49,10 +49,11 @@
         <property name="active" value="${keycloak.authentication.enabled}" />
         <property name="defaultAdministratorUserNameList" value="${keycloak.authentication.defaultAdministratorUserNames}" />
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
-        <property name="allowGuestLogin" value="${keycloak.authentication.allowGuestLogin}" />
-        <property name="adapterConfig" ref="keycloakAdapterConfig" />
-        <property name="connectionTimeout" value="${keycloak.authentication.connectionTimeout}" />
-        <property name="socketTimeout" value="${keycloak.authentication.socketTimeout}" />
+        <property name="allowGuestLogin" value="${keycloak.authentication.failExpiredUserNamePasswordLoginTokens}" />
+        <property name="failExpiredTicketTokens" value="${keycloak.authentication.allowGuestLogin}" />
+        <property name="mapRoles" value="${keycloak.authentication.mapRoles}" />
+        <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
+        <property name="deployment" ref="keycloakDeployment" />
     </bean>
     
     <!-- Wrapped version to be used within subsystem -->
@@ -72,7 +73,7 @@
     </bean>
     
     <!-- Authentication service for chaining -->
-    <bean id="localAuthenticationService" class="org.alfresco.repo.security.authentication.AuthenticationServiceImpl">
+    <bean id="localAuthenticationService" class="${project.artifactId}.authentication.KeycloakAuthenticationServiceImpl">
         <property name="ticketComponent" ref="ticketComponent" />
         <property name="authenticationComponent" ref="authenticationComponent" />
         <property name="sysAdminParams" ref="sysAdminParams" />
@@ -81,6 +82,7 @@
         <property name="protectionLimit" value="${authentication.protection.limit}" />
         <property name="protectionPeriodSeconds" value="${authentication.protection.periodSeconds}" />
         <property name="personService" ref="personService" />
+        <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
     </bean>
 
     <bean id="ftpAuthenticator" class="org.alfresco.filesys.auth.ftp.AlfrescoFtpAuthenticator" parent="ftpAuthenticatorBase">
@@ -101,7 +103,7 @@
 
     <bean id="remoteUserMapper" class="${project.artifactId}.authentication.KeycloakRemoteUserMapper">
         <property name="active" value="${keycloak.authentication.enabled}" />
-        <property name="validationFailureSilent" value="${keycloak.authentication.silentValidationFailure}" />
+        <property name="validationFailureSilent" value="${keycloak.authentication.silentRemoteUserValidationFailure}" />
         <property name="keycloakDeployment" ref="keycloakDeployment" />
         <property name="personService" ref="PersonService" />
     </bean>
@@ -133,5 +135,77 @@
         <property name="nodeService" ref="NodeService" />
         <property name="transactionService" ref="TransactionService" />
         <property name="remoteUserMapper" ref="RemoteUserMapper" />
+
+        <property name="keycloakAuthenticationComponent" ref="authenticationComponent" />
+        <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
+    </bean>
+
+    <bean id="idmClient" class="${project.artifactId}.client.IDMClientImpl">
+        <property name="deployment" ref="keycloakDeployment" />
+        <property name="userName" value="${keycloak.synchronization.user}" />
+        <property name="password" value="${keycloak.synchronization.password}" />
+    </bean>
+
+    <bean id="userRegistry" class="${project.artifactId}.sync.KeycloakUserRegistry">
+        <property name="active" value="${keycloak.synchronization.enabled}" />
+        <property name="idmClient" ref="idmClient" />
+        <property name="personLoadBatchSize" value="${keycloak.synchronization.personLoadBatchSize}" />
+        <property name="groupLoadBatchSize" value="${keycloak.synchronization.groupLoadBatchSize}" />
+    </bean>
+
+    <bean id="userAuthority.default" class="${project.artifactId}.authentication.DefaultAuthorityExtractor">
+        <property name="adapterConfig" ref="keycloakAdapterConfig" />
+    </bean>
+
+    <bean id="userToken.default" class="${project.artifactId}.authentication.DefaultPersonProcessor" />
+
+    <bean id="userFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
+        <property name="idmClient" ref="idmClient" />
+    </bean>
+
+    <bean id="groupFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
+        <property name="idmClient" ref="idmClient" />
+    </bean>
+
+    <bean id="authorityMapper.simpleAttributes" abstract="true">
+        <property name="namespaceService" ref="namespaceService" />
+    </bean>
+
+    <bean id="userMapper.default" class="${project.artifactId}.sync.DefaultPersonProcessor" />
+
+    <bean id="groupMapper.default" class="${project.artifactId}.sync.DefaultGroupProcessor" />
+
+    <bean id="userMapper.simpleAttributes" parent="authorityMapper.simpleAttributes"
+        class="${project.artifactId}.sync.SimpleUserAttributeProcessor" />
+
+    <bean id="groupMapper.simpleAttributes" parent="authorityMapper.simpleAttributes"
+        class="${project.artifactId}.sync.SimpleGroupAttributeProcessor" />
+
+    <bean id="${moduleId}-dynamicAuthenticationComponentsEmitter"
+        class="de.acosix.alfresco.utility.common.spring.BeanDefinitionFromPropertiesPostProcessor">
+        <property name="enabled" value="true" />
+        <property name="propertyPrefix" value="keycloak.authentication" />
+        <property name="beanTypes">
+            <list>
+                <value>userAuthority</value>
+                <value>userToken</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="subsystem-properties" />
+    </bean>
+
+    <bean id="${moduleId}-dynamicSynchronisationComponentsEmitter"
+        class="de.acosix.alfresco.utility.common.spring.BeanDefinitionFromPropertiesPostProcessor">
+        <property name="enabled" value="true" />
+        <property name="propertyPrefix" value="keycloak.synchronization" />
+        <property name="beanTypes">
+            <list>
+                <value>userFilter</value>
+                <value>userMapper</value>
+                <value>groupFilter</value>
+                <value>groupMapper</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="subsystem-properties" />
     </bean>
 </beans>

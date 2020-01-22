@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,12 +18,13 @@ package de.acosix.alfresco.keycloak.repo.spring;
 import java.util.concurrent.TimeUnit;
 
 import org.alfresco.util.PropertyCheck;
-import org.keycloak.adapters.HttpClientBuilder;
-import org.keycloak.adapters.KeycloakDeployment;
-import org.keycloak.adapters.KeycloakDeploymentBuilder;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.HttpClientBuilder;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeploymentBuilder;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
 
 /**
  * @author Axel Faust

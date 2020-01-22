@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,7 +17,8 @@ package de.acosix.alfresco.keycloak.repo.authentication;
 
 import org.alfresco.repo.web.auth.WebCredentials;
 import org.alfresco.util.ParameterCheck;
-import org.keycloak.representations.AccessToken;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 
 /**
  * @author Axel Faust

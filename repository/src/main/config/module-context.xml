@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -31,20 +31,34 @@
             value="de.acosix.alfresco.utility.repo.subsystems.SubsystemChildApplicationContextManager" />
     </bean>
 
-    <bean name="${moduleId}-sessionIdMapper-ssoToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
+    <bean id="${moduleId}-enhanceAuthorityService"
+        class="de.acosix.alfresco.utility.common.spring.ImplementationClassReplacingBeanDefinitionRegistryPostProcessor">
+        <property name="enabledPropertyKey" value="${moduleId}.authorityServiceEnhancement.enabled" />
+        <property name="propertiesSource" ref="global-properties" />
+
+        <property name="targetBeanName" value="authorityService" />
+        <property name="originalClassName" value="org.alfresco.repo.security.authority.AuthorityServiceImpl" />
+        <property name="replacementClassName" value="${project.artifactId}.authority.GrantedAuthorityAwareAuthorityServiceImpl" />
+    </bean>
+
+    <bean name="${moduleId}.ssoToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.ssoToSessionCache" />
     </bean>
 
-    <bean name="${moduleId}-sessionIdMapper-sessionToSsoCache" factory-bean="cacheFactory" factory-method="createCache">
+    <bean name="${moduleId}.sessionToSsoCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.sessionToSsoCache" />
     </bean>
 
-    <bean name="${moduleId}-sessionIdMapper-principalToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
+    <bean name="${moduleId}.principalToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.principalToSessionCache" />
     </bean>
 
-    <bean name="${moduleId}-sessionIdMapper-sessionToPrincipalCache" factory-bean="cacheFactory" factory-method="createCache">
+    <bean name="${moduleId}.sessionToPrincipalCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.sessionToPrincipalCache" />
+    </bean>
+
+    <bean name="${moduleId}-ticketTokenCache" factory-bean="cacheFactory" factory-method="createCache">
+        <constructor-arg value="cache.${moduleId}.ticketTokenCache" />
     </bean>
 
 </beans>

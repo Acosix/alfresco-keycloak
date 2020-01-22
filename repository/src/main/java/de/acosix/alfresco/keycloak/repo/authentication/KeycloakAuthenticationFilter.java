@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 Acosix GmbH
+ * Copyright 2019 - 2020 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,9 +33,9 @@ import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
 import org.alfresco.repo.SessionUser;
+import org.alfresco.repo.cache.SimpleCache;
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.authentication.AuthenticationException;
-import org.alfresco.repo.security.authentication.AuthenticationUtil;
 import org.alfresco.repo.security.authentication.Authorization;
 import org.alfresco.repo.web.auth.BasicAuthCredentials;
 import org.alfresco.repo.web.auth.TicketCredentials;
@@ -48,24 +48,28 @@ import org.alfresco.util.PropertyCheck;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.keycloak.KeycloakSecurityContext;
-import org.keycloak.adapters.AdapterDeploymentContext;
-import org.keycloak.adapters.AuthenticatedActionsHandler;
-import org.keycloak.adapters.KeycloakDeployment;
-import org.keycloak.adapters.OidcKeycloakAccount;
-import org.keycloak.adapters.PreAuthActionsHandler;
-import org.keycloak.adapters.servlet.FilterRequestAuthenticator;
-import org.keycloak.adapters.servlet.OIDCFilterSessionStore;
-import org.keycloak.adapters.servlet.OIDCServletHttpFacade;
-import org.keycloak.adapters.spi.AuthOutcome;
-import org.keycloak.adapters.spi.AuthenticationError;
-import org.keycloak.adapters.spi.KeycloakAccount;
-import org.keycloak.adapters.spi.SessionIdMapper;
-import org.keycloak.adapters.spi.UserSessionManagement;
-import org.keycloak.representations.AccessToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.KeycloakSecurityContext;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.AdapterDeploymentContext;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.AuthenticatedActionsHandler;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.OidcKeycloakAccount;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.PreAuthActionsHandler;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.RefreshableKeycloakSecurityContext;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.servlet.FilterRequestAuthenticator;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.servlet.OIDCFilterSessionStore;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.servlet.OIDCServletHttpFacade;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.AuthOutcome;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.AuthenticationError;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.KeycloakAccount;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.SessionIdMapper;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.UserSessionManagement;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
+import de.acosix.alfresco.keycloak.repo.util.AlfrescoCompatibilityUtil;
+import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
 
 /**
  * This class provides a Keycloak-based authentication filter which can be used in the role of both global and WebDAV authentication filter.
@@ -108,6 +112,10 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     protected AdapterDeploymentContext deploymentContext;
 
+    protected KeycloakAuthenticationComponent keycloakAuthenticationComponent;
+
+    protected SimpleCache<String, RefreshableAccessTokenHolder> keycloakTicketTokenCache;
+
     /**
      * {@inheritDoc}
      */
@@ -116,6 +124,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     {
         PropertyCheck.mandatory(this, "keycloakDeployment", this.keycloakDeployment);
         PropertyCheck.mandatory(this, "sessionIdMapper", this.sessionIdMapper);
+        PropertyCheck.mandatory(this, "keycloakTicketTokenCache", this.keycloakTicketTokenCache);
+        PropertyCheck.mandatory(this, "keycloakAuthenticationComponent", this.keycloakAuthenticationComponent);
 
         // parent class does not check, so we do
         PropertyCheck.mandatory(this, "authenticationService", this.authenticationService);
@@ -210,6 +220,24 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     }
 
     /**
+     * @param keycloakAuthenticationComponent
+     *            the keycloakAuthenticationComponent to set
+     */
+    public void setKeycloakAuthenticationComponent(final KeycloakAuthenticationComponent keycloakAuthenticationComponent)
+    {
+        this.keycloakAuthenticationComponent = keycloakAuthenticationComponent;
+    }
+
+    /**
+     * @param keycloakTicketTokenCache
+     *            the keycloakTicketTokenCache to set
+     */
+    public void setKeycloakTicketTokenCache(final SimpleCache<String, RefreshableAccessTokenHolder> keycloakTicketTokenCache)
+    {
+        this.keycloakTicketTokenCache = keycloakTicketTokenCache;
+    }
+
+    /**
      *
      * {@inheritDoc}
      */
@@ -289,7 +317,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                                 this.authenticationService.getCurrentTicket(), false);
 
                         LOGGER.debug("Authenticated user {} via HTTP Basic authentication using an authentication ticket",
-                                AuthenticationUtil.maskUsername(this.authenticationService.getCurrentUserName()));
+                                AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));
 
                         this.authenticationListener.userAuthenticated(new TicketCredentials(password));
 
@@ -310,7 +338,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                             this.authenticationService.getCurrentTicket(), false);
 
                     LOGGER.debug("Authenticated user {} via HTTP Basic authentication using locally stored credentials",
-                            AuthenticationUtil.maskUsername(this.authenticationService.getCurrentUserName()));
+                            AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));
 
                     this.authenticationListener.userAuthenticated(new BasicAuthCredentials(userName, password));
 
@@ -451,14 +479,28 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             final AccessToken accessToken = keycloakSecurityContext.getToken();
             final String userId = accessToken.getPreferredUsername();
 
-            LOGGER.debug("User {} successfully authenticated via Keycloak", AuthenticationUtil.maskUsername(userId));
+            LOGGER.debug("User {} successfully authenticated via Keycloak", AlfrescoCompatibilityUtil.maskUsername(userId));
 
             final SessionUser sessionUser = this.createUserEnvironment(session, userId);
+            this.keycloakAuthenticationComponent.handleUserTokens(accessToken, keycloakSecurityContext.getIdToken(), true);
+
             // need different attribute name than default for integration with web scripts framework
             // default attribute name seems to be no longer used
             session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
 
             this.authenticationListener.userAuthenticated(new KeycloakCredentials(accessToken));
+
+            // store tokens in cache as well for ticket validation
+            // -> necessary i.e. because web script RemoteUserAuthenticator is "evil"
+            // it throws away any authentication from authentication filters like this,
+            // and re-validates via the ticket in the session user
+
+            final RefreshableAccessTokenHolder tokenHolder = new RefreshableAccessTokenHolder(keycloakSecurityContext.getToken(),
+                    keycloakSecurityContext.getIdToken(), keycloakSecurityContext.getTokenString(),
+                    keycloakSecurityContext instanceof RefreshableKeycloakSecurityContext
+                            ? ((RefreshableKeycloakSecurityContext) keycloakSecurityContext).getRefreshToken()
+                            : null);
+            this.keycloakTicketTokenCache.put(sessionUser.getTicket(), tokenHolder);
         }
 
         if (facade.isEnded())
@@ -555,7 +597,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                 && !this.sessionIdMapper.hasSession(session.getId()))
         {
             LOGGER.debug("Session {} for Keycloak-authenticated user {} was invalidated by back-channel logout", session.getId(),
-                    AuthenticationUtil.maskUsername(sessionUser.getUserName()));
+                    AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
             this.invalidateSession(req);
             session = req.getSession(false);
         }
@@ -600,7 +642,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             final KeycloakAccount keycloakAccount = (KeycloakAccount) session.getAttribute(KeycloakAccount.class.getName());
             if (keycloakAccount != null)
             {
-                skip = this.validateAndRefreshKeycloakAuthentication(req, res, sessionUser.getUserName(), keycloakAccount);
+                skip = this.validateAndRefreshKeycloakAuthentication(req, res, sessionUser.getUserName());
             }
             else
             {
@@ -623,18 +665,40 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      *            the HTTP servlet response
      * @param userId
      *            the ID of the authenticated user
-     * @param keycloakAccount
-     *            the Keycloak account object
      * @return {@code true} if processing of the {@link #doFilter(ServletContext, ServletRequest, ServletResponse, FilterChain) filter
      *         operation} can be skipped as the account represents a valid and still active authentication, {@code false} otherwise
      */
     protected boolean validateAndRefreshKeycloakAuthentication(final HttpServletRequest req, final HttpServletResponse res,
-            final String userId, final KeycloakAccount keycloakAccount)
+            final String userId)
     {
         final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res);
 
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, facade,
-                this.bodyBufferLimit > 0 ? this.bodyBufferLimit : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment, null);
+                this.bodyBufferLimit > 0 ? this.bodyBufferLimit : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment, null)
+        {
+
+            /**
+             *
+             * {@inheritDoc}
+             */
+            @Override
+            public void refreshCallback(final RefreshableKeycloakSecurityContext securityContext)
+            {
+                // store tokens in cache as well for ticket validation
+                // -> necessary i.e. because web script RemoteUserAuthenticator is "evil"
+                // it throws away any authentication from authentication filters like this,
+                // and re-validates via the ticket in the session user
+
+                final SessionUser user = (SessionUser) req.getSession()
+                        .getAttribute(KeycloakAuthenticationFilter.this.getUserAttributeName());
+                if (user != null)
+                {
+                    final RefreshableAccessTokenHolder tokenHolder = new RefreshableAccessTokenHolder(securityContext.getToken(),
+                            securityContext.getIdToken(), securityContext.getTokenString(), securityContext.getRefreshToken());
+                    KeycloakAuthenticationFilter.this.keycloakTicketTokenCache.put(user.getTicket(), tokenHolder);
+                }
+            }
+        };
 
         final String oldSessionId = req.getSession().getId();
 
@@ -645,6 +709,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         boolean skip = false;
         if (currentSession != null)
         {
+            final Object keycloakAccount = currentSession.getAttribute(KeycloakAccount.class.getName());
+            if (keycloakAccount instanceof OidcKeycloakAccount)
+            {
+                final KeycloakSecurityContext keycloakSecurityContext = ((OidcKeycloakAccount) keycloakAccount)
+                        .getKeycloakSecurityContext();
+                this.keycloakAuthenticationComponent.handleUserTokens(keycloakSecurityContext.getToken(),
+                        keycloakSecurityContext.getIdToken(), false);
+            }
+
             LOGGER.trace("Skipping doFilter as Keycloak-authentication session is still valid");
             skip = true;
         }
@@ -652,7 +725,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         {
             this.sessionIdMapper.removeSession(oldSessionId);
             LOGGER.debug("Keycloak-authenticated session for user {} was invalidated after token expiration",
-                    AuthenticationUtil.maskUsername(userId));
+                    AlfrescoCompatibilityUtil.maskUsername(userId));
         }
         return skip;
     }
@@ -704,7 +777,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                             this.authenticationService.getCurrentTicket(), true);
 
                     LOGGER.debug("Authenticated user {} via URL-provided authentication ticket",
-                            AuthenticationUtil.maskUsername(this.authenticationService.getCurrentUserName()));
+                            AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));
 
                     this.authenticationListener.userAuthenticated(new TicketCredentials(ticket));
                 }

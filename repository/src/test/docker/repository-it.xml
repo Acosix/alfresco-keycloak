@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 Acosix GmbH
+ Copyright 2019 - 2020 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -75,8 +75,7 @@
         <dependencySet>
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
-                <!-- everything else from Keycloak should already be bundled in Alfresco 6.x -->
-                <include>org.keycloak:keycloak-servlet-filter-adapter:*</include>
+                <include>${project.groupId}:${project.artifactId}.deps:*</include>
             </includes>
             <scope>compile</scope>
         </dependencySet>
