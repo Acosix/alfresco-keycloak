@@ -73,13 +73,13 @@
 
         <maven.shade.version>3.2.1</maven.shade.version>
 
-        <keycloak.version>6.0.1</keycloak.version>
+        <keycloak.version>8.0.2</keycloak.version>
         <resteasy.version>3.6.3.Final</resteasy.version>
         <!-- lowest common denominator of Repository / Share in 6.0 -->
         <apache.httpclient.version>4.5.1</apache.httpclient.version>
         <apache.httpcore.version>4.4.3</apache.httpcore.version>
 
-        <acosix.utility.version>1.0.7.0</acosix.utility.version>
+        <acosix.utility.version>1.1.0-SNAPSHOT</acosix.utility.version>
         <ootbee.support-tools.version>1.1.0.0</ootbee.support-tools.version>
     </properties>
 
