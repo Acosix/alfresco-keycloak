@@ -25,11 +25,9 @@ import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 import org.alfresco.error.AlfrescoRuntimeException;
-import org.alfresco.httpclient.HttpClientFactory.NonBlockingHttpParamsFactory;
 import org.alfresco.repo.content.MimetypeMap;
 import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
-import org.apache.commons.httpclient.params.DefaultHttpParams;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -57,7 +55,9 @@ import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.Time;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.constants.ServiceUrlConstants;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessTokenResponse;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.ClientRepresentation;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.RoleRepresentation;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.util.JsonSerialization;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
@@ -71,12 +71,6 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IDMClientImpl.class);
-
-    static
-    {
-        // use same Alfresco NonBlockingHttpParamsFactory as SolrQueryHTTPClient (indirectly) does
-        DefaultHttpParams.setHttpParamsFactory(new NonBlockingHttpParamsFactory());
-    }
 
     protected final ReentrantReadWriteLock tokenLock = new ReentrantReadWriteLock(true);
 
@@ -195,6 +189,22 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * {@inheritDoc}
      */
     @Override
+    public int processClients(final Consumer<ClientRepresentation> clientProcessor)
+    {
+        ParameterCheck.mandatory("clientProcessor", clientProcessor);
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl()).path("/admin/realms/{realm}/clients")
+                .build(this.deployment.getRealm());
+
+        final int processedClients = this.processEntityBatch(uri, clientProcessor, ClientRepresentation.class);
+        return processedClients;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public int processUsers(final int offset, final int userBatchSize, final Consumer<UserRepresentation> userProcessor)
     {
         ParameterCheck.mandatory("userProcessor", userProcessor);
@@ -293,6 +303,59 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
         final int processedUsers = this.processEntityBatch(uri, userProcessor, UserRepresentation.class);
         return processedUsers;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int processRoles(final int offset, final int userBatchSize, final Consumer<RoleRepresentation> roleProcessor)
+    {
+        ParameterCheck.mandatory("roleProcessor", roleProcessor);
+
+        if (offset < 0)
+        {
+            throw new IllegalArgumentException("offset must be a non-negative integer");
+        }
+        if (userBatchSize <= 0)
+        {
+            throw new IllegalArgumentException("userBatchSize must be a positive integer");
+        }
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl()).path("/admin/realms/{realm}/roles")
+                .queryParam("first", offset).queryParam("max", userBatchSize).build(this.deployment.getRealm());
+
+        final int processedRoles = this.processEntityBatch(uri, roleProcessor, RoleRepresentation.class);
+        return processedRoles;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int processRoles(final String clientId, final int offset, final int userBatchSize,
+            final Consumer<RoleRepresentation> roleProcessor)
+    {
+        ParameterCheck.mandatoryString("clientId", clientId);
+        ParameterCheck.mandatory("roleProcessor", roleProcessor);
+
+        if (offset < 0)
+        {
+            throw new IllegalArgumentException("offset must be a non-negative integer");
+        }
+        if (userBatchSize <= 0)
+        {
+            throw new IllegalArgumentException("userBatchSize must be a positive integer");
+        }
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
+                .path("/admin/realms/{realm}/clients/{clientId}/roles").queryParam("first", offset).queryParam("max", userBatchSize)
+                .build(this.deployment.getRealm(), clientId);
+
+        final int processedRoles = this.processEntityBatch(uri, roleProcessor, RoleRepresentation.class);
+        return processedRoles;
     }
 
     /**

@@ -23,7 +23,7 @@ import org.alfresco.util.PropertyMap;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
 
 /**
- * This user synchronisation mapping processor maps the default Alfresco authority container properties from a Keycloak group.
+ * This group synchronisation mapping processor maps the default Alfresco authority container properties from a Keycloak group.
  *
  * @author Axel Faust
  */
@@ -53,7 +53,7 @@ public class DefaultGroupProcessor implements GroupProcessor
             final PropertyMap properties = groupNode.getProperties();
 
             properties.put(ContentModel.PROP_AUTHORITY_NAME, AuthorityType.GROUP.getPrefixString() + group.getId());
-            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
+            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getPath());
         }
     }
 }

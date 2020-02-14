@@ -41,6 +41,20 @@
         <property name="replacementClassName" value="${project.artifactId}.authority.GrantedAuthorityAwareAuthorityServiceImpl" />
     </bean>
 
+    <bean id="${moduleId}.RoleService" class="org.alfresco.repo.management.subsystems.ChainingSubsystemProxyFactory">
+        <property name="applicationContextManager">
+            <ref bean="Authentication" />
+        </property>
+        <property name="interfaces">
+            <list>
+                <value>${project.artifactId}.roles.RoleService</value>
+            </list>
+        </property>
+        <property name="defaultTarget">
+            <bean class="${project.artifactId}.roles.NoOpRoleServiceImpl" />
+        </property>
+    </bean>
+
     <bean name="${moduleId}.ssoToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.ssoToSessionCache" />
     </bean>
@@ -59,6 +73,10 @@
 
     <bean name="${moduleId}-ticketTokenCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.ticketTokenCache" />
+    </bean>
+
+    <bean id="webscript.de.acosix.${moduleId}.roles.get" class="${project.artifactId}.web.scripts.RolesGet" parent="webscript">
+        <property name="roleService" ref="${moduleId}.RoleService" />
     </bean>
 
 </beans>

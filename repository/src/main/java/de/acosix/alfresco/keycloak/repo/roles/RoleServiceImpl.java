@@ -1,0 +1,501 @@
+/*
+ * Copyright 2019 - 2020 Acosix GmbH
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package de.acosix.alfresco.keycloak.repo.roles;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.Consumer;
+import java.util.regex.Pattern;
+
+import org.alfresco.service.cmr.security.AuthorityType;
+import org.alfresco.util.ParameterCheck;
+import org.alfresco.util.PropertyCheck;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.InitializingBean;
+
+import de.acosix.alfresco.keycloak.repo.client.IDMClient;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.RoleRepresentation;
+
+public class RoleServiceImpl implements InitializingBean, RoleService
+{
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RoleServiceImpl.class);
+
+    private static final String SENTINEL = RoleServiceImpl.class.getName();
+
+    protected AdapterConfig adapterConfig;
+
+    protected IDMClient idmClient;
+
+    protected boolean enabled;
+
+    protected boolean processRealmRoles;
+
+    protected boolean processResourceRoles;
+
+    protected RoleNameFilter realmRoleNameFilter;
+
+    protected RoleNameMapper realmRoleNameMapper;
+
+    protected RoleNameFilter defaultResourceRoleNameFilter;
+
+    protected RoleNameMapper defaultResourceRoleNameMapper;
+
+    protected Map<String, RoleNameFilter> resourceRoleNameFilter;
+
+    protected Map<String, RoleNameMapper> resourceRoleNameMapper;
+
+    protected List<String> hiddenMappedRoles;
+
+    protected final Map<String, String> clientIdByResourceName = new HashMap<>();
+
+    protected final ReentrantReadWriteLock clientIdByResourceNameLock = new ReentrantReadWriteLock(true);
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public void afterPropertiesSet()
+    {
+        PropertyCheck.mandatory(this, "idmClient", this.idmClient);
+
+        if (this.enabled && this.processRealmRoles)
+        {
+            PropertyCheck.mandatory(this, "realmRoleNameMapper", this.realmRoleNameMapper);
+        }
+
+        if (this.enabled && this.processResourceRoles)
+        {
+            PropertyCheck.mandatory(this, "adapterConfig", this.adapterConfig);
+            PropertyCheck.mandatory(this, "defaultResourceRoleNameMapper", this.defaultResourceRoleNameMapper);
+
+            if (this.resourceRoleNameMapper == null)
+            {
+                this.resourceRoleNameMapper = new HashMap<>();
+            }
+            this.resourceRoleNameMapper.put(this.adapterConfig.getResource(), this.defaultResourceRoleNameMapper);
+
+            if (this.defaultResourceRoleNameFilter != null)
+            {
+                if (this.resourceRoleNameFilter == null)
+                {
+                    this.resourceRoleNameFilter = new HashMap<>();
+                }
+                this.resourceRoleNameFilter.put(this.adapterConfig.getResource(), this.defaultResourceRoleNameFilter);
+            }
+        }
+    }
+
+    /**
+     * @param idmClient
+     *            the idmClient to set
+     */
+    public void setIdmClient(final IDMClient idmClient)
+    {
+        this.idmClient = idmClient;
+    }
+
+    /**
+     * @param adapterConfig
+     *            the adapterConfig to set
+     */
+    public void setAdapterConfig(final AdapterConfig adapterConfig)
+    {
+        this.adapterConfig = adapterConfig;
+    }
+
+    /**
+     * @param enabled
+     *            the enabled to set
+     */
+    public void setEnabled(final boolean enabled)
+    {
+        this.enabled = enabled;
+    }
+
+    /**
+     * @param processRealmRoles
+     *            the processRealmRoles to set
+     */
+    public void setProcessRealmRoles(final boolean processRealmRoles)
+    {
+        this.processRealmRoles = processRealmRoles;
+    }
+
+    /**
+     * @param processResourceRoles
+     *            the processResourceRoles to set
+     */
+    public void setProcessResourceRoles(final boolean processResourceRoles)
+    {
+        this.processResourceRoles = processResourceRoles;
+    }
+
+    /**
+     * @param realmRoleNameFilter
+     *            the realmRoleNameFilter to set
+     */
+    public void setRealmRoleNameFilter(final RoleNameFilter realmRoleNameFilter)
+    {
+        this.realmRoleNameFilter = realmRoleNameFilter;
+    }
+
+    /**
+     * @param realmRoleNameMapper
+     *            the realmRoleNameMapper to set
+     */
+    public void setRealmRoleNameMapper(final RoleNameMapper realmRoleNameMapper)
+    {
+        this.realmRoleNameMapper = realmRoleNameMapper;
+    }
+
+    /**
+     * @param defaultResourceRoleNameFilter
+     *            the defaultResourceRoleNameFilter to set
+     */
+    public void setDefaultResourceRoleNameFilter(final RoleNameFilter defaultResourceRoleNameFilter)
+    {
+        this.defaultResourceRoleNameFilter = defaultResourceRoleNameFilter;
+    }
+
+    /**
+     * @param defaultResourceRoleNameMapper
+     *            the defaultResourceRoleNameMapper to set
+     */
+    public void setDefaultResourceRoleNameMapper(final RoleNameMapper defaultResourceRoleNameMapper)
+    {
+        this.defaultResourceRoleNameMapper = defaultResourceRoleNameMapper;
+    }
+
+    /**
+     * @param resourceRoleNameFilter
+     *            the resourceRoleNameFilter to set
+     */
+    public void setResourceRoleNameFilter(final Map<String, RoleNameFilter> resourceRoleNameFilter)
+    {
+        this.resourceRoleNameFilter = resourceRoleNameFilter;
+    }
+
+    /**
+     * @param resourceRoleNameMapper
+     *            the resourceRoleNameMapper to set
+     */
+    public void setResourceRoleNameMapper(final Map<String, RoleNameMapper> resourceRoleNameMapper)
+    {
+        this.resourceRoleNameMapper = resourceRoleNameMapper;
+    }
+
+    /**
+     * @param hiddenMappedRoles
+     *            the hiddenMappedRoles to set
+     */
+    public void setHiddenMappedRoles(final List<String> hiddenMappedRoles)
+    {
+        this.hiddenMappedRoles = hiddenMappedRoles;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> findRoles(final String shortNameFilter)
+    {
+        return this.findRoles(shortNameFilter, false);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> findRoles(final String shortNameFilter, final boolean realmOnly)
+    {
+        final List<Role> roles;
+
+        if (this.enabled && (this.processRealmRoles || (!realmOnly && this.processResourceRoles)))
+        {
+            roles = new ArrayList<>();
+
+            if (this.processRealmRoles)
+            {
+                LOGGER.debug("Loading roles for realm with short name filter {}", shortNameFilter);
+
+                final Pattern shortNameFilterPattern = shortNameFilter != null && !shortNameFilter.trim().isEmpty()
+                        ? this.compileShortNameFilter(shortNameFilter.trim())
+                        : null;
+                final List<Role> realmRoles = this.doLoadRoles(null, this.realmRoleNameFilter, this.realmRoleNameMapper,
+                        shortNameFilterPattern);
+                LOGGER.debug("Loaded roles {} for realm", realmRoles);
+                roles.addAll(realmRoles);
+            }
+
+            if (!realmOnly && this.processResourceRoles)
+            {
+                this.resourceRoleNameMapper.keySet().stream().forEach(resourceName -> {
+                    final List<Role> resourceRoles = this.findRoles(resourceName, shortNameFilter);
+                    roles.addAll(resourceRoles);
+                });
+            }
+        }
+        else
+        {
+            if (realmOnly)
+            {
+                LOGGER.debug("Role mapping is not enabled either in general or for realm specifically");
+            }
+            else
+            {
+                LOGGER.debug("Role mapping is not enabled either in general, for realm or for resources specifically");
+            }
+            roles = Collections.emptyList();
+        }
+
+        return roles;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> findRoles(final String resourceName, final String shortNameFilter)
+    {
+        ParameterCheck.mandatory("resourceName", resourceName);
+
+        List<Role> roles;
+
+        if (this.enabled && !this.processResourceRoles)
+        {
+            final RoleNameFilter roleNameFilter = this.resourceRoleNameFilter.get(resourceName);
+            final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resourceName);
+            if (roleNameMapper != null)
+            {
+                final String clientId = this.mapResourceToClientId(resourceName);
+                if (clientId != null)
+                {
+                    LOGGER.debug("Loading roles for resource {} (client ID {}) with short name filter {}", resourceName, clientId,
+                            shortNameFilter);
+                    final Pattern shortNameFilterPattern = shortNameFilter != null && !shortNameFilter.trim().isEmpty()
+                            ? this.compileShortNameFilter(shortNameFilter.trim())
+                            : null;
+                    roles = this.doLoadRoles(clientId, roleNameFilter, roleNameMapper, shortNameFilterPattern);
+
+                    LOGGER.debug("Loaded roles {} for resource {}", roles, resourceName);
+                }
+                else
+                {
+                    LOGGER.debug("Resource name {} does not map to a client ID", resourceName);
+                    roles = Collections.emptyList();
+                }
+            }
+            else
+            {
+                LOGGER.debug("No role mapper defined for resource {}", roleNameMapper);
+                roles = Collections.emptyList();
+            }
+        }
+        else
+        {
+            LOGGER.debug("Role mapping is not enabled either in general or for resources specifically");
+            roles = Collections.emptyList();
+        }
+
+        return roles;
+    }
+
+    protected String mapResourceToClientId(final String resourceName)
+    {
+        LOGGER.debug("Resolving resource name {} to technical client ID", resourceName);
+
+        String clientId;
+
+        this.clientIdByResourceNameLock.readLock().lock();
+        try
+        {
+            clientId = this.clientIdByResourceName.get(resourceName);
+        }
+        finally
+        {
+            this.clientIdByResourceNameLock.readLock().unlock();
+        }
+
+        if (clientId == null)
+        {
+            this.clientIdByResourceNameLock.writeLock().lock();
+            try
+            {
+                clientId = this.clientIdByResourceName.get(resourceName);
+                if (clientId == null)
+                {
+                    this.loadClientIds();
+
+                    clientId = this.clientIdByResourceName.get(resourceName);
+                    if (clientId == null)
+                    {
+                        this.clientIdByResourceName.put(resourceName, SENTINEL);
+                    }
+                }
+            }
+            finally
+            {
+                this.clientIdByResourceNameLock.writeLock().unlock();
+            }
+        }
+
+        if (SENTINEL.equals(clientId))
+        {
+            clientId = null;
+        }
+
+        return clientId;
+    }
+
+    protected void loadClientIds()
+    {
+        this.clientIdByResourceNameLock.writeLock().lock();
+        try
+        {
+            LOGGER.debug("Loading IDs for registered clients from Keycloak");
+            final int processedClients = this.idmClient.processClients(client -> {
+                // Keycloak terminology is not 100% consistent
+                // what the Keycloak adapter calls the resourceName is the client ID in IDM representation
+                // we use clientId in our API to refer to the technical identifier which can actually be used in the ReST API to access the
+                // client-specific representations
+                // the IDM clientId on the other hand cannot be used anywhere in the API
+                final String resourceName = client.getClientId();
+                final String clientId = client.getId();
+
+                LOGGER.trace("Loaded client {} with ID {}", resourceName, clientId);
+                this.clientIdByResourceName.put(resourceName, clientId);
+            });
+            LOGGER.debug("Loaded / updated IDs for {} clients", processedClients);
+        }
+        finally
+        {
+            this.clientIdByResourceNameLock.writeLock().unlock();
+        }
+    }
+
+    protected Pattern compileShortNameFilter(final String shortNameFilter)
+    {
+        ParameterCheck.mandatoryString("shortNameFilter", shortNameFilter);
+
+        String shortNameFilterPattern = shortNameFilter;
+        if (!shortNameFilterPattern.startsWith("*") && !shortNameFilterPattern.startsWith("?"))
+        {
+            shortNameFilterPattern = "*" + shortNameFilterPattern;
+        }
+        if (!shortNameFilterPattern.endsWith("*") && !shortNameFilterPattern.endsWith("?"))
+        {
+            shortNameFilterPattern = shortNameFilterPattern + "*";
+        }
+
+        // escape common special characters to which we don't attribute special meaning for use in regex
+        shortNameFilterPattern = shortNameFilterPattern.replaceAll("([\\.(){}\\[\\]+$^])", "\\\\$1");
+        // turn supported wildcards into match elements
+        shortNameFilterPattern = shortNameFilterPattern.replace("*", ".*");
+        shortNameFilterPattern = shortNameFilterPattern.replace("?", ".");
+
+        final Pattern pattern = Pattern.compile(shortNameFilterPattern, Pattern.CASE_INSENSITIVE);
+        LOGGER.debug("Compiled short name filter '{}' to pattern '{}'", shortNameFilter, pattern);
+        return pattern;
+    }
+
+    protected List<Role> doLoadRoles(final String clientId, final RoleNameFilter filter, final RoleNameMapper mapper,
+            final Pattern shortNameFilterPattern)
+    {
+        final List<Role> results = new ArrayList<>();
+
+        final Consumer<RoleRepresentation> processor = r -> {
+            Optional.of(r).filter(rr -> this.filterRole(rr, filter)).map(rr -> this.mapRole(rr, mapper).orElse(null))
+                    .filter(role -> shortNameFilterPattern == null || this.matchRole(role, shortNameFilterPattern)).ifPresent(role -> {
+                        results.add(role);
+                    });
+        };
+
+        if (clientId != null)
+        {
+            this.idmClient.processRoles(clientId, 0, Integer.MAX_VALUE, processor);
+        }
+        else
+        {
+            this.idmClient.processRoles(0, Integer.MAX_VALUE, processor);
+        }
+
+        return results;
+    }
+
+    protected boolean filterRole(final RoleRepresentation role, final RoleNameFilter filter)
+    {
+        LOGGER.debug("Filtering role {}", role.getName());
+        final boolean exposed = filter.isRoleExposed(role.getName());
+        return exposed;
+    }
+
+    protected Optional<Role> mapRole(final RoleRepresentation role, final RoleNameMapper mapper)
+    {
+        LOGGER.debug("Mapping role {}", role.getName());
+
+        final Optional<String> mappedRoleName = mapper.mapRoleName(role.getName());
+        final Optional<Role> mappedRole = mappedRoleName.filter(r -> {
+            final boolean allowed = AuthorityType.getAuthorityType(r) == AuthorityType.ROLE;
+            if (!allowed)
+            {
+                LOGGER.debug("Excluding role {} as it maps to group authority name {}", role.getName(), r);
+            }
+            ;
+            return allowed;
+        }).map(r -> new Role(r, role.getName(), role.getDescription()));
+
+        mappedRole.ifPresent(r -> LOGGER.debug("Completed mapping role {}", r));
+
+        return mappedRole;
+    }
+
+    protected boolean matchRole(final Role role, final Pattern shortNameFilterPattern)
+    {
+        final boolean matchResult;
+
+        final String mappedRoleName = role.getName();
+        final boolean matchesHiddenMappedRole = this.hiddenMappedRoles != null && this.hiddenMappedRoles.contains(mappedRoleName);
+        if (matchesHiddenMappedRole)
+        {
+            LOGGER.debug("Mapped role name {} matches configured role to be hidden", mappedRoleName);
+            matchResult = false;
+        }
+        else
+        {
+            final String matchRelevantMappedRoleName = mappedRoleName.substring(AuthorityType.ROLE.getPrefixString().length());
+            final boolean matchesMappedName = shortNameFilterPattern.matcher(matchRelevantMappedRoleName).matches();
+            final boolean matchesKeycloakName = shortNameFilterPattern.matcher(role.getKeycloakName()).matches();
+
+            LOGGER.debug("Match result for role {} is: mapped name => {}, Keycloak name => {}", role, matchesMappedName,
+                    matchesKeycloakName);
+            matchResult = matchesMappedName || matchesKeycloakName;
+        }
+
+        return matchResult;
+    }
+}

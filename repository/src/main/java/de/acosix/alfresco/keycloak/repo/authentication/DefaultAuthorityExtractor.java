@@ -16,16 +16,16 @@
 package de.acosix.alfresco.keycloak.repo.authentication;
 
 import java.util.Collections;
-import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.alfresco.service.cmr.security.AuthorityType;
+import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -34,6 +34,8 @@ import org.springframework.beans.factory.InitializingBean;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken.Access;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
+import de.acosix.alfresco.keycloak.repo.roles.RoleNameFilter;
+import de.acosix.alfresco.keycloak.repo.roles.RoleNameMapper;
 
 /**
  * Instances of this class provide a generalised default authority mapping / extraction logic for Keycloak authenticated users. The mapping
@@ -49,35 +51,23 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
 
     protected boolean enabled;
 
-    protected boolean processRealmAccess;
-
-    protected boolean processResourceAccess;
-
-    protected Map<String, String> realmAccessExplicitMappings;
-
-    protected Map<String, String> resourceAccessExplicitMappings;
-
-    protected AuthorityType realmAccessAuthorityType;
-
-    protected AuthorityType resourceAccessAuthorityType;
-
-    protected String realmAccessAuthorityNamePrefix;
-
-    protected String resourceAccessAuthorityNamePrefix;
-
-    protected boolean applyRealmAccessAuthorityCapitalisation;
-
-    protected boolean applyResourceAccessAuthorityCapitalisation;
-
-    protected String realmAccessAuthorityCapitalisationLocale;
-
-    protected String resourceAccessAuthorityCapitalisationLocale;
-
-    protected Locale effectiveRealmAccessAuthorityCapitalisationLocale;
-
-    protected Locale effectiveResourceAccessAuthorityCapitalisationLocale;
-
     protected AdapterConfig adapterConfig;
+
+    protected boolean processRealmRoles;
+
+    protected boolean processResourceRoles;
+
+    protected RoleNameFilter realmRoleNameFilter;
+
+    protected RoleNameMapper realmRoleNameMapper;
+
+    protected RoleNameFilter defaultResourceRoleNameFilter;
+
+    protected RoleNameMapper defaultResourceRoleNameMapper;
+
+    protected Map<String, RoleNameFilter> resourceRoleNameFilter;
+
+    protected Map<String, RoleNameMapper> resourceRoleNameMapper;
 
     /**
      *
@@ -86,49 +76,31 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
     @Override
     public void afterPropertiesSet()
     {
-        PropertyCheck.mandatory(this, "realmAccessAuthorityType", this.realmAccessAuthorityType);
-        PropertyCheck.mandatory(this, "resourceAccessAuthorityType", this.resourceAccessAuthorityType);
-        PropertyCheck.mandatory(this, "realmAccessAuthorityNamePrefix", this.realmAccessAuthorityNamePrefix);
-        PropertyCheck.mandatory(this, "resourceAccessAuthorityNamePrefix", this.resourceAccessAuthorityNamePrefix);
-        PropertyCheck.mandatory(this, "adapterConfig", this.adapterConfig);
-
-        final Set<AuthorityType> allowedTypes = EnumSet.of(AuthorityType.ROLE, AuthorityType.GROUP);
-        if (!allowedTypes.contains(this.realmAccessAuthorityType))
+        if (this.enabled && this.processRealmRoles)
         {
-            throw new IllegalStateException("Only ROLE and GROUP authority types are allowed for realmAccessAuthorityType");
-        }
-        if (!allowedTypes.contains(this.resourceAccessAuthorityType))
-        {
-            throw new IllegalStateException("Only ROLE and GROUP authority types are allowed for resourceAccessAuthorityType");
+            PropertyCheck.mandatory(this, "realmRoleNameMapper", this.realmRoleNameMapper);
         }
 
-        final Function<String, Locale> localeConversion = capitalisationLocale -> {
-            final Locale locale;
-            if (capitalisationLocale != null)
+        if (this.enabled && this.processResourceRoles)
+        {
+            PropertyCheck.mandatory(this, "adapterConfig", this.adapterConfig);
+            PropertyCheck.mandatory(this, "defaultResourceRoleNameMapper", this.defaultResourceRoleNameMapper);
+
+            if (this.resourceRoleNameMapper == null)
             {
-                final String[] localeFragments = capitalisationLocale.split("[_\\-]");
-                if (localeFragments.length >= 3)
-                {
-                    locale = new Locale(localeFragments[0], localeFragments[1], localeFragments[2]);
-                }
-                else if (localeFragments.length >= 2)
-                {
-                    locale = new Locale(localeFragments[0], localeFragments[1]);
-                }
-                else
-                {
-                    locale = new Locale(localeFragments[0]);
-                }
+                this.resourceRoleNameMapper = new HashMap<>();
             }
-            else
+            this.resourceRoleNameMapper.put(this.adapterConfig.getResource(), this.defaultResourceRoleNameMapper);
+
+            if (this.defaultResourceRoleNameFilter != null)
             {
-                locale = Locale.getDefault();
+                if (this.resourceRoleNameFilter == null)
+                {
+                    this.resourceRoleNameFilter = new HashMap<>();
+                }
+                this.resourceRoleNameFilter.put(this.adapterConfig.getResource(), this.defaultResourceRoleNameFilter);
             }
-            return locale;
-        };
-        this.effectiveRealmAccessAuthorityCapitalisationLocale = localeConversion.apply(this.realmAccessAuthorityCapitalisationLocale);
-        this.effectiveResourceAccessAuthorityCapitalisationLocale = localeConversion
-                .apply(this.resourceAccessAuthorityCapitalisationLocale);
+        }
     }
 
     /**
@@ -141,114 +113,6 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
     }
 
     /**
-     * @param processRealmAccess
-     *            the processRealmAccess to set
-     */
-    public void setProcessRealmAccess(final boolean processRealmAccess)
-    {
-        this.processRealmAccess = processRealmAccess;
-    }
-
-    /**
-     * @param processResourceAccess
-     *            the processResourceAccess to set
-     */
-    public void setProcessResourceAccess(final boolean processResourceAccess)
-    {
-        this.processResourceAccess = processResourceAccess;
-    }
-
-    /**
-     * @param realmAccessExplicitMappings
-     *            the realmAccessExplicitMappings to set
-     */
-    public void setRealmAccessExplicitMappings(final Map<String, String> realmAccessExplicitMappings)
-    {
-        this.realmAccessExplicitMappings = realmAccessExplicitMappings;
-    }
-
-    /**
-     * @param resourceAccessExplicitMappings
-     *            the resourceAccessExplicitMappings to set
-     */
-    public void setResourceAccessExplicitMappings(final Map<String, String> resourceAccessExplicitMappings)
-    {
-        this.resourceAccessExplicitMappings = resourceAccessExplicitMappings;
-    }
-
-    /**
-     * @param realmAccessAuthorityType
-     *            the realmAccessAuthorityType to set
-     */
-    public void setRealmAccessAuthorityType(final AuthorityType realmAccessAuthorityType)
-    {
-        this.realmAccessAuthorityType = realmAccessAuthorityType;
-    }
-
-    /**
-     * @param resourceAccessAuthorityType
-     *            the resourceAccessAuthorityType to set
-     */
-    public void setResourceAccessAuthorityType(final AuthorityType resourceAccessAuthorityType)
-    {
-        this.resourceAccessAuthorityType = resourceAccessAuthorityType;
-    }
-
-    /**
-     * @param realmAccessAuthorityNamePrefix
-     *            the realmAccessAuthorityNamePrefix to set
-     */
-    public void setRealmAccessAuthorityNamePrefix(final String realmAccessAuthorityNamePrefix)
-    {
-        this.realmAccessAuthorityNamePrefix = realmAccessAuthorityNamePrefix;
-    }
-
-    /**
-     * @param resourceAccessAuthorityNamePrefix
-     *            the resourceAccessAuthorityNamePrefix to set
-     */
-    public void setResourceAccessAuthorityNamePrefix(final String resourceAccessAuthorityNamePrefix)
-    {
-        this.resourceAccessAuthorityNamePrefix = resourceAccessAuthorityNamePrefix;
-    }
-
-    /**
-     * @param applyRealmAccessAuthorityCapitalisation
-     *            the applyRealmAccessAuthorityCapitalisation to set
-     */
-    public void setApplyRealmAccessAuthorityCapitalisation(final boolean applyRealmAccessAuthorityCapitalisation)
-    {
-        this.applyRealmAccessAuthorityCapitalisation = applyRealmAccessAuthorityCapitalisation;
-    }
-
-    /**
-     * @param applyResourceAccessAuthorityCapitalisation
-     *            the applyResourceAccessAuthorityCapitalisation to set
-     */
-    public void setApplyResourceAccessAuthorityCapitalisation(final boolean applyResourceAccessAuthorityCapitalisation)
-    {
-        this.applyResourceAccessAuthorityCapitalisation = applyResourceAccessAuthorityCapitalisation;
-    }
-
-    /**
-     * @param realmAccessAuthorityCapitalisationLocale
-     *            the realmAccessAuthorityCapitalisationLocale to set
-     */
-    public void setRealmAccessAuthorityCapitalisationLocale(final String realmAccessAuthorityCapitalisationLocale)
-    {
-        this.realmAccessAuthorityCapitalisationLocale = realmAccessAuthorityCapitalisationLocale;
-    }
-
-    /**
-     * @param resourceAccessAuthorityCapitalisationLocale
-     *            the resourceAccessAuthorityCapitalisationLocale to set
-     */
-    public void setResourceAccessAuthorityCapitalisationLocale(final String resourceAccessAuthorityCapitalisationLocale)
-    {
-        this.resourceAccessAuthorityCapitalisationLocale = resourceAccessAuthorityCapitalisationLocale;
-    }
-
-    /**
      * @param adapterConfig
      *            the adapterConfig to set
      */
@@ -258,29 +122,100 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
     }
 
     /**
+     * @param processRealmRoles
+     *            the processRealmRoles to set
+     */
+    public void setProcessRealmRoles(final boolean processRealmRoles)
+    {
+        this.processRealmRoles = processRealmRoles;
+    }
+
+    /**
+     * @param processResourceRoles
+     *            the processResourceRoles to set
+     */
+    public void setProcessResourceRoles(final boolean processResourceRoles)
+    {
+        this.processResourceRoles = processResourceRoles;
+    }
+
+    /**
+     * @param realmRoleNameFilter
+     *            the realmRoleNameFilter to set
+     */
+    public void setRealmRoleNameFilter(final RoleNameFilter realmRoleNameFilter)
+    {
+        this.realmRoleNameFilter = realmRoleNameFilter;
+    }
+
+    /**
+     * @param realmRoleNameMapper
+     *            the realmRoleNameMapper to set
+     */
+    public void setRealmRoleNameMapper(final RoleNameMapper realmRoleNameMapper)
+    {
+        this.realmRoleNameMapper = realmRoleNameMapper;
+    }
+
+    /**
+     * @param defaultResourceRoleNameFilter
+     *            the defaultResourceRoleNameFilter to set
+     */
+    public void setDefaultResourceRoleNameFilter(final RoleNameFilter defaultResourceRoleNameFilter)
+    {
+        this.defaultResourceRoleNameFilter = defaultResourceRoleNameFilter;
+    }
+
+    /**
+     * @param defaultResourceRoleNameMapper
+     *            the defaultResourceRoleNameMapper to set
+     */
+    public void setDefaultResourceRoleNameMapper(final RoleNameMapper defaultResourceRoleNameMapper)
+    {
+        this.defaultResourceRoleNameMapper = defaultResourceRoleNameMapper;
+    }
+
+    /**
+     * @param resourceRoleNameFilter
+     *            the resourceRoleNameFilter to set
+     */
+    public void setResourceRoleNameFilter(final Map<String, RoleNameFilter> resourceRoleNameFilter)
+    {
+        this.resourceRoleNameFilter = resourceRoleNameFilter;
+    }
+
+    /**
+     * @param resourceRoleNameMapper
+     *            the resourceRoleNameMapper to set
+     */
+    public void setResourceRoleNameMapper(final Map<String, RoleNameMapper> resourceRoleNameMapper)
+    {
+        this.resourceRoleNameMapper = resourceRoleNameMapper;
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
     public Set<String> extractAuthorities(final AccessToken accessToken)
     {
-        Set<String> authorities = Collections.emptySet();
+        final Set<String> authorities;
 
         if (this.enabled)
         {
-            if (this.processRealmAccess || this.processResourceAccess)
+            if (this.processRealmRoles || this.processResourceRoles)
             {
                 authorities = new HashSet<>();
 
-                if (this.processRealmAccess)
+                if (this.processRealmRoles)
                 {
                     final Access realmAccess = accessToken.getRealmAccess();
                     if (realmAccess != null)
                     {
                         LOGGER.debug("Mapping authorities from realm access");
 
-                        final Set<String> realmAuthorites = this.processAccess(realmAccess, this.realmAccessExplicitMappings,
-                                this.realmAccessAuthorityType, this.realmAccessAuthorityNamePrefix,
-                                this.applyRealmAccessAuthorityCapitalisation, this.effectiveRealmAccessAuthorityCapitalisationLocale);
+                        final Set<String> realmAuthorites = this.processAccess(realmAccess, this.realmRoleNameFilter,
+                                this.realmRoleNameMapper);
 
                         LOGGER.debug("Mapped authorities from realm access: {}", realmAuthorites);
 
@@ -296,26 +231,23 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
                     LOGGER.debug("Mapping authorities from realm access is not enabled");
                 }
 
-                if (this.processResourceAccess)
+                if (this.processResourceRoles)
                 {
-                    final String resource = this.adapterConfig.getResource();
-                    final Access resourceAccess = accessToken.getResourceAccess(resource);
-                    if (resourceAccess != null)
-                    {
-                        LOGGER.debug("Mapping authorities from resource access on {}", resource);
+                    final Map<String, Access> resourceAccess = accessToken.getResourceAccess();
 
-                        final Set<String> resourceAuthorites = this.processAccess(resourceAccess, this.resourceAccessExplicitMappings,
-                                this.resourceAccessAuthorityType, this.resourceAccessAuthorityNamePrefix,
-                                this.applyResourceAccessAuthorityCapitalisation, this.effectiveResourceAccessAuthorityCapitalisationLocale);
+                    resourceAccess.forEach((r, a) -> {
+                        if (this.resourceRoleNameMapper.containsKey(r))
+                        {
+                            LOGGER.debug("Mapping authorities from resource access on {}", r);
 
-                        LOGGER.debug("Mapped authorities from resource access on {}: {}", resource, resourceAuthorites);
+                            final Set<String> resourceAuthorites = this.processAccess(a, this.resourceRoleNameFilter.get(r),
+                                    this.resourceRoleNameMapper.get(r));
 
-                        authorities.addAll(resourceAuthorites);
-                    }
-                    else
-                    {
-                        LOGGER.debug("No resource access for {} provided in access token", resource);
-                    }
+                            LOGGER.debug("Mapped authorities from resource access on {}: {}", r, resourceAuthorites);
+
+                            authorities.addAll(resourceAuthorites);
+                        }
+                    });
                 }
                 else
                 {
@@ -325,11 +257,13 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
             else
             {
                 LOGGER.debug("Mapping authorities is not enabled for either realm or resource access");
+                authorities = Collections.emptySet();
             }
         }
         else
         {
             LOGGER.debug("Mapping authorities from access token is not enabled");
+            authorities = Collections.emptySet();
         }
 
         return authorities;
@@ -340,62 +274,42 @@ public class DefaultAuthorityExtractor implements InitializingBean, AuthorityExt
      *
      * @param access
      *            the access representation component of an access token
-     * @param explicitMappings
-     *            the explicit mappings of roles to authorities to consider - an explicit mapping for a role overrides the default mapping
-     *            handling for that role only
-     * @param authorityType
-     *            the authority type to use for mapped / extracted authorities
-     * @param prefix
-     *            the static authority name prefix to use for mapped / extracted authorities
-     * @param capitalisation
-     *            {@code true} if authorities should be standardised on fully capitalised names, {@code false} if names should be left as
-     *            mapped from the access representation
-     * @param capitalisationLocale
-     *            the locale to use when capitalising authority names
+     * @param roleNameFilter
+     *            the role name filter to use or {@code null} if no filtering should be applied
+     * @param roleNameMapper
+     *            the role name mapper - can never be {@code null}
      * @return the authorities mapped / extracted from the access representation
      */
-    protected Set<String> processAccess(final Access access, final Map<String, String> explicitMappings, final AuthorityType authorityType,
-            final String prefix, final boolean capitalisation, final Locale capitalisationLocale)
+    protected Set<String> processAccess(final Access access, final RoleNameFilter roleNameFilter, final RoleNameMapper roleNameMapper)
     {
+        ParameterCheck.mandatory("access", access);
+        ParameterCheck.mandatory("roleNameMapper", roleNameMapper);
+
         final Set<String> authorities;
 
-        final Set<String> roles = access.getRoles();
-        if (roles != null && !roles.isEmpty())
+        final Set<String> accessRoles = access.getRoles();
+        if (accessRoles != null && !accessRoles.isEmpty())
         {
-            LOGGER.debug("Access representation contains roles {}", roles);
+            LOGGER.debug("Mapping / filtering access roles {}", accessRoles);
 
-            Stream<String> rolesStream = roles.stream();
-            if (explicitMappings != null && !explicitMappings.isEmpty())
+            Stream<String> roleStream = accessRoles.stream();
+            if (roleNameFilter != null)
             {
-                LOGGER.debug("Explicit mappings for roles have been provided");
-                rolesStream = rolesStream.filter(r -> !explicitMappings.containsKey(r));
+                roleStream = roleStream.filter(roleNameFilter::isRoleExposed);
             }
-
-            if (prefix != null && !prefix.isEmpty())
-            {
-                rolesStream = rolesStream.map(r -> prefix + "_" + r);
-            }
-            rolesStream = rolesStream.map(r -> authorityType.getPrefixString() + r);
-            if (capitalisation)
-            {
-
-                rolesStream = rolesStream.map(r -> r.toUpperCase(capitalisationLocale));
-            }
-            authorities = rolesStream.collect(Collectors.toSet());
-            LOGGER.debug("Generically mapped authorities: {}", authorities);
-
-            if (explicitMappings != null && !explicitMappings.isEmpty())
-            {
-                final Set<String> explicitlyMappedAuthorities = roles.stream().filter(explicitMappings::containsKey)
-                        .map(explicitMappings::get).collect(Collectors.toSet());
-                LOGGER.debug("Explicitly mapped authorities: {}", explicitlyMappedAuthorities);
-                authorities.addAll(explicitlyMappedAuthorities);
-            }
+            authorities = roleStream.map(roleNameMapper::mapRoleName).filter(Optional::isPresent).map(Optional::get).map(r -> {
+                final AuthorityType authorityType = AuthorityType.getAuthorityType(r);
+                String result = r;
+                if (authorityType != AuthorityType.GROUP && authorityType != AuthorityType.ROLE)
+                {
+                    result = AuthorityType.ROLE.getPrefixString() + r;
+                }
+                return result;
+            }).collect(Collectors.toSet());
         }
         else
         {
             LOGGER.debug("Access representation contains no roles");
-
             authorities = Collections.emptySet();
         }
 

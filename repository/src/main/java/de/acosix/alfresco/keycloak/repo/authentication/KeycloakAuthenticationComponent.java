@@ -95,7 +95,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     protected boolean allowGuestLogin;
 
-    protected boolean mapRoles;
+    protected boolean mapAuthorities;
 
     protected boolean mapPersonPropertiesOnLogin;
 
@@ -187,12 +187,12 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     }
 
     /**
-     * @param mapRoles
-     *            the mapRoles to set
+     * @param mapAuthorities
+     *            the mapAuthorities to set
      */
-    public void setMapRoles(final boolean mapRoles)
+    public void setMapAuthorities(final boolean mapAuthorities)
     {
-        this.mapRoles = mapRoles;
+        this.mapAuthorities = mapAuthorities;
     }
 
     /**
@@ -354,15 +354,15 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
      */
     public void handleUserTokens(final AccessToken accessToken, final IDToken idToken, final boolean freshLogin)
     {
-        if (this.mapRoles)
+        if (this.mapAuthorities)
         {
-            LOGGER.debug("Mapping roles from Keycloak to user authorities");
+            LOGGER.debug("Mapping Keycloak access token to user authorities");
 
             final Set<String> mappedAuthorities = new HashSet<>();
             this.authorityExtractors.stream().map(extractor -> extractor.extractAuthorities(accessToken))
                     .forEach(mappedAuthorities::addAll);
 
-            LOGGER.debug("Mapped user authorities from roles: {}", mappedAuthorities);
+            LOGGER.debug("Mapped user authorities from access token: {}", mappedAuthorities);
 
             if (!mappedAuthorities.isEmpty())
             {
@@ -380,7 +380,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
                 else
                 {
                     LOGGER.warn(
-                            "Authentication for user is not of the expected type {} - roles from Keycloak cannot be mapped to granted authorities",
+                            "Authentication for user is not of the expected type {} - Keycloak access token cannot be mapped to granted authorities",
                             UsernamePasswordAuthenticationToken.class);
                 }
             }

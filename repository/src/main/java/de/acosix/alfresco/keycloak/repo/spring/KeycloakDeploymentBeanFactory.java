@@ -15,9 +15,18 @@
  */
 package de.acosix.alfresco.keycloak.repo.spring;
 
+import java.net.InetAddress;
 import java.util.concurrent.TimeUnit;
 
+import org.alfresco.httpclient.HttpClientFactory.NonBlockingHttpParamsFactory;
 import org.alfresco.util.PropertyCheck;
+import org.apache.commons.httpclient.params.DefaultHttpParams;
+import org.apache.http.HttpHost;
+import org.apache.http.client.HttpClient;
+import org.apache.http.conn.params.ConnRoutePNames;
+import org.apache.http.conn.params.ConnRouteParams;
+import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.params.HttpParams;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 
@@ -32,7 +41,15 @@ import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.c
 public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeployment>, InitializingBean
 {
 
+    static
+    {
+        // use same Alfresco NonBlockingHttpParamsFactory as SolrQueryHTTPClient (indirectly) does
+        DefaultHttpParams.setHttpParamsFactory(new NonBlockingHttpParamsFactory());
+    }
+
     protected AdapterConfig adapterConfig;
+
+    protected String directAuthHost;
 
     protected int connectionTimeout;
 
@@ -55,6 +72,15 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     public void setAdapterConfig(final AdapterConfig adapterConfig)
     {
         this.adapterConfig = adapterConfig;
+    }
+
+    /**
+     * @param directAuthHost
+     *            the directAuthHost to set
+     */
+    public void setDirectAuthHost(final String directAuthHost)
+    {
+        this.directAuthHost = directAuthHost;
     }
 
     /**
@@ -92,7 +118,10 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
         {
             httpClientBuilder = httpClientBuilder.socketTimeout(this.socketTimeout, TimeUnit.MILLISECONDS);
         }
-        keycloakDeployment.setClient(httpClientBuilder.build(this.adapterConfig));
+
+        final HttpClient client = httpClientBuilder.build(this.adapterConfig);
+        this.configureForcedRouteIfNecessary(client);
+        keycloakDeployment.setClient(client);
 
         return keycloakDeployment;
     }
@@ -116,5 +145,29 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     public Class<?> getObjectType()
     {
         return KeycloakDeployment.class;
+    }
+
+    @SuppressWarnings("deprecation")
+    protected void configureForcedRouteIfNecessary(final HttpClient client)
+    {
+        if (this.directAuthHost != null && !this.directAuthHost.isEmpty())
+        {
+            final HttpHost directAuthHost = HttpHost.create(this.directAuthHost);
+            final HttpParams params = client.getParams();
+            final InetAddress local = ConnRouteParams.getLocalAddress(params);
+            final HttpHost proxy = ConnRouteParams.getDefaultProxy(params);
+            final boolean secure = directAuthHost.getSchemeName().equalsIgnoreCase("https");
+
+            HttpRoute route;
+            if (proxy == null)
+            {
+                route = new HttpRoute(directAuthHost, local, secure);
+            }
+            else
+            {
+                route = new HttpRoute(directAuthHost, local, proxy, secure);
+            }
+            params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
+        }
     }
 }

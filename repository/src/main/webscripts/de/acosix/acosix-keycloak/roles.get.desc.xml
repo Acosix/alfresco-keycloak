@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<webscript>
+    <shortname>List Keycloak roles</shortname>
+    <description><![CDATA[
+      Searches for mapped Keycloak roles. 
+      <br />
+      The following optional parameters are available:-
+      <ul>
+      <li>shortNameFilter - returns those roles with a partial match on either the Keycloak or mapped shortName.  You can use the pattern matching characters * to match zero or more characters or ? to match one character.</li>
+      <li>If the optional sortBy parameter is given, then the results may be sorted. Possible values are "authorityName" (default), "keycloakName" and "description"</li>
+      <li>If the optional dir parameter is given as "desc", the results will be sorted in descending order, otherwise ascending order is the default</li>
+      <li>If the optional maxItems parameter is given, the number of results will be limited to that that amount</li>
+      <li>If the optional skipCount parameter is given, that number of results will be used as an offset into the overall list of result</li>
+      </ul>
+      <br />
+      Returns an Array of groups in JSON format.
+   ]]>
+    </description>
+    <url>/acosix/api/keycloak/roles?shortNameFilter={shortNameFilter?}&amp;maxItems={maxItems?}&amp;skipCount={skipCount?}&amp;sortBy={sortBy?}</url>
+    <format default="json">argument</format>
+    <authentication>user</authentication>
+    <transaction buffersize="4096" allow="readonly">required</transaction>
+</webscript>

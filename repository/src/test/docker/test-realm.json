@@ -30,7 +30,8 @@
                 "manage-account"
             ],
             "realm-management": [
-                "view-users"
+                "view-users",
+                "view-clients"
             ]
         }
     }, {

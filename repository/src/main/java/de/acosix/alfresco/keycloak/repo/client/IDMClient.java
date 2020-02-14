@@ -17,12 +17,14 @@ package de.acosix.alfresco.keycloak.repo.client;
 
 import java.util.function.Consumer;
 
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.ClientRepresentation;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.RoleRepresentation;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
 
 /**
- * Instances of this interface wrap the relevant Keycloak admin ReST API for the synchronisation of users and groups from a Keycloak
- * instance.
+ * Instances of this interface wrap the relevant Keycloak admin ReST API for the synchronisation of users, groups and roles from a Keycloak
+ * realm.
  *
  * @author Axel Faust
  */
@@ -51,6 +53,15 @@ public interface IDMClient
      * @return the group details
      */
     GroupRepresentation getGroup(String groupId);
+
+    /**
+     * Loads and processes the registered clients from Keycloak using an externally specified processor.
+     *
+     * @param clientProcessor
+     *            the processor handling the loaded clients
+     * @return the number of processed clients
+     */
+    int processClients(Consumer<ClientRepresentation> clientProcessor);
 
     /**
      * Loads and processes a batch of users from Keycloak using an externally specified processor.
@@ -107,4 +118,32 @@ public interface IDMClient
      * @return the number of processed users
      */
     int processMembers(String groupId, int offset, int userBatchSize, Consumer<UserRepresentation> userProcessor);
+
+    /**
+     * Loads and processes a batch of realm roles from Keycloak using an externally specified processor.
+     *
+     * @param offset
+     *            the index of the first role to retrieve
+     * @param roleBatchSize
+     *            the number of roles to load in one batch
+     * @param roleProcessor
+     *            the processor handling the loaded roles
+     * @return the number of processed roles
+     */
+    int processRoles(int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
+
+    /**
+     * Loads and processes a batch of client roles from Keycloak using an externally specified processor.
+     *
+     * @param clientId
+     *            the {@link ClientRepresentation#getId() (technical) ID} of a client from which to process defined roles
+     * @param offset
+     *            the index of the first role to retrieve
+     * @param roleBatchSize
+     *            the number of roles to load in one batch
+     * @param roleProcessor
+     *            the processor handling the loaded roles
+     * @return the number of processed roles
+     */
+    int processRoles(String clientId, int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
 }

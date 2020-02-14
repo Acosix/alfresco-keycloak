@@ -32,6 +32,7 @@
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
         <property name="connectionTimeout" value="${keycloak.authentication.connectionTimeout}" />
         <property name="socketTimeout" value="${keycloak.authentication.socketTimeout}" />
+        <property name="directAuthHost" value="${keycloak.authentication.directAuthHost}" />
     </bean>
 
     <bean id="sessionIdMapper" class="${project.artifactId}.authentication.SimpleCacheBackedSessionIdMapper">
@@ -51,7 +52,7 @@
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
         <property name="allowGuestLogin" value="${keycloak.authentication.failExpiredUserNamePasswordLoginTokens}" />
         <property name="failExpiredTicketTokens" value="${keycloak.authentication.allowGuestLogin}" />
-        <property name="mapRoles" value="${keycloak.authentication.mapRoles}" />
+        <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
         <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
     </bean>
@@ -153,8 +154,19 @@
         <property name="groupLoadBatchSize" value="${keycloak.synchronization.groupLoadBatchSize}" />
     </bean>
 
+    <bean id="roleService.impl" class="${project.artifactId}.roles.RoleServiceImpl">
+        <property name="adapterConfig" ref="keycloakAdapterConfig" />
+        <property name="idmClient" ref="idmClient" />
+        <property name="enabled" value="${keycloak.roles.mapRoles}" />
+        <property name="processRealmRoles" value="${keycloak.roles.mapRealmRoles}" />
+        <property name="processResourceRoles" value="${keycloak.roles.mapResourceRoles}" />
+    </bean>
+
     <bean id="userAuthority.default" class="${project.artifactId}.authentication.DefaultAuthorityExtractor">
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
+        <property name="enabled" value="${keycloak.roles.mapRoles}" />
+        <property name="processRealmRoles" value="${keycloak.roles.mapRealmRoles}" />
+        <property name="processResourceRoles" value="${keycloak.roles.mapResourceRoles}" />
     </bean>
 
     <bean id="userToken.default" class="${project.artifactId}.authentication.DefaultPersonProcessor" />
@@ -174,6 +186,28 @@
     <bean id="userMapper.default" class="${project.artifactId}.sync.DefaultPersonProcessor" />
 
     <bean id="groupMapper.default" class="${project.artifactId}.sync.DefaultGroupProcessor" />
+
+    <bean id="roleFilterAggregateBase" abstract="true" class="${project.artifactId}.roles.AggregateRoleNameFilter" />
+
+    <bean id="roleMapperAggregateBase" abstract="true" class="${project.artifactId}.roles.AggregateRoleNameMapper">
+        <property name="upperCaseRoles" value="${keycloak.roles.upperCaseRoles}" />
+    </bean>
+
+    <bean id="roleFilterPatternBase" abstract="true" class="${project.artifactId}.roles.PatternRoleNameFilter" />
+
+    <bean id="roleMapperPatternBase" abstract="true" class="${project.artifactId}.roles.PatternRoleNameMapper">
+        <property name="upperCaseRoles" value="${keycloak.roles.upperCaseRoles}" />
+    </bean>
+
+    <bean id="roleFilterStaticBase" abstract="true" class="${project.artifactId}.roles.StaticRoleNameFilter" />
+
+    <bean id="roleMapperStaticBase" abstract="true" class="${project.artifactId}.roles.StaticRoleNameMapper">
+        <property name="upperCaseRoles" value="${keycloak.roles.upperCaseRoles}" />
+    </bean>
+
+    <bean id="roleMapperPrefixBase" abstract="true" class="${project.artifactId}.roles.PrefixAttachingRoleNameMapper">
+        <property name="upperCaseRoles" value="${keycloak.roles.upperCaseRoles}" />
+    </bean>
 
     <bean id="userMapper.simpleAttributes" parent="authorityMapper.simpleAttributes"
         class="${project.artifactId}.sync.SimpleUserAttributeProcessor" />
@@ -204,6 +238,22 @@
                 <value>userMapper</value>
                 <value>groupFilter</value>
                 <value>groupMapper</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="subsystem-properties" />
+    </bean>
+
+    <bean id="${moduleId}-dynamicRolesComponentsEmitter"
+        class="de.acosix.alfresco.utility.common.spring.BeanDefinitionFromPropertiesPostProcessor">
+        <property name="enabled" value="true" />
+        <property name="propertyPrefix" value="keycloak.roles" />
+        <property name="beanTypes">
+            <list>
+                <value>roleService</value>
+                <value>realmMapper</value>
+                <value>realmFilter</value>
+                <value>resourceMapper</value>
+                <value>resourceFilter</value>
             </list>
         </property>
         <property name="propertiesSource" ref="subsystem-properties" />
