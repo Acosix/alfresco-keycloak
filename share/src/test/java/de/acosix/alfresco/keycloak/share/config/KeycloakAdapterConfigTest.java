@@ -20,11 +20,13 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.springframework.extensions.config.Config;
+import org.springframework.extensions.config.ConfigElement;
 import org.springframework.extensions.config.ConfigSource;
 import org.springframework.extensions.config.source.UrlConfigSource;
 import org.springframework.extensions.config.xml.XMLConfigService;
+
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
 
 /**
  * @author Axel Faust
@@ -43,8 +45,9 @@ public class KeycloakAdapterConfigTest
 
         final Config keycloakConfigSection = configService.getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME);
 
-        final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) keycloakConfigSection
-                .getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+        final ConfigElement keycloakAuthConfigEl = keycloakConfigSection.getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+        Assert.assertTrue(keycloakAuthConfigEl instanceof KeycloakAuthenticationConfigElement);
+        final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) keycloakAuthConfigEl;
 
         Assert.assertTrue(keycloakAuthConfig.getEnhanceLoginForm());
         Assert.assertTrue(keycloakAuthConfig.getEnableSsoFilter());
@@ -89,8 +92,9 @@ public class KeycloakAdapterConfigTest
 
         final Config keycloakConfigSection = configService.getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME);
 
-        final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) keycloakConfigSection
-                .getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+        final ConfigElement keycloakAuthConfigEl = keycloakConfigSection.getConfigElement(KeycloakAuthenticationConfigElement.NAME);
+        Assert.assertTrue(keycloakAuthConfigEl instanceof KeycloakAuthenticationConfigElement);
+        final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) keycloakAuthConfigEl;
 
         Assert.assertFalse(keycloakAuthConfig.getEnhanceLoginForm());
         Assert.assertFalse(keycloakAuthConfig.getEnableSsoFilter());

@@ -27,6 +27,10 @@
     <artifactId>de.acosix.alfresco.keycloak.share</artifactId>
     <name>Acosix Alfresco Keycloak - Share Module</name>
 
+    <properties>
+        <docker.tests.keycloakPort>8380</docker.tests.keycloakPort>
+    </properties>
+
     <dependencyManagement>
         <dependencies>
 
@@ -36,6 +40,12 @@
                 <version>${project.version}</version>
                 <classifier>installable</classifier>
                 <scope>test</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.bouncycastle</groupId>
+                <artifactId>bcpkix-jdk15on</artifactId>
+                <version>1.60</version>
             </dependency>
 
         </dependencies>
@@ -55,23 +65,21 @@
         </dependency>
 
         <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-adapter-core</artifactId>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>de.acosix.alfresco.keycloak.share.deps</artifactId>
+            <version>${project.version}</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.keycloak</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
-
+        
+        <!-- BouncyCastle cannot be made part of an uber-JAR -->
         <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-servlet-adapter-spi</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-servlet-filter-adapter</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-authz-client</artifactId>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk15on</artifactId>
         </dependency>
 
         <dependency>
@@ -107,6 +115,16 @@
             <groupId>${project.groupId}</groupId>
             <artifactId>de.acosix.alfresco.keycloak.repo</artifactId>
             <classifier>installable</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>org.orderofthebee.support-tools</groupId>
+            <artifactId>support-tools-repo</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.orderofthebee.support-tools</groupId>
+            <artifactId>support-tools-share</artifactId>
         </dependency>
 
         <dependency>
@@ -163,7 +181,13 @@
                                 </run>
                             </image>
                             <image>
-                                <!-- no change to Share image -->
+                                <run>
+                                    <volumes>
+                                        <bind>
+                                            <volume>${project.build.directory}/docker/share-logs:/usr/local/tomcat/logs</volume>
+                                        </bind>
+                                    </volumes>
+                                </run>
                             </image>
                             <image>
                                 <!-- no change to Search image -->

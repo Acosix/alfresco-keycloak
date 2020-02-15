@@ -59,10 +59,16 @@
         <dependencySet>
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
-                <include>${project.groupId}:de.acosix.alfresco.keycloak.repo.deps:*</include>
+                <!-- TODO: Report bug against Maven PatternIncludesArtifactFilter#matchAgainst for incorrect return false-->
+                <!-- when patterns with 5 tokens are listed in includes (like the installable JAR of Acosix Utility Core Repo), they may prevent evaluation of any additional patterns -->
+                <!-- this cost me half a day to track down when the following three patterns were sorted last -->
+                <include>com.cronutils:*</include>
+                <include>net.time4j:*</include>
+                <include>org.orderofthebee.support-tools:support-tools-repo:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz1:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz2:*</include>
+                <include>${project.groupId}:de.acosix.alfresco.keycloak.repo.deps:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo:jar:installable:*</include>
                 <include>${project.groupId}:de.acosix.alfresco.keycloak.repo:jar:installable:*</include>
             </includes>

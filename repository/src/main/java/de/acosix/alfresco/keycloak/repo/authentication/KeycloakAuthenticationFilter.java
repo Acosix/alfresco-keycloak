@@ -484,10 +484,6 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             final SessionUser sessionUser = this.createUserEnvironment(session, userId);
             this.keycloakAuthenticationComponent.handleUserTokens(accessToken, keycloakSecurityContext.getIdToken(), true);
 
-            // need different attribute name than default for integration with web scripts framework
-            // default attribute name seems to be no longer used
-            session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
-
             this.authenticationListener.userAuthenticated(new KeycloakCredentials(accessToken));
 
             // store tokens in cache as well for ticket validation
@@ -527,6 +523,41 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         LOGGER.trace("Continueing with filter chain processing");
         final HttpServletRequestWrapper requestWrapper = tokenStore.buildWrapper();
         chain.doFilter(requestWrapper, res);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    protected SessionUser createUserEnvironment(final HttpSession session, final String userName) throws IOException, ServletException
+    {
+        final SessionUser sessionUser = super.createUserEnvironment(session, userName);
+
+        // ensure all common attribute names are mapped
+        // Alfresco is really inconsistent with these attribute names
+        session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
+        session.setAttribute(BaseAuthenticationFilter.AUTHENTICATION_USER, sessionUser);
+
+        return sessionUser;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    protected SessionUser createUserEnvironment(final HttpSession session, final String userName, final String ticket,
+            final boolean externalAuth) throws IOException, ServletException
+    {
+        final SessionUser sessionUser = super.createUserEnvironment(session, userName, ticket, externalAuth);
+
+        // ensure all common attribute names are mapped
+        // Alfresco is really inconsistent with these attribute names
+        session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
+        session.setAttribute(BaseAuthenticationFilter.AUTHENTICATION_USER, sessionUser);
+
+        return sessionUser;
     }
 
     /**
@@ -607,10 +638,6 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.trace("Skipping doFilter as filter is not active");
             skip = true;
         }
-        else if (req.getAttribute(NO_AUTH_REQUIRED) != null)
-        {
-            LOGGER.trace("Skipping doFilter as filter higher up in chain determined authentication as not required");
-        }
         else if (servletRequestUri.matches(KEYCLOAK_ACTION_URL_PATTERN))
         {
             LOGGER.trace("Explicitly not skipping doFilter as Keycloak action URL is being called");
@@ -636,6 +663,14 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         else if (this.allowTicketLogon && this.checkForTicketParameter(context, req, res))
         {
             LOGGER.trace("Skipping doFilter as user was authenticated by ticket URL parameter");
+            skip = true;
+        }
+        // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all pre-emptive auth
+        // request details have been checked
+        else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
+        {
+            LOGGER.trace("Skipping doFilter as filter higher up in chain determined authentication as not required");
+            skip = true;
         }
         else if (sessionUser != null)
         {

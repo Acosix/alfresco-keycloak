@@ -23,13 +23,6 @@
         <format>dir</format>
     </formats>
     <includeBaseDirectory>false</includeBaseDirectory>
-    <files>
-        <file>
-            <source>${project.basedir}/src/test/docker/share-log4j.properties</source>
-            <outputDirectory>WEB-INF/classes</outputDirectory>
-            <destName>log4j.properties</destName>
-        </file>
-    </files>
     <fileSets>
         <fileSet>
             <directory>${project.build.directory}</directory>
@@ -74,12 +67,14 @@
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
                 <include>${project.groupId}:de.acosix.alfresco.keycloak.share.deps:*</include>
+                <include>org.bouncycastle:*</include>
             </includes>
             <scope>compile</scope>
         </dependencySet>
         <dependencySet>
             <outputDirectory>WEB-INF/lib</outputDirectory>
             <includes>
+                <include>org.orderofthebee.support-tools:support-tools-share:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.share:jar:installable:*</include>
             </includes>

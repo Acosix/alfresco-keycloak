@@ -27,15 +27,15 @@
                     <targetPackageRoot>org.alfresco</targetPackageRoot>
                     <sourcePackageRoot>de.acosix.keycloak.customisations</sourcePackageRoot>
                 </customization>
-            </customizations>
 
-            <customization>
-                <targetPackageRoot>org.alfresco.share.pages</targetPackageRoot>
-                <sourcePackageRoot>de.acosix.keycloak.customisations.share.header</sourcePackageRoot>
-                <alwaysApply>
-                    <webscript>share-header</webscript>
-                </alwaysApply>
-            </customization>
+                <customization>
+                    <targetPackageRoot>org.alfresco.share.pages</targetPackageRoot>
+                    <sourcePackageRoot>de.acosix.keycloak.customisations.share.header</sourcePackageRoot>
+                    <alwaysApply>
+                        <webscript>share-header</webscript>
+                    </alwaysApply>
+                </customization>
+            </customizations>
         </module>
     </modules>
 </extension>

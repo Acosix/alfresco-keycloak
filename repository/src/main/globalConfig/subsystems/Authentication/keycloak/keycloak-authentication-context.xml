@@ -109,14 +109,21 @@
         <property name="personService" ref="PersonService" />
     </bean>
 
-    <bean id="webscriptAuthenticationFilter" class="org.alfresco.web.app.servlet.WebScriptSSOAuthenticationFilter">
+    <bean id="webscriptAuthenticationFilter" class="${project.artifactId}.authentication.KeycloakWebScriptSSOAuthenticationFilter">
         <property name="active" value="${keycloak.authentication.enabled}" />
+        <property name="container" ref="webscripts.container" />
+        <!-- via inheritance, filter has way more fields, but only the above are actually needed -->
+    </bean>
+
+    <!-- need to override this to align userAttributeName in session with other SSO filters -->
+    <!-- for some reason, Alfresco is really inconsistent here between BaseAuthenticationFilter.AUTHENTICATION_USER and AuthenticationDriver.AUTHENTICATION_USER -->
+    <bean id="cookieBasedAuthenticationFilter" class="${project.artifactId}.authentication.KeycloakWebScriptCookieAuthenticationFilter">
         <property name="authenticationService" ref="AuthenticationService" />
-        <property name="authenticationComponent" ref="AuthenticationComponent" />
-        <property name="personService" ref="personService" />
+        <property name="personService" ref="PersonService" />
         <property name="nodeService" ref="NodeService" />
         <property name="transactionService" ref="TransactionService" />
-        <property name="container" ref="webscripts.container" />
+        <property name="authenticationComponent" ref="AuthenticationComponent" />
+        <property name="remoteUserMapper" ref="RemoteUserMapper" />
     </bean>
 
     <bean id="globalAuthenticationFilter" class="${project.artifactId}.authentication.KeycloakAuthenticationFilter">

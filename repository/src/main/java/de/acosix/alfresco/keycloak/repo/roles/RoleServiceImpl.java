@@ -312,7 +312,7 @@ public class RoleServiceImpl implements InitializingBean, RoleService
             }
             else
             {
-                LOGGER.debug("No role mapper defined for resource {}", roleNameMapper);
+                LOGGER.debug("No role mapper defined for resource {}", resourceName);
                 roles = Collections.emptyList();
             }
         }

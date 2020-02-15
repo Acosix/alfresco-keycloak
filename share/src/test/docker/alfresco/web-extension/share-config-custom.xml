@@ -16,13 +16,76 @@
  -->
 <alfresco-config>
 
-    <config evaluator="string-compare" condition="Test">
+    <config evaluator="string-compare" condition="Remote">
+        <remote>
+            <connector>
+                <id>alfrescoCookie</id>
+                <name>Alfresco Connector</name>
+                <description>Connects to an Alfresco instance using cookie-based authentication</description>
+                <class>de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector</class>
+            </connector>
+
+            <connector>
+                <id>alfrescoHeader</id>
+                <name>Alfresco Connector</name>
+                <description>Connects to an Alfresco instance using header and cookie-based authentication</description>
+                <class>de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector</class>
+                <userHeader>SsoUserHeader</userHeader>
+            </connector>
+
+            <endpoint>
+                <id>alfresco</id>
+                <name>Alfresco - user access</name>
+                <description>Access to Alfresco Repository WebScripts that require user authentication</description>
+                <connector-id>alfrescoCookie</connector-id>
+                <endpoint-url>http://repository:8080/alfresco/wcs</endpoint-url>
+                <identity>user</identity>
+                <external-auth>true</external-auth>
+            </endpoint>
+
+            <endpoint>
+                <id>alfresco-feed</id>
+                <name>Alfresco Feed</name>
+                <description>Alfresco Feed - supports basic HTTP authentication via the EndPointProxyServlet</description>
+                <connector-id>alfrescoHeader</connector-id>
+                <endpoint-url>http://repository:8080/alfresco/wcs</endpoint-url>
+                <basic-auth>true</basic-auth>
+                <identity>user</identity>
+                <external-auth>true</external-auth>
+            </endpoint>
+
+            <endpoint>
+                <id>alfresco-api</id>
+                <parent-id>alfresco</parent-id>
+                <name>Alfresco Public API - user access</name>
+                <description>Access to Alfresco Repository Public API that require user authentication.
+                    This makes use of the authentication that is provided by parent 'alfresco' endpoint.
+                </description>
+                <connector-id>alfrescoHeader</connector-id>
+                <endpoint-url>http://repository:8080/alfresco/api</endpoint-url>
+                <identity>user</identity>
+                <external-auth>true</external-auth>
+            </endpoint>
+        </remote>
+    </config>
+
+    <config evaluator="string-compare" condition="Keycloak">
+        <keycloak-auth-config>
+            <enhance-login-form>true</enhance-login-form>
+            <enable-sso-filter>true</enable-sso-filter>
+            <force-keycloak-sso>false</force-keycloak-sso>
+        </keycloak-auth-config>
         <keycloak-adapter-config>
+            <directAuthHost>http://host.docker.internal:8380</directAuthHost>
+            <auth-server-url>http://${docker.tests.host.name}:${docker.tests.keycloakPort}/auth</auth-server-url>
+            <realm>test</realm>
+            <resource>alfresco-share</resource>
+            <ssl-required>none</ssl-required>
+            <public-client>false</public-client>
             <credentials>
-                <secret>secret</secret>
-                <provider>test</provider>
+                <provider>secret</provider>
+                <secret>a5b3e8bc-39cc-4ddd-8c8f-1c34e7a35975</secret>
             </credentials>
-            <allow-any-hostname>true</allow-any-hostname>
         </keycloak-adapter-config>
     </config>
 

@@ -25,7 +25,7 @@
         </element-readers>
     </plug-ins>
 
-    <!-- sensible default configuration (similar to Repository identity-service-authentication.properties -->
+    <!-- sensible default configuration -->
     <config evaluator="string-compare" condition="Keycloak">
         <keycloak-auth-config>
             <enhance-login-form>true</enhance-login-form>
@@ -50,7 +50,7 @@
     </config>
     
     <!-- add to the global configuration -->
-    <config evaluator="string-compare">
+    <config>
         <user>
             <!-- make sure groups of a user are kept up-to-date in at least 60 seconds intervals (lazily refreshed on next request) -->
             <cached-user-groups-timeout>60000</cached-user-groups-timeout>

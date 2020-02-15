@@ -129,6 +129,10 @@ public class KeycloakAdapterConfigElementReader implements ConfigElementReader
                         final String prospectiveSocketTimeout = subElement.getTextTrim();
                         configElement.setSocketTimeout(prospectiveSocketTimeout.isEmpty() ? null : Long.valueOf(prospectiveSocketTimeout));
                         break;
+                    case "directAuthHost":
+                        final String prospectiveDirectAuthHost = subElement.getTextTrim();
+                        configElement.setDirectAuthHost(prospectiveDirectAuthHost.isEmpty() ? null : prospectiveDirectAuthHost);
+                        break;
                     default:
                         LOGGER.warn("Encountered unsupported Keycloak Adapter config element {}", subElementName);
                 }

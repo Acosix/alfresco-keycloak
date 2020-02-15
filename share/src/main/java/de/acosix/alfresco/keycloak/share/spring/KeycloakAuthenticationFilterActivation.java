@@ -78,6 +78,8 @@ public class KeycloakAuthenticationFilterActivation implements BeanDefinitionReg
 
         if (registry.containsBeanDefinition(keycloakFilterBeanName))
         {
+            LOGGER.debug("Activating KeycloakAuthenticationFilter bean");
+
             // re-register default filter under different name
             final BeanDefinition defaultSsoAuthenticationFilter = registry.getBeanDefinition(DEFAULT_SSO_AUTHENTICATION_FILTER_NAME);
             registry.removeBeanDefinition(DEFAULT_SSO_AUTHENTICATION_FILTER_NAME);
@@ -92,6 +94,8 @@ public class KeycloakAuthenticationFilterActivation implements BeanDefinitionReg
             keycloakSsoAuthenticationFilter.getPropertyValues().add("defaultSsoFilter",
                     new RuntimeBeanReference(defaultSsoAuthenticationFilterReplacementName));
             registry.registerBeanDefinition(DEFAULT_SSO_AUTHENTICATION_FILTER_NAME, keycloakSsoAuthenticationFilter);
+
+            LOGGER.debug("Activated KeycloakAuthenticationFilter bean");
         }
         else
         {

@@ -33,6 +33,11 @@
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-adapter-core</artifactId>
             <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>*</artifactId>
@@ -48,6 +53,11 @@
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-servlet-adapter-spi</artifactId>
             <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>*</artifactId>
@@ -56,6 +66,11 @@
                     <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
+                <!-- use default from Alfresco Repository -->
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpcomponents-client</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
 
@@ -63,6 +78,11 @@
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-servlet-filter-adapter</artifactId>
             <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>*</artifactId>

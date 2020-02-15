@@ -31,13 +31,12 @@ import java.util.Set;
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.ParameterCheck;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.ConfigElement;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
-
+import de.acosix.alfresco.keycloak.share.deps.jackson.annotation.JsonProperty;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
 import de.acosix.alfresco.utility.share.config.BaseCustomConfigElement;
 import de.acosix.alfresco.utility.share.config.ConfigValueHolder;
 
@@ -137,6 +136,8 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
 
     protected final ConfigValueHolder<Long> socketTimeout = new ConfigValueHolder<>();
 
+    protected final ConfigValueHolder<String> directAuthHost = new ConfigValueHolder<>();
+
     /**
      * Creates a new instance of this class.
      */
@@ -177,6 +178,23 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
     public void setSocketTimeout(final Long socketTimeout)
     {
         this.socketTimeout.setValue(socketTimeout);
+    }
+
+    /**
+     * @return the directAuthHost
+     */
+    public String getDirectAuthHost()
+    {
+        return this.directAuthHost.getValue();
+    }
+
+    /**
+     * @param directAuthHost
+     *            the directAuthHost to set
+     */
+    public void setDirectAuthHost(final String directAuthHost)
+    {
+        this.directAuthHost.setValue(directAuthHost);
     }
 
     /**
@@ -386,6 +404,16 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
                     otherConfigElement.getSocketTimeout() != null ? otherConfigElement.getSocketTimeout() : this.getSocketTimeout());
         }
 
+        if (otherConfigElement.directAuthHost.isUnset())
+        {
+            combined.directAuthHost.unset();
+        }
+        else
+        {
+            combined.setDirectAuthHost(
+                    otherConfigElement.getDirectAuthHost() != null ? otherConfigElement.getDirectAuthHost() : this.getDirectAuthHost());
+        }
+
         return combined;
     }
 
@@ -401,16 +429,12 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         builder.append(this.configValueByField);
         builder.append(",markedAsUnset=");
         builder.append(this.markedAsUnset);
-        if (this.connectionTimeout != null)
-        {
-            builder.append(",connectionTimeout=");
-            builder.append(this.connectionTimeout);
-        }
-        if (this.connectionTimeout != null)
-        {
-            builder.append(",socketTimeout=");
-            builder.append(this.socketTimeout);
-        }
+        builder.append(",connectionTimeout=");
+        builder.append(this.connectionTimeout);
+        builder.append(",socketTimeout=");
+        builder.append(this.socketTimeout);
+        builder.append(",directAuthHost=");
+        builder.append(this.directAuthHost);
         builder.append("]");
         return builder.toString();
     }
@@ -432,8 +456,9 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             result = prime * result + valueHash;
         }
 
-        result = prime * result + (this.connectionTimeout != null ? this.connectionTimeout.hashCode() : 0);
-        result = prime * result + (this.socketTimeout != null ? this.socketTimeout.hashCode() : 0);
+        result = prime * result + this.connectionTimeout.hashCode();
+        result = prime * result + this.socketTimeout.hashCode();
+        result = prime * result + this.directAuthHost.hashCode();
 
         return result;
     }

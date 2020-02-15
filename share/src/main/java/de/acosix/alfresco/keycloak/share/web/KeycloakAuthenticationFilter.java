@@ -16,6 +16,7 @@
 package de.acosix.alfresco.keycloak.share.web;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -38,25 +39,12 @@ import javax.servlet.http.HttpSession;
 
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SSOAuthenticationFilter;
-import org.keycloak.KeycloakSecurityContext;
-import org.keycloak.adapters.AdapterDeploymentContext;
-import org.keycloak.adapters.AuthenticatedActionsHandler;
-import org.keycloak.adapters.HttpClientBuilder;
-import org.keycloak.adapters.KeycloakDeployment;
-import org.keycloak.adapters.KeycloakDeploymentBuilder;
-import org.keycloak.adapters.OAuthRequestAuthenticator;
-import org.keycloak.adapters.OidcKeycloakAccount;
-import org.keycloak.adapters.PreAuthActionsHandler;
-import org.keycloak.adapters.servlet.FilterRequestAuthenticator;
-import org.keycloak.adapters.servlet.OIDCFilterSessionStore;
-import org.keycloak.adapters.servlet.OIDCServletHttpFacade;
-import org.keycloak.adapters.spi.AuthOutcome;
-import org.keycloak.adapters.spi.AuthenticationError;
-import org.keycloak.adapters.spi.KeycloakAccount;
-import org.keycloak.adapters.spi.SessionIdMapper;
-import org.keycloak.adapters.spi.UserSessionManagement;
-import org.keycloak.representations.AccessToken;
-import org.keycloak.representations.adapters.config.AdapterConfig;
+import org.apache.http.HttpHost;
+import org.apache.http.client.HttpClient;
+import org.apache.http.conn.params.ConnRoutePNames;
+import org.apache.http.conn.params.ConnRouteParams;
+import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.params.HttpParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -83,6 +71,25 @@ import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilte
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AdapterDeploymentContext;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AuthenticatedActionsHandler;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.HttpClientBuilder;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeployment;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeploymentBuilder;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OAuthRequestAuthenticator;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OidcKeycloakAccount;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.PreAuthActionsHandler;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.FilterRequestAuthenticator;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCFilterSessionStore;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCServletHttpFacade;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.AuthOutcome;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.AuthenticationError;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.KeycloakAccount;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.SessionIdMapper;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.UserSessionManagement;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessToken;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
 import de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector;
 
 /**
@@ -259,7 +266,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 {
                     httpClientBuilder = httpClientBuilder.socketTimeout(socketTimeout.longValue(), TimeUnit.MILLISECONDS);
                 }
-                this.keycloakDeployment.setClient(httpClientBuilder.build(adapterConfiguration));
+
+                final HttpClient client = httpClientBuilder.build(adapterConfiguration);
+                this.configureForcedRouteIfNecessary(keycloakAdapterConfig, client);
+                this.keycloakDeployment.setClient(client);
             }
 
             this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
@@ -516,7 +526,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
         else
         {
-
             if (authOutcome == AuthOutcome.NOT_ATTEMPTED)
             {
                 LOGGER.debug("No authentication took place - continueing with filter chain processing");
@@ -1127,6 +1136,31 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 resetCookie.setSecure(false);
                 res.addCookie(resetCookie);
             });
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    protected void configureForcedRouteIfNecessary(final KeycloakAdapterConfigElement configElement, final HttpClient client)
+    {
+        final String directAuthHost = configElement.getDirectAuthHost();
+        if (directAuthHost != null && !directAuthHost.isEmpty())
+        {
+            final HttpHost host = HttpHost.create(directAuthHost);
+            final HttpParams params = client.getParams();
+            final InetAddress local = ConnRouteParams.getLocalAddress(params);
+            final HttpHost proxy = ConnRouteParams.getDefaultProxy(params);
+            final boolean secure = host.getSchemeName().equalsIgnoreCase("https");
+
+            HttpRoute route;
+            if (proxy == null)
+            {
+                route = new HttpRoute(host, local, secure);
+            }
+            else
+            {
+                route = new HttpRoute(host, local, proxy, secure);
+            }
+            params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
         }
     }
 }
