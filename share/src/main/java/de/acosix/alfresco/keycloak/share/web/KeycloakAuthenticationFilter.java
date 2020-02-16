@@ -392,6 +392,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
                     this.continueFilterChain(context, request, response, chain);
                 }
+                else if (res.isCommitted())
+                {
+                    LOGGER.debug("Response has already been committed by skip condition-check - not processing it any further");
+                }
                 else
                 {
                     this.processKeycloakAuthenticationAndActions(context, req, res, chain);
@@ -819,34 +823,34 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         if (!this.externalAuthEnabled || !this.filterEnabled)
         {
-            LOGGER.debug("Skipping doFilter as filter and/or external authentication are not enabled");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as filter and/or external authentication are not enabled");
             skip = true;
         }
         else if (this.keycloakDeployment == null)
         {
-            LOGGER.debug("Skipping doFilter as Keycloak adapter was not properly initialised");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as Keycloak adapter was not properly initialised");
             skip = true;
         }
         else if (servletRequestUri.matches(KEYCLOAK_ACTION_URL_PATTERN))
         {
-            LOGGER.debug("Explicitly not skipping doFilter as Keycloak action URL is being called");
+            LOGGER.debug("Explicitly not skipping processKeycloakAuthenticationAndActions as Keycloak action URL is being called");
         }
         else if (req.getParameter("state") != null && req.getParameter("code") != null && this.hasStateCookie(req))
         {
             LOGGER.debug(
-                    "Explicitly not skipping doFilter as state and code query parameters of OAuth2 redirect as well as state cookie are present");
+                    "Explicitly not skipping processKeycloakAuthenticationAndActions as state and code query parameters of OAuth2 redirect as well as state cookie are present");
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
-            LOGGER.debug("Explicitly not skipping doFilter as Bearer authorization header is present");
+            LOGGER.debug("Explicitly not skipping processKeycloakAuthenticationAndActions as Bearer authorization header is present");
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("basic "))
         {
-            LOGGER.debug("Explicitly not skipping doFilter as Basic authorization header is present");
+            LOGGER.debug("Explicitly not skipping processKeycloakAuthenticationAndActions as Basic authorization header is present");
         }
         else if (authHeader != null)
         {
-            LOGGER.debug("Skipping doFilter as non-OIDC / non-Basic authorization header is present");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as non-OIDC / non-Basic authorization header is present");
             skip = true;
         }
         else if (currentSession != null && AuthenticationUtil.isAuthenticated(req))
@@ -858,7 +862,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
             else
             {
-                LOGGER.debug("Skipping doFilter as non-Keycloak-authenticated session is already established");
+                // TODO Validate via custom /touch to check if session is still valid
+                // custom => handle potential 302 instead of 401 response from Keycloak-enabled backend
+                // custom => deal with redirect host being unknown (similar to our auth-server-url vs. directAuthHost case)
+                LOGGER.debug(
+                        "Skipping processKeycloakAuthenticationAndActions as non-Keycloak-authenticated session is already established");
                 skip = true;
             }
         }
@@ -868,26 +876,26 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             final String noauth = proxyMatcher.group(2);
             if (noauth != null && !noauth.trim().isEmpty())
             {
-                LOGGER.debug("Skipping doFilter as proxy servlet to noauth endpoint {} is being called");
+                LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as proxy servlet to noauth endpoint {} is being called");
                 skip = true;
             }
             else if (!endpoint.equals(this.primaryEndpoint)
                     && (this.secondaryEndpoints == null || !this.secondaryEndpoints.contains(endpoint)))
             {
                 LOGGER.debug(
-                        "Skipping doFilter on proxy servlet call as endpoint {} has not been configured as a primary / secondary endpoint to handle");
+                        "Skipping processKeycloakAuthenticationAndActions on proxy servlet call as endpoint {} has not been configured as a primary / secondary endpoint to handle");
                 skip = true;
             }
         }
         else if (PAGE_SERVLET_PATH.equals(servletPath) && (LOGIN_PATH_INFORMATION.equals(pathInfo)
                 || (pathInfo == null && LOGIN_PAGE_TYPE_PARAMETER_VALUE.equals(req.getParameter(PAGE_TYPE_PARAMETER_NAME)))))
         {
-            LOGGER.debug("Skipping doFilter as login page was explicitly requested");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as login page was explicitly requested");
             skip = true;
         }
         else if (this.isNoAuthPage(req))
         {
-            LOGGER.debug("Skipping doFilter as requested page does not require authentication");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as requested page does not require authentication");
             skip = true;
         }
 
@@ -928,7 +936,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         boolean skip = false;
         if (currentSession != null)
         {
-            LOGGER.debug("Skipping doFilter as Keycloak-authentication session is still valid");
+            LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as Keycloak-authentication session is still valid");
             skip = true;
 
             if (keycloakAccount instanceof OidcKeycloakAccount)

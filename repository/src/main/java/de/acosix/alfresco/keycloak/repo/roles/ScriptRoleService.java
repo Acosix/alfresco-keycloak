@@ -17,20 +17,52 @@ package de.acosix.alfresco.keycloak.repo.roles;
 
 import java.util.List;
 
+import org.alfresco.repo.jscript.BaseScopableProcessorExtension;
+import org.alfresco.util.PropertyCheck;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
+import org.springframework.beans.factory.InitializingBean;
+
 /**
- * Instances of this interface allow for lookup / retrieval of Keycloak roles.
+ * This service exposes mapped Keycloak roles to scripts running within the Repository-tier script processor, e.g. web script controllers.
  *
  * @author Axel Faust
  */
-public interface RoleService
+public class ScriptRoleService extends BaseScopableProcessorExtension implements InitializingBean
 {
+
+    protected RoleService roleService;
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public void afterPropertiesSet()
+    {
+        PropertyCheck.mandatory(this, "roleService", this.roleService);
+    }
+
+    /**
+     * @param roleService
+     *            the roleService to set
+     */
+    public void setRoleService(final RoleService roleService)
+    {
+        this.roleService = roleService;
+    }
 
     /**
      * Retrieves roles in the main realm and/or resource scopes (as far as possible based on configuration).
      *
      * @return the list of roles
      */
-    List<Role> listRoles();
+    public Scriptable listRoles()
+    {
+        final List<Role> roles = this.roleService.listRoles();
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
     /**
      * Finds matching roles in the main realm and/or resource scopes (as far as possible based on configuration).
@@ -40,7 +72,12 @@ public interface RoleService
      *            role name, and a match in either will result the role to be considered a match
      * @return the list of matching roles
      */
-    List<Role> findRoles(String shortNameFilter);
+    public Scriptable findRoles(final String shortNameFilter)
+    {
+        final List<Role> roles = this.roleService.findRoles(shortNameFilter);
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
     /**
      * Retrieves roles in the main realm and/or resource scopes (as far as possible based on configuration).
@@ -51,7 +88,12 @@ public interface RoleService
      *
      * @return the list of roles
      */
-    List<Role> listRoles(boolean realmOnly);
+    public Scriptable listRoles(final boolean realmOnly)
+    {
+        final List<Role> roles = this.roleService.listRoles(realmOnly);
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
     /**
      * Finds matching roles in the main realm and/or resource scopes (as far as possible based on configuration).
@@ -64,7 +106,12 @@ public interface RoleService
      *            scopes are allowed to be searched
      * @return the list of matching roles
      */
-    List<Role> findRoles(String shortNameFilter, boolean realmOnly);
+    public Scriptable findRoles(final String shortNameFilter, final boolean realmOnly)
+    {
+        final List<Role> roles = this.roleService.findRoles(shortNameFilter, realmOnly);
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
     /**
      * Retrieves roles in a specific resource scope (as far as possible based on configuration).
@@ -74,7 +121,12 @@ public interface RoleService
      *
      * @return the list of roles
      */
-    List<Role> listRoles(String resourceName);
+    public Scriptable listRoles(final String resourceName)
+    {
+        final List<Role> roles = this.roleService.listRoles(resourceName);
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
     /**
      * Finds matching roles in a specific resource scope (as far as possible based on configuration).
@@ -86,6 +138,16 @@ public interface RoleService
      *            role name, and a match in either will result the role to be considered a match
      * @return the list of matching roles
      */
-    List<Role> findRoles(String resourceName, String shortNameFilter);
+    public Scriptable findRoles(final String resourceName, final String shortNameFilter)
+    {
+        final List<Role> roles = this.roleService.findRoles(resourceName, shortNameFilter);
+        final Scriptable roleArray = this.makeRoleArray(roles);
+        return roleArray;
+    }
 
+    protected Scriptable makeRoleArray(final List<Role> roles)
+    {
+        final Scriptable sitesArray = Context.getCurrentContext().newArray(this.getScope(), roles.toArray(new Object[0]));
+        return sitesArray;
+    }
 }

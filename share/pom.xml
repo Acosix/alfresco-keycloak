@@ -90,6 +90,12 @@
 
         <dependency>
             <groupId>de.acosix.alfresco.utility</groupId>
+            <artifactId>de.acosix.alfresco.utility.repo</artifactId>
+            <classifier>installable</classifier>
+        </dependency>
+
+        <dependency>
+            <groupId>de.acosix.alfresco.utility</groupId>
             <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
             <exclusions>
                 <exclusion>

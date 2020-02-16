@@ -103,7 +103,9 @@ public class RolesGet extends DeclarativeWebScript implements InitializingBean
             maxItems = Integer.parseInt(maxItemsParam);
         }
 
-        final List<Role> roles = this.roleService.findRoles(shortNameFilterParam);
+        final List<Role> roles = shortNameFilterParam != null && !shortNameFilterParam.trim().isEmpty()
+                ? this.roleService.findRoles(shortNameFilterParam)
+                : this.roleService.listRoles();
 
         if (roles.isEmpty())
         {

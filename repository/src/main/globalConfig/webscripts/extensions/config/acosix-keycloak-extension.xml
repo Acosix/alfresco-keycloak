@@ -1,0 +1,18 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<extension>
+    <modules>
+        <module>
+            <id>${moduleId} - Web Script Extension</id>
+            <description>${project.name}</description>
+            <version>${noSnapshotVersion}</version>
+            <auto-deploy>true</auto-deploy>
+            
+            <customizations>
+                <customization>
+                    <targetPackageRoot>org.alfresco</targetPackageRoot>
+                    <sourcePackageRoot>de.acosix.keycloak.customisations</sourcePackageRoot>
+                </customization>
+            </customizations>
+        </module>
+    </modules>
+</extension>

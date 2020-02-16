@@ -21,16 +21,8 @@
             <connector>
                 <id>alfrescoCookie</id>
                 <name>Alfresco Connector</name>
-                <description>Connects to an Alfresco instance using cookie-based authentication</description>
+                <description>Connects to an Alfresco instance using cookie-based authentication and awareness of OIDC bearer tokens</description>
                 <class>de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector</class>
-            </connector>
-
-            <connector>
-                <id>alfrescoHeader</id>
-                <name>Alfresco Connector</name>
-                <description>Connects to an Alfresco instance using header and cookie-based authentication</description>
-                <class>de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector</class>
-                <userHeader>SsoUserHeader</userHeader>
             </connector>
 
             <endpoint>
@@ -47,7 +39,7 @@
                 <id>alfresco-feed</id>
                 <name>Alfresco Feed</name>
                 <description>Alfresco Feed - supports basic HTTP authentication via the EndPointProxyServlet</description>
-                <connector-id>alfrescoHeader</connector-id>
+                <connector-id>alfrescoCookie</connector-id>
                 <endpoint-url>http://repository:8080/alfresco/wcs</endpoint-url>
                 <basic-auth>true</basic-auth>
                 <identity>user</identity>
@@ -58,10 +50,8 @@
                 <id>alfresco-api</id>
                 <parent-id>alfresco</parent-id>
                 <name>Alfresco Public API - user access</name>
-                <description>Access to Alfresco Repository Public API that require user authentication.
-                    This makes use of the authentication that is provided by parent 'alfresco' endpoint.
-                </description>
-                <connector-id>alfrescoHeader</connector-id>
+                <description>Access to Alfresco Repository Public API that require user authentication. This makes use of the authentication that is provided by parent 'alfresco' endpoint. </description>
+                <connector-id>alfrescoCookie</connector-id>
                 <endpoint-url>http://repository:8080/alfresco/api</endpoint-url>
                 <identity>user</identity>
                 <external-auth>true</external-auth>

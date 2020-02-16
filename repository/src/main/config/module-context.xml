@@ -75,6 +75,11 @@
         <constructor-arg value="cache.${moduleId}.ticketTokenCache" />
     </bean>
 
+    <bean id="${moduleId}.ScriptRoleService" parent="baseJavaScriptExtension" class="${project.artifactId}.roles.ScriptRoleService">
+        <property name="extensionName" value="keycloakRoles" />
+        <property name="roleService" ref="${moduleId}.RoleService" />
+    </bean>
+
     <bean id="webscript.de.acosix.keycloak.roles.get" class="${project.artifactId}.web.scripts.RolesGet" parent="webscript">
         <property name="roleService" ref="${moduleId}.RoleService" />
     </bean>

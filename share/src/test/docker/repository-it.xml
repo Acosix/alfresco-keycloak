@@ -70,6 +70,8 @@
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz2:*</include>
                 <include>${project.groupId}:de.acosix.alfresco.keycloak.repo.deps:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo:jar:installable:*</include>
+                <!-- full acosix-utility repo module required for extension to repository-tier permissions.post.json.js to take effect -->
+                <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.repo:jar:installable:*</include>
                 <include>${project.groupId}:de.acosix.alfresco.keycloak.repo:jar:installable:*</include>
             </includes>
             <scope>test</scope>

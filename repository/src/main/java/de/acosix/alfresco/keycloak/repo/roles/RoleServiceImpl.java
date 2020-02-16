@@ -220,9 +220,30 @@ public class RoleServiceImpl implements InitializingBean, RoleService
      * {@inheritDoc}
      */
     @Override
+    public List<Role> listRoles()
+    {
+        return this.doFindRoles(null, false);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public List<Role> findRoles(final String shortNameFilter)
     {
-        return this.findRoles(shortNameFilter, false);
+        ParameterCheck.mandatoryString("shortNameFilter", shortNameFilter);
+        return this.doFindRoles(shortNameFilter, false);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> listRoles(final boolean realmOnly)
+    {
+        return this.doFindRoles(null, realmOnly);
     }
 
     /**
@@ -231,6 +252,35 @@ public class RoleServiceImpl implements InitializingBean, RoleService
      */
     @Override
     public List<Role> findRoles(final String shortNameFilter, final boolean realmOnly)
+    {
+        ParameterCheck.mandatoryString("shortNameFilter", shortNameFilter);
+        return this.doFindRoles(shortNameFilter, realmOnly);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> listRoles(final String resourceName)
+    {
+        ParameterCheck.mandatory("resourceName", resourceName);
+        return this.doFindRoles(resourceName, null);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> findRoles(final String resourceName, final String shortNameFilter)
+    {
+        ParameterCheck.mandatory("resourceName", resourceName);
+        ParameterCheck.mandatoryString("shortNameFilter", shortNameFilter);
+        return this.doFindRoles(resourceName, shortNameFilter);
+    }
+
+    protected List<Role> doFindRoles(final String shortNameFilter, final boolean realmOnly)
     {
         final List<Role> roles;
 
@@ -254,7 +304,7 @@ public class RoleServiceImpl implements InitializingBean, RoleService
             if (!realmOnly && this.processResourceRoles)
             {
                 this.resourceRoleNameMapper.keySet().stream().forEach(resourceName -> {
-                    final List<Role> resourceRoles = this.findRoles(resourceName, shortNameFilter);
+                    final List<Role> resourceRoles = this.doFindRoles(resourceName, shortNameFilter);
                     roles.addAll(resourceRoles);
                 });
             }
@@ -275,15 +325,8 @@ public class RoleServiceImpl implements InitializingBean, RoleService
         return roles;
     }
 
-    /**
-     *
-     * {@inheritDoc}
-     */
-    @Override
-    public List<Role> findRoles(final String resourceName, final String shortNameFilter)
+    protected List<Role> doFindRoles(final String resourceName, final String shortNameFilter)
     {
-        ParameterCheck.mandatory("resourceName", resourceName);
-
         List<Role> roles;
 
         if (this.enabled && !this.processResourceRoles)

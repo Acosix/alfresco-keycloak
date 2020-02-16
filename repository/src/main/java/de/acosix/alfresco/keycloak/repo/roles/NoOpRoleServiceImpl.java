@@ -32,6 +32,16 @@ public class NoOpRoleServiceImpl implements RoleService
      * {@inheritDoc}
      */
     @Override
+    public List<Role> listRoles()
+    {
+        return Collections.emptyList();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public List<Role> findRoles(final String shortNameFilter)
     {
         return Collections.emptyList();
@@ -42,7 +52,27 @@ public class NoOpRoleServiceImpl implements RoleService
      * {@inheritDoc}
      */
     @Override
+    public List<Role> listRoles(final boolean realmOnly)
+    {
+        return Collections.emptyList();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public List<Role> findRoles(final String shortNameFilter, final boolean realmOnly)
+    {
+        return Collections.emptyList();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public List<Role> listRoles(final String resourceName)
     {
         return Collections.emptyList();
     }

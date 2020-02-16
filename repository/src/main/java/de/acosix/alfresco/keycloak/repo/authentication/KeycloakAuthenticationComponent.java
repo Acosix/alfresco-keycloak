@@ -256,10 +256,6 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     public RefreshableAccessTokenHolder checkAndRefreshTicketToken(final RefreshableAccessTokenHolder ticketToken)
             throws AuthenticationException
     {
-        if (this.failExpiredTicketTokens && ticketToken.isExpired())
-        {
-            throw new AuthenticationException("Keycloak access token has expired - authentication ticket is no longer valid");
-        }
 
         RefreshableAccessTokenHolder result = null;
         if (ticketToken.canRefresh() && ticketToken.shouldRefresh(this.deployment.getTokenMinimumTimeToLive()))
@@ -288,6 +284,10 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
                 LOGGER.error("Error refreshing Keycloak authentication - unexpected IO exception", ioex);
                 throw new AuthenticationException("Failed to refresh Keycloak authentication", ioex);
             }
+        }
+        else if (this.failExpiredTicketTokens && ticketToken.isExpired())
+        {
+            throw new AuthenticationException("Keycloak access token has expired - authentication ticket is no longer valid");
         }
 
         if (result != null || !ticketToken.isExpired())
