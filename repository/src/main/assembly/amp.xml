@@ -47,6 +47,7 @@
             <includes>
                 <include>${project.groupId}:${project.artifactId}.deps:*</include>
             </includes>
+            <scope>compile</scope>
         </dependencySet>
     </dependencySets>
 </assembly>

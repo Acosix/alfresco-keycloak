@@ -51,7 +51,7 @@
 
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>de.acosix.alfresco.keycloak.repo.deps</artifactId>
+            <artifactId>${project.artifactId}.deps</artifactId>
             <version>${project.version}</version>
             <exclusions>
                 <exclusion>
