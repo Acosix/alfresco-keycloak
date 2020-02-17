@@ -21,8 +21,8 @@
             <connector>
                 <id>alfrescoCookie</id>
                 <name>Alfresco Connector</name>
-                <description>Connects to an Alfresco instance using cookie-based authentication and awareness of OIDC bearer tokens</description>
-                <class>de.acosix.alfresco.keycloak.share.remote.BearerTokenAwareSlingshotAlfrescoConnector</class>
+                <description>Connects to an Alfresco instance using cookie-based authentication and awareness of Keycloak access tokens</description>
+                <class>de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfrescoConnector</class>
             </connector>
 
             <endpoint>
@@ -64,9 +64,10 @@
             <enhance-login-form>true</enhance-login-form>
             <enable-sso-filter>true</enable-sso-filter>
             <force-keycloak-sso>false</force-keycloak-sso>
+            <perform-token-exchange>true</perform-token-exchange>
         </keycloak-auth-config>
         <keycloak-adapter-config>
-            <directAuthHost>http://host.docker.internal:8380</directAuthHost>
+            <directAuthHost>http://keycloak:8080</directAuthHost>
             <auth-server-url>http://${docker.tests.host.name}:${docker.tests.keycloakPort}/auth</auth-server-url>
             <realm>test</realm>
             <resource>alfresco-share</resource>

@@ -285,12 +285,12 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
                 throw new AuthenticationException("Failed to refresh Keycloak authentication", ioex);
             }
         }
-        else if (this.failExpiredTicketTokens && ticketToken.isExpired())
+        else if (this.failExpiredTicketTokens && !ticketToken.isActive())
         {
             throw new AuthenticationException("Keycloak access token has expired - authentication ticket is no longer valid");
         }
 
-        if (result != null || !ticketToken.isExpired())
+        if (result != null || ticketToken.isActive())
         {
             this.handleUserTokens(result != null ? result.getAccessToken() : ticketToken.getAccessToken(),
                     result != null ? result.getIdToken() : ticketToken.getIdToken(), false);

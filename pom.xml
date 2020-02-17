@@ -220,6 +220,21 @@
             </dependency>
 
             <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.share</artifactId>
+                <version>${acosix.utility.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>de.acosix.alfresco.utility</groupId>
+                <artifactId>de.acosix.alfresco.utility.share</artifactId>
+                <version>${acosix.utility.version}</version>
+                <classifier>installable</classifier>
+                <scope>test</scope>
+            </dependency>
+
+            <dependency>
                 <groupId>org.orderofthebee.support-tools</groupId>
                 <artifactId>support-tools-repo</artifactId>
                 <version>${ootbee.support-tools.version}</version>

@@ -43,6 +43,12 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     protected final ConfigValueHolder<Integer> sessionMapperLimit = new ConfigValueHolder<>();
 
+    protected final ConfigValueHolder<Boolean> ignoreDefaultFilter = new ConfigValueHolder<>();
+
+    protected final ConfigValueHolder<Boolean> performTokenExchange = new ConfigValueHolder<>();
+
+    protected final ConfigValueHolder<String> alfrescoResourceName = new ConfigValueHolder<>();
+
     /**
      * Creates a new instance of this class.
      */
@@ -154,6 +160,57 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
     }
 
     /**
+     * @param ignoreDefaultFilter
+     *            the ignoreDefaultFilter to set
+     */
+    public void setIgnoreDefaultFilter(final Boolean ignoreDefaultFilter)
+    {
+        this.ignoreDefaultFilter.setValue(ignoreDefaultFilter);
+    }
+
+    /**
+     * @return the ignoreDefaultFilter
+     */
+    public Boolean getIgnoreDefaultFilter()
+    {
+        return this.ignoreDefaultFilter.getValue();
+    }
+
+    /**
+     * @param performTokenExchange
+     *            the performTokenExchange to set
+     */
+    public void setPerformTokenExchange(final Boolean performTokenExchange)
+    {
+        this.performTokenExchange.setValue(performTokenExchange);
+    }
+
+    /**
+     * @return the performTokenExchange
+     */
+    public Boolean getPerformTokenExchange()
+    {
+        return this.performTokenExchange.getValue();
+    }
+
+    /**
+     * @param alfrescoResourceName
+     *            the alfrescoResourceName to set
+     */
+    public void setAlfrescoResourceName(final String alfrescoResourceName)
+    {
+        this.alfrescoResourceName.setValue(alfrescoResourceName);
+    }
+
+    /**
+     * @return the alfrescoResourceName
+     */
+    public String getAlfrescoResourceName()
+    {
+        return this.alfrescoResourceName.getValue();
+    }
+
+    /**
      *
      * {@inheritDoc}
      */
@@ -228,6 +285,39 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
                     : this.getSessionMapperLimit());
         }
 
+        if (otherConfigElement.ignoreDefaultFilter.isUnset())
+        {
+            combined.ignoreDefaultFilter.unset();
+        }
+        else
+        {
+            combined.setIgnoreDefaultFilter(
+                    otherConfigElement.getIgnoreDefaultFilter() != null ? otherConfigElement.getIgnoreDefaultFilter()
+                            : this.getIgnoreDefaultFilter());
+        }
+
+        if (otherConfigElement.performTokenExchange.isUnset())
+        {
+            combined.performTokenExchange.unset();
+        }
+        else
+        {
+            combined.setPerformTokenExchange(
+                    otherConfigElement.getPerformTokenExchange() != null ? otherConfigElement.getPerformTokenExchange()
+                            : this.getPerformTokenExchange());
+        }
+
+        if (otherConfigElement.alfrescoResourceName.isUnset())
+        {
+            combined.alfrescoResourceName.unset();
+        }
+        else
+        {
+            combined.setAlfrescoResourceName(
+                    otherConfigElement.getAlfrescoResourceName() != null ? otherConfigElement.getAlfrescoResourceName()
+                            : this.getAlfrescoResourceName());
+        }
+
         return combined;
     }
 
@@ -256,6 +346,15 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
         builder.append(", ");
         builder.append("sessionMapperLimit=");
         builder.append(this.sessionMapperLimit);
+        builder.append(", ");
+        builder.append("ignoreDefaultFilter=");
+        builder.append(this.ignoreDefaultFilter);
+        builder.append(", ");
+        builder.append("performTokenExchange=");
+        builder.append(this.performTokenExchange);
+        builder.append(", ");
+        builder.append("alfrescoResourceName=");
+        builder.append(this.alfrescoResourceName);
         builder.append("]");
         return builder.toString();
     }

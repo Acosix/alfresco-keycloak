@@ -31,6 +31,7 @@ import java.util.Set;
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.ParameterCheck;
+import org.alfresco.util.PropertyCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.ConfigElement;
@@ -318,7 +319,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
      */
     public AdapterConfig buildAdapterConfiguration()
     {
-        final AdapterConfig config = new AdapterConfig();
+        final AdapterConfig adapterConfig = new AdapterConfig();
 
         try
         {
@@ -328,7 +329,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
                 if (value != null)
                 {
                     final Method setter = SETTER_BY_CONFIG_NAME.get(configName);
-                    setter.invoke(config, value);
+                    setter.invoke(adapterConfig, value);
                 }
             }
         }
@@ -337,7 +338,11 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             throw new AlfrescoRuntimeException("Error building adapter configuration", ex);
         }
 
-        return config;
+        PropertyCheck.mandatory(adapterConfig, "auth-server-url", adapterConfig.getAuthServerUrl());
+        PropertyCheck.mandatory(adapterConfig, "realm", adapterConfig.getRealm());
+        PropertyCheck.mandatory(adapterConfig, "resource", adapterConfig.getResource());
+
+        return adapterConfig;
     }
 
     /**

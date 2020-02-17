@@ -18,6 +18,7 @@ package de.acosix.alfresco.keycloak.repo.authentication;
 import java.util.List;
 
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpSession;
 
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.authentication.AuthenticationException;
@@ -32,6 +33,7 @@ import org.springframework.beans.factory.InitializingBean;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.BearerTokenRequestAuthenticator;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.AuthOutcome;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 
 /**
  * @author Axel Faust
@@ -120,11 +122,22 @@ public class KeycloakRemoteUserMapper implements RemoteUserMapper, ActivateableB
             final BearerTokenRequestAuthenticator authenticator = new BearerTokenRequestAuthenticator(this.keycloakDeployment);
             final AuthOutcome authOutcome = authenticator.authenticate(httpFacade);
 
+            // TODO Check on how to enable / add client/audience validation
+            // currently, Share token seems to be valid here, which it shouldn't be
+            // also, Share token may not contain Alfresco client roles (e.g. admin)
             if (authOutcome == AuthOutcome.AUTHENTICATED)
             {
-                final String preferredUsername = authenticator.getToken().getPreferredUsername();
-                final String normalisedUserName = AuthenticationUtil
-                        .runAsSystem(() -> this.personService.getUserIdentifier(preferredUsername));
+                final AccessToken token = authenticator.getToken();
+                final String preferredUsername = token.getPreferredUsername();
+
+                // need to store token for later validation
+                final HttpSession session = request.getSession(true);
+                session.setAttribute(KeycloakRemoteUserMapper.class.getName(), token);
+
+                // need case distinction to avoid user name being nulled when user does not exist yet
+                final String normalisedUserName = AuthenticationUtil.runAsSystem(
+                        () -> this.personService.personExists(preferredUsername) ? this.personService.getUserIdentifier(preferredUsername)
+                                : preferredUsername);
 
                 LOGGER.debug("Authenticated user {} via bearer token, normalised as {}", preferredUsername, normalisedUserName);
 

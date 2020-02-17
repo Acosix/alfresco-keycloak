@@ -67,6 +67,7 @@ import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.Authenticatio
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.KeycloakAccount;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.SessionIdMapper;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.UserSessionManagement;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.KeycloakUriBuilder;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 import de.acosix.alfresco.keycloak.repo.util.AlfrescoCompatibilityUtil;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
@@ -248,7 +249,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         final HttpServletRequest req = (HttpServletRequest) request;
         final HttpServletResponse res = (HttpServletResponse) response;
 
-        final boolean skip = this.checkForSkipCondition(context, req, res);
+        final KeycloakUriBuilder authUrl = this.keycloakDeployment.getAuthUrl();
+        final boolean keycloakDeploymentReady = authUrl != null;
+        if (!keycloakDeploymentReady)
+        {
+            LOGGER.warn("Cannot process Keycloak-specifics as Keycloak library was unable to resolve relative URLs from {}",
+                    this.keycloakDeployment.getAuthServerBaseUrl());
+        }
+
+        final boolean skip = !keycloakDeploymentReady || this.checkForSkipCondition(context, req, res);
 
         if (skip)
         {
@@ -635,53 +644,96 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
         if (!this.active)
         {
-            LOGGER.trace("Skipping doFilter as filter is not active");
+            LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as filter is not active");
             skip = true;
         }
         else if (servletRequestUri.matches(KEYCLOAK_ACTION_URL_PATTERN))
         {
-            LOGGER.trace("Explicitly not skipping doFilter as Keycloak action URL is being called");
+            LOGGER.trace("Explicitly not skipping processKeycloakAuthenticationAndActions as Keycloak action URL is being called");
         }
         else if (req.getParameter("state") != null && req.getParameter("code") != null && this.hasStateCookie(req))
         {
             LOGGER.trace(
-                    "Explicitly not skipping doFilter as state and code query parameters of OAuth2 redirect as well as state cookie are present");
+                    "Explicitly not skipping processKeycloakAuthenticationAndActions as state and code query parameters of OAuth2 redirect as well as state cookie are present");
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
-            LOGGER.trace("Explicitly not skipping doFilter as Bearer authorization header is present");
+            final AccessToken accessToken = (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName());
+            if (accessToken != null)
+            {
+                if (accessToken.isActive())
+                {
+                    LOGGER.trace(
+                            "Skipping processKeycloakAuthenticationAndActions as Bearer authorization header for {} has already been processed by remote user mapper",
+                            AlfrescoCompatibilityUtil.maskUsername(accessToken.getPreferredUsername()));
+                    this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, session.isNew());
+                    skip = true;
+                }
+                else
+                {
+                    LOGGER.trace(
+                            "Explicitly not skipping processKeycloakAuthenticationAndActions as processed Bearer authorization token for {} has expired",
+                            AlfrescoCompatibilityUtil.maskUsername(accessToken.getPreferredUsername()));
+                }
+            }
+            else
+            {
+                LOGGER.trace(
+                        "Explicitly not skipping processKeycloakAuthenticationAndActions as unprocessed Bearer authorization header is present");
+            }
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("basic "))
         {
-            LOGGER.trace("Explicitly not skipping doFilter as Basic authorization header is present");
+            LOGGER.trace("Explicitly not skipping processKeycloakAuthenticationAndActions as Basic authorization header is present");
         }
         else if (authHeader != null)
         {
-            LOGGER.trace("Skipping doFilter as non-OIDC / non-Basic authorization header is present");
+            LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as non-OIDC / non-Basic authorization header is present");
             skip = true;
         }
         else if (this.allowTicketLogon && this.checkForTicketParameter(context, req, res))
         {
-            LOGGER.trace("Skipping doFilter as user was authenticated by ticket URL parameter");
+            LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as user was authenticated by ticket URL parameter");
             skip = true;
         }
         // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all pre-emptive auth
         // request details have been checked
         else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
         {
-            LOGGER.trace("Skipping doFilter as filter higher up in chain determined authentication as not required");
+            LOGGER.trace(
+                    "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
             skip = true;
         }
         else if (sessionUser != null)
         {
             final KeycloakAccount keycloakAccount = (KeycloakAccount) session.getAttribute(KeycloakAccount.class.getName());
+            final AccessToken accessToken = (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName());
             if (keycloakAccount != null)
             {
                 skip = this.validateAndRefreshKeycloakAuthentication(req, res, sessionUser.getUserName());
             }
+            else if (accessToken != null)
+            {
+                if (accessToken.isActive())
+                {
+                    LOGGER.trace(
+                            "Skipping processKeycloakAuthenticationAndActions as access token in session from previous Bearer authorization for {} is still valid",
+                            AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
+                    this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, false);
+                    skip = true;
+                }
+                else
+                {
+                    LOGGER.trace(
+                            "Explicitly not skipping processKeycloakAuthenticationAndActions as access token in session from previous Bearer authorization for {} has expired",
+                            AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
+                    this.invalidateSession(req);
+                }
+            }
             else
             {
-                LOGGER.trace("Skipping doFilter as non-Keycloak-authenticated session is already established");
+                LOGGER.trace(
+                        "Skipping processKeycloakAuthenticationAndActions as non-Keycloak-authenticated session is already established");
                 skip = true;
             }
         }

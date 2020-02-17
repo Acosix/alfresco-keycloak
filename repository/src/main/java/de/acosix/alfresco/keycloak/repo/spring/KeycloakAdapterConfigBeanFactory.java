@@ -236,6 +236,10 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
             }
         });
 
+        PropertyCheck.mandatory(adapterConfig, "auth-server-url", adapterConfig.getAuthServerUrl());
+        PropertyCheck.mandatory(adapterConfig, "realm", adapterConfig.getRealm());
+        PropertyCheck.mandatory(adapterConfig, "resource", adapterConfig.getResource());
+
         return adapterConfig;
     }
 

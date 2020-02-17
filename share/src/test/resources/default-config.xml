@@ -25,7 +25,7 @@
         </element-readers>
     </plug-ins>
 
-    <!-- sensible default configuration (similar to Repository identity-service-authentication.properties -->
+    <!-- sensible default configuration -->
     <config evaluator="string-compare" condition="Keycloak">
         <keycloak-auth-config>
             <enhance-login-form>true</enhance-login-form>
@@ -35,8 +35,12 @@
             <ssl-redirect-port>8443</ssl-redirect-port>
             <body-buffer-limit>10485760</body-buffer-limit>
             <session-mapper-limit>1000</session-mapper-limit>
+            <ignore-default-filter>true</ignore-default-filter>
+            <perform-token-exchange>false</perform-token-exchange>
+            <alfresco-resource-name>alfresco</alfresco-resource-name>
         </keycloak-auth-config>
         <keycloak-adapter-config>
+            <!-- by default use the same client as alfresco (not really "clean") -->
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
             <resource>alfresco</resource>

@@ -121,7 +121,7 @@
                                 <!-- no change to Search image -->
                             </image>
                             <image>
-                                <name>jboss/keycloak</name>
+                                <name>jboss/keycloak:${keycloak.version}</name>
                                 <alias>keycloak</alias>
                                 <run>
                                     <hostname>keycloak</hostname>

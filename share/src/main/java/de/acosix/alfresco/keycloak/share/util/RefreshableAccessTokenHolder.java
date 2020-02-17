@@ -13,17 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package de.acosix.alfresco.keycloak.repo.util;
+package de.acosix.alfresco.keycloak.share.util;
 
 import java.io.Serializable;
 
 import org.alfresco.util.ParameterCheck;
 
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.Time;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessTokenResponse;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.IDToken;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.common.util.Time;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessToken;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessTokenResponse;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.IDToken;
 
 /**
  * Instances of this class encapsulate an access token with its associated refresh data.

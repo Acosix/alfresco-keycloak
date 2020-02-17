@@ -134,7 +134,7 @@ public class KeycloakAuthenticationServiceImpl extends AuthenticationServiceImpl
                     this.keycloakTicketTokenCache.put(ticket, refreshedToken);
                 }
                 // apparently expiration is allowed - remove from cache to avoid unnecessary checks in the future
-                else if (refreshableAccessToken.isExpired())
+                else if (!refreshableAccessToken.isActive())
                 {
                     LOGGER.warn(
                             "The Keycloak access token associated with ticket {} for user {} has expired - Keycloak roles / claims are no longer available for the corresponding user",

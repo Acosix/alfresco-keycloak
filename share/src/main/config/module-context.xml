@@ -46,7 +46,15 @@
             </list>
         </property>
     </bean>
-    
+
+    <bean id="${moduleId}.maxRemoteClientRedirectPatch"
+        class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanFactoryPostProcessor">
+        <property name="targetBeanName" value="connector.remoteclient.abstract" />
+        <property name="propertyName" value="maxRedirects" />
+        <property name="value" value="1" />
+        <property name="enabled" value="\${${moduleId}.surf.onlyOneRedirect.enabled}" />
+    </bean>
+
     <bean id="${moduleId}.SessionIdMapper" class="${project.artifactId}.web.DefaultSessionIdMapper">
         <property name="configService" ref="web.config" />
     </bean>
@@ -69,7 +77,7 @@
         <property name="configService" ref="web.config" />
         <property name="connectorService" ref="connector.service" />
     </bean>
-    
+
     <bean class="${project.artifactId}.spring.KeycloakAuthenticationFilterActivation">
         <property name="moduleId" value="${moduleId}" />
     </bean>

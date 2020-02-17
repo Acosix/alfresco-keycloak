@@ -30,7 +30,8 @@
             "serviceAccountsEnabled": true,
             "publicClient": false,
             "protocol": "openid-connect"
-        }, {
+        },
+        {
             "id": "alfresco-share",
             "clientId": "alfresco-share",
             "name": "Alfresco Share",
@@ -47,6 +48,158 @@
             "secret": "a5b3e8bc-39cc-4ddd-8c8f-1c34e7a35975",
             "publicClient": false,
             "protocol": "openid-connect"
+        },
+        {
+            "clientId": "realm-management",
+            "name": "Realm Management",
+            "enabled": true,
+            "clientAuthenticatorType": "client-secret",
+            "bearerOnly": true,
+            "authorizationServicesEnabled": true,
+            "protocol": "openid-connect",
+            "authorizationSettings": {
+                "allowRemoteResourceManagement": false,
+                "policyEnforcementMode": "ENFORCING",
+                "resources": [
+                    {
+                        "name": "client.resource.alfresco",
+                        "type": "Client",
+                        "ownerManagedAccess": false,
+                        "attributes": {
+                            
+                        },
+                        "uris": [],
+                        "scopes": [
+                            {
+                                "name": "view"
+                            },
+                            {
+                                "name": "map-roles-client-scope"
+                            },
+                            {
+                                "name": "configure"
+                            },
+                            {
+                                "name": "map-roles"
+                            },
+                            {
+                                "name": "manage"
+                            },
+                            {
+                                "name": "token-exchange"
+                            },
+                            {
+                                "name": "map-roles-composite"
+                            }
+                        ]
+                    }
+                ],
+                "policies": [
+                    {
+                        "name": "alfresco-token-exchange",
+                        "type": "client",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "clients": "[\"alfresco-share\"]"
+                        }
+                    },
+                    {
+                        "name": "token-exchange.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"token-exchange\"]",
+                            "applyPolicies": "[\"alfresco-token-exchange\"]"
+                        }
+                    },
+                    {
+                        "name": "map-roles-composite.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"map-roles-composite\"]"
+                        }
+                    },
+                    {
+                        "name": "map-roles-client-scope.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"map-roles-client-scope\"]"
+                        }
+                    },
+                    {
+                        "name": "map-roles.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"map-roles\"]"
+                        }
+                    },
+                    {
+                        "name": "view.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"view\"]"
+                        }
+                    },
+                    {
+                        "name": "configure.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"configure\"]"
+                        }
+                    },
+                    {
+                        "name": "manage.permission.client.alfresco",
+                        "type": "scope",
+                        "logic": "POSITIVE",
+                        "decisionStrategy": "UNANIMOUS",
+                        "config": {
+                            "resources": "[\"client.resource.alfresco\"]",
+                            "scopes": "[\"manage\"]"
+                        }
+                    }
+                ],
+                "scopes": [
+                    {
+                        "name": "token-exchange"
+                    },
+                    {
+                        "name": "configure"
+                    },
+                    {
+                        "name": "map-roles-composite"
+                    },
+                    {
+                        "name": "map-roles-client-scope"
+                    },
+                    {
+                        "name": "map-roles"
+                    },
+                    {
+                        "name": "view"
+                    },
+                    {
+                        "name": "manage"
+                    }
+                ]
+            }
         }
     ],
     "roles": {

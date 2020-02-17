@@ -79,6 +79,27 @@ public class KeycloakAuthenticationConfigElementReader implements ConfigElementR
             configElement.setSessionMapperLimit(value.isEmpty() ? null : Integer.valueOf(value));
         }
 
+        final Element ignoreDefaultFilter = element.element("ignore-default-filter");
+        if (ignoreDefaultFilter != null)
+        {
+            final String value = ignoreDefaultFilter.getTextTrim();
+            configElement.setIgnoreDefaultFilter(value.isEmpty() ? null : Boolean.valueOf(value));
+        }
+
+        final Element performTokenExchange = element.element("perform-token-exchange");
+        if (performTokenExchange != null)
+        {
+            final String value = performTokenExchange.getTextTrim();
+            configElement.setPerformTokenExchange(value.isEmpty() ? null : Boolean.valueOf(value));
+        }
+
+        final Element alfrescoResourceName = element.element("alfresco-resource-name");
+        if (alfrescoResourceName != null)
+        {
+            final String value = alfrescoResourceName.getTextTrim();
+            configElement.setAlfrescoResourceName(value.isEmpty() ? null : value);
+        }
+
         LOGGER.debug("Read configuration element {} from XML section", configElement);
 
         return configElement;

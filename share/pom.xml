@@ -97,24 +97,12 @@
         <dependency>
             <groupId>de.acosix.alfresco.utility</groupId>
             <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
             <groupId>de.acosix.alfresco.utility</groupId>
             <artifactId>de.acosix.alfresco.utility.core.share</artifactId>
             <classifier>installable</classifier>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.slf4j</groupId>
-                    <artifactId>slf4j-log4j12</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
@@ -199,7 +187,7 @@
                                 <!-- no change to Search image -->
                             </image>
                             <image>
-                                <name>jboss/keycloak</name>
+                                <name>jboss/keycloak:${keycloak.version}</name>
                                 <alias>keycloak</alias>
                                 <run>
                                     <hostname>keycloak</hostname>
@@ -219,6 +207,7 @@
                                     </network>
                                     <volumes>
                                         <bind>
+                                            <volume>${project.build.directory}/docker/keycloakProfile.properties:/opt/jboss/keycloak/standalone/configuration/profile.properties</volume>
                                             <volume>${project.build.directory}/docker/test-realm.json:/tmp/test-realm.json</volume>
                                         </bind>
                                     </volumes>
