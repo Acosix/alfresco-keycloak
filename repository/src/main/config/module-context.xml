@@ -64,7 +64,7 @@
                 <value>org.alfresco.repo.web.auth.AuthenticationListener</value>
             </list>
         </property>
-        <property name="sourceBeanName" value="${moduleId}.authenticationListener" />
+        <property name="sourceBeanName" value="${moduleId}.keycloakAuthenticationListener" />
         <property name="defaultTarget">
             <bean class="org.alfresco.repo.web.auth.NoopAuthenticationListener" />
         </property>
