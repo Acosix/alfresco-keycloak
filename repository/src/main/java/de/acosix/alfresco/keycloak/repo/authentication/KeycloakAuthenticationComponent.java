@@ -292,6 +292,8 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
         if (result != null || ticketToken.isActive())
         {
+            // this may be triggered later via KeycloakAuthenticationListener anyway but since Alfresco is inconsistent about when
+            // AuthenticationListener's are called, do it manually
             this.handleUserTokens(result != null ? result.getAccessToken() : ticketToken.getAccessToken(),
                     result != null ? result.getIdToken() : ticketToken.getIdToken(), false);
         }

@@ -492,7 +492,6 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
             final SessionUser sessionUser = this.createUserEnvironment(session, userId);
             this.keycloakAuthenticationComponent.handleUserTokens(accessToken, keycloakSecurityContext.getIdToken(), true);
-
             this.authenticationListener.userAuthenticated(new KeycloakCredentials(accessToken));
 
             // store tokens in cache as well for ticket validation
@@ -667,6 +666,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                             "Skipping processKeycloakAuthenticationAndActions as Bearer authorization header for {} has already been processed by remote user mapper",
                             AlfrescoCompatibilityUtil.maskUsername(accessToken.getPreferredUsername()));
                     this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, session.isNew());
+
+                    // sessionUser should be guaranteed here, but still check - we need it for the cache key
+                    if (sessionUser != null)
+                    {
+                        final String bearerToken = authHeader.substring("bearer ".length());
+                        this.keycloakTicketTokenCache.put(sessionUser.getTicket(),
+                                new RefreshableAccessTokenHolder(accessToken, accessToken, bearerToken, null));
+                    }
+
                     skip = true;
                 }
                 else
@@ -719,6 +727,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                     LOGGER.trace(
                             "Skipping processKeycloakAuthenticationAndActions as access token in session from previous Bearer authorization for {} is still valid",
                             AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
+                    // accessToken may have already been handled by getSessionUser(), but don't count on it
                     this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, false);
                     skip = true;
                 }

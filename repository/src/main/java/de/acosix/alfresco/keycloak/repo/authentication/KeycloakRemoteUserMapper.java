@@ -139,6 +139,7 @@ public class KeycloakRemoteUserMapper implements RemoteUserMapper, ActivateableB
                         () -> this.personService.personExists(preferredUsername) ? this.personService.getUserIdentifier(preferredUsername)
                                 : preferredUsername);
 
+                // normally Alfresco masks user names in logging, but in this case it would run counter to the purpose of logging
                 LOGGER.debug("Authenticated user {} via bearer token, normalised as {}", preferredUsername, normalisedUserName);
 
                 remoteUser = normalisedUserName;

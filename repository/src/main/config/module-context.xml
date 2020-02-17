@@ -55,6 +55,115 @@
         </property>
     </bean>
 
+    <bean id="${moduleId}.authenticationListener" class="org.alfresco.repo.management.subsystems.ChainingSubsystemProxyFactory">
+        <property name="applicationContextManager">
+            <ref bean="Authentication" />
+        </property>
+        <property name="interfaces">
+            <list>
+                <value>org.alfresco.repo.web.auth.AuthenticationListener</value>
+            </list>
+        </property>
+        <property name="sourceBeanName" value="${moduleId}.authenticationListener" />
+        <property name="defaultTarget">
+            <bean class="org.alfresco.repo.web.auth.NoopAuthenticationListener" />
+        </property>
+    </bean>
+
+    <bean class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanDefinitionRegistryPostProcessor">
+        <property name="dependsOn">
+            <list>
+                <ref bean="acosix-utility.globalAuthenticationListener.listenersPatch" />
+            </list>
+        </property>
+        <property name="enabledPropertyKeys">
+            <list>
+                <value>acosix-utility.web.auth.multipleAuthenticationListeners.enabled</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="global-properties" />
+        <property name="targetBeanName" value="globalAuthenticationListener" />
+        <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
+        <property name="propertyName" value="authenticationListeners" />
+        <property name="beanReferenceNameList">
+            <list>
+                <idref bean="${moduleId}.authenticationListener" />
+            </list>
+        </property>
+        <property name="merge" value="true" />
+    </bean>
+
+    <bean class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanDefinitionRegistryPostProcessor">
+        <property name="dependsOn">
+            <list>
+                <ref bean="acosix-utility.webDavAuthenticationListener.listenersPatch" />
+            </list>
+        </property>
+        <property name="enabledPropertyKeys">
+            <list>
+                <value>acosix-utility.web.auth.multipleAuthenticationListeners.enabled</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="global-properties" />
+        <property name="targetBeanName" value="webDavAuthenticationListener" />
+        <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
+        <property name="propertyName" value="authenticationListeners" />
+        <property name="beanReferenceNameList">
+            <list>
+                <idref bean="${moduleId}.authenticationListener" />
+            </list>
+        </property>
+        <property name="merge" value="true" />
+    </bean>
+
+    <bean class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanDefinitionRegistryPostProcessor">
+        <property name="dependsOn">
+            <list>
+                <ref bean="acosix-utility.sharepointAuthenticationListener.listenersPatch" />
+            </list>
+        </property>
+        <property name="enabledPropertyKeys">
+            <list>
+                <value>acosix-utility.web.auth.multipleAuthenticationListeners.enabled</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="global-properties" />
+        <property name="targetBeanName" value="sharepointAuthenticationListener" />
+        <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
+        <!-- no longer exists in Alfresco 6.0 -->
+        <property name="failIfTargetBeanMissing" value="false" />
+        <property name="propertyName" value="authenticationListeners" />
+        <property name="beanReferenceNameList">
+            <list>
+                <idref bean="${moduleId}.authenticationListener" />
+            </list>
+        </property>
+        <property name="merge" value="true" />
+    </bean>
+
+    <bean class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanDefinitionRegistryPostProcessor">
+        <property name="dependsOn">
+            <list>
+                <ref bean="acosix-utility.webScriptAuthenticationListener.listenersPatch" />
+            </list>
+        </property>
+        <property name="enabledPropertyKeys">
+            <list>
+                <value>acosix-utility.web.auth.multipleAuthenticationListeners.enabled</value>
+            </list>
+        </property>
+        <property name="propertiesSource" ref="global-properties" />
+        <property name="targetBeanName" value="webScriptAuthenticationListener" />
+        <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
+        <property name="propertyName" value="authenticationListeners" />
+        <property name="beanReferenceNameList">
+            <list>
+                <idref bean="${moduleId}.authenticationListener" />
+            </list>
+        </property>
+        <property name="merge" value="true" />
+    </bean>
+
     <bean name="${moduleId}.ssoToSessionCache" factory-bean="cacheFactory" factory-method="createCache">
         <constructor-arg value="cache.${moduleId}.ssoToSessionCache" />
     </bean>

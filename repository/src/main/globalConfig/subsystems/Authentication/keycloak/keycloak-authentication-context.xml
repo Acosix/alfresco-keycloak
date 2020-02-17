@@ -148,6 +148,12 @@
         <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
     </bean>
 
+    <bean id="${moduleId}.authenticationListener" class="${project.artifactId}.authentication.KeycloakAuthenticationListener">
+        <property name="authenticationService" ref="AuthenticationService" />
+        <property name="keycloakAuthenticationComponent" ref="authenticationComponent" />
+        <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
+    </bean>
+
     <bean id="idmClient" class="${project.artifactId}.client.IDMClientImpl">
         <property name="deployment" ref="keycloakDeployment" />
         <property name="userName" value="${keycloak.synchronization.user}" />

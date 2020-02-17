@@ -92,6 +92,7 @@
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz1:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz2:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo:jar:installable:*</include>
+                <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.repo:jar:installable:*</include>
             </includes>
             <scope>test</scope>
         </dependencySet>
