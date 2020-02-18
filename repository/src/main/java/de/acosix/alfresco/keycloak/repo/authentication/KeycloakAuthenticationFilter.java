@@ -665,7 +665,10 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                     LOGGER.trace(
                             "Skipping processKeycloakAuthenticationAndActions as Bearer authorization header for {} has already been processed by remote user mapper",
                             AlfrescoCompatibilityUtil.maskUsername(accessToken.getPreferredUsername()));
-                    this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, session.isNew());
+                    // cannot rely on session.isNew() to determine if this is a fresh login
+                    // consider "fresh" login if issued in the last second (implicitly include any token refreshes performed client-side)
+                    final boolean isFreshLogin = accessToken.getIssuedAt() * 1000l < (System.currentTimeMillis() - 1000);
+                    this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, isFreshLogin);
 
                     // sessionUser should be guaranteed here, but still check - we need it for the cache key
                     if (sessionUser != null)
