@@ -75,6 +75,8 @@ import org.springframework.extensions.webscripts.Description.RequiredAuthenticat
 import org.springframework.extensions.webscripts.Status;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
@@ -801,14 +803,30 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final HttpSession session = ((HttpServletRequest) request).getSession(false);
         final Object keycloakAccount = session != null ? session.getAttribute(KEYCLOAK_ACCOUNT_SESSION_KEY) : null;
 
-        // no point in forwarding to default SSO filter if already authenticated
-        if (this.defaultSsoFilter != null && keycloakAccount == null && !this.ignoreDefaultFilter)
+        // FrameworkServlet is not involved in all requests (e.g. when proxy controller is involved)
+        // ensure ServletUtil.getRequest() / getSession() always works regardless (for AccessTokenAwareSlingshotAlfrescoConnector)
+        if (request instanceof HttpServletRequest)
         {
-            this.defaultSsoFilter.doFilter(context, request, response, chain);
+            // variant with request AND response is only available in Spring 5+
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes((HttpServletRequest) request));
         }
-        else
+
+        try
         {
-            chain.doFilter(request, response);
+            // no point in forwarding to default SSO filter if already authenticated
+            if (this.defaultSsoFilter != null && keycloakAccount == null && !this.ignoreDefaultFilter)
+            {
+                this.defaultSsoFilter.doFilter(context, request, response, chain);
+            }
+            else
+            {
+                chain.doFilter(request, response);
+            }
+        }
+        finally
+        {
+            // avoid leak - we are the top-most filter, so after we are done, no one should have interest in the holder anyway
+            RequestContextHolder.resetRequestAttributes();
         }
     }
 
