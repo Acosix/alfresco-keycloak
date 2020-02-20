@@ -146,6 +146,7 @@
 
         <property name="keycloakAuthenticationComponent" ref="authenticationComponent" />
         <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
+        <property name="publicApiRuntimeContainer" ref="publicapi.container" />
     </bean>
 
     <bean id="${moduleId}.keycloakAuthenticationListener" class="${project.artifactId}.authentication.KeycloakAuthenticationListener">

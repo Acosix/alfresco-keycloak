@@ -44,6 +44,7 @@ import org.alfresco.repo.web.filter.beans.DependencyInjectedFilter;
 import org.alfresco.repo.webdav.auth.AuthenticationDriver;
 import org.alfresco.repo.webdav.auth.BaseAuthenticationFilter;
 import org.alfresco.repo.webdav.auth.BaseSSOAuthenticationFilter;
+import org.alfresco.rest.api.PublicApiTenantWebScriptServletRuntime;
 import org.alfresco.util.PropertyCheck;
 import org.apache.commons.codec.binary.Base64;
 import org.apache.commons.logging.Log;
@@ -51,6 +52,9 @@ import org.apache.commons.logging.LogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.extensions.webscripts.Description.RequiredAuthentication;
+import org.springframework.extensions.webscripts.Match;
+import org.springframework.extensions.webscripts.RuntimeContainer;
 
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.KeycloakSecurityContext;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.AdapterDeploymentContext;
@@ -85,9 +89,14 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         implements InitializingBean, ActivateableBean, DependencyInjectedFilter
 {
 
-    private static final String HEADER_AUTHORIZATION = "Authorization";
+    // copied from WebScriptRequestImpl due to accessible constraints
+    private static final String ARG_GUEST = "guest";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAuthenticationFilter.class);
+
+    private static final String HEADER_AUTHORIZATION = "Authorization";
+
+    private static final String API_SERVLET_PATH = "/api";
 
     private static final String KEYCLOAK_ACTION_URL_PATTERN = "^(?:/wcs(?:ervice)?)?/keycloak/k_[^/]+$";
 
@@ -117,6 +126,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     protected SimpleCache<String, RefreshableAccessTokenHolder> keycloakTicketTokenCache;
 
+    protected RuntimeContainer publicApiRuntimeContainer;
+
     /**
      * {@inheritDoc}
      */
@@ -125,8 +136,9 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     {
         PropertyCheck.mandatory(this, "keycloakDeployment", this.keycloakDeployment);
         PropertyCheck.mandatory(this, "sessionIdMapper", this.sessionIdMapper);
-        PropertyCheck.mandatory(this, "keycloakTicketTokenCache", this.keycloakTicketTokenCache);
         PropertyCheck.mandatory(this, "keycloakAuthenticationComponent", this.keycloakAuthenticationComponent);
+        PropertyCheck.mandatory(this, "keycloakTicketTokenCache", this.keycloakTicketTokenCache);
+        PropertyCheck.mandatory(this, "publicApiRuntimeContainer", this.publicApiRuntimeContainer);
 
         // parent class does not check, so we do
         PropertyCheck.mandatory(this, "authenticationService", this.authenticationService);
@@ -236,6 +248,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     public void setKeycloakTicketTokenCache(final SimpleCache<String, RefreshableAccessTokenHolder> keycloakTicketTokenCache)
     {
         this.keycloakTicketTokenCache = keycloakTicketTokenCache;
+    }
+
+    /**
+     * @param publicApiRuntimeContainer
+     *            the publicApiRuntimeContainer to set
+     */
+    public void setPublicApiRuntimeContainer(final RuntimeContainer publicApiRuntimeContainer)
+    {
+        this.publicApiRuntimeContainer = publicApiRuntimeContainer;
     }
 
     /**
@@ -631,6 +652,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         final SessionUser sessionUser = this.getSessionUser(context, req, res, true);
         HttpSession session = req.getSession();
 
+        final boolean noAuthPublicRestApiWebScript = this.isNoAuthPublicRestApiWebScriptRequest(req, servletPath, pathInfo);
+
         // check for back-channel logout (sessionIdMapper should now of all authenticated sessions)
         if (this.active && sessionUser != null && session.getAttribute(KeycloakAccount.class.getName()) != null
                 && !this.sessionIdMapper.hasSession(session.getId()))
@@ -707,6 +730,12 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as user was authenticated by ticket URL parameter");
             skip = true;
         }
+        else if (noAuthPublicRestApiWebScript)
+        {
+            LOGGER.trace(
+                    "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
+            skip = true;
+        }
         // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all pre-emptive auth
         // request details have been checked
         else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
@@ -752,6 +781,53 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         // TODO Check for login page URL (rarely configured since Repository by default has no login page since 5.0)
 
         return skip;
+    }
+
+    /**
+     * Checks whether a particular request is aimed at a Public v1 ReST API web script which does not require any authentication.
+     *
+     * @param req
+     *            the request to check
+     * @param servletPath
+     *            the path to the servlet matching the request
+     * @param pathInfo
+     *            the request path following the servlet path
+     * @return {@code true} if the request targets a Public v1 ReST API web script which does not require authentication, {@code false}
+     *         otherwise
+     */
+    protected boolean isNoAuthPublicRestApiWebScriptRequest(final HttpServletRequest req, final String servletPath, final String pathInfo)
+    {
+        // due to how default Alfresco web.xml wires up authentication filters, we have to check for v1 ReST API no-auth web scripts
+        // ourselves (cannot rely on a pre-handling filter like for regular web scripts)
+        boolean noAuthPublicRestApiWebScript = false;
+        if (API_SERVLET_PATH.equals(servletPath))
+        {
+            LOGGER.debug("Checking Public v1 ReST API for required auth status on request to {}", pathInfo);
+
+            // utility to properly resolve script URL without duplicating some of the specifics here
+            final PublicApiWebScriptUtilityRuntime publicApiRuntime = new PublicApiWebScriptUtilityRuntime(this.publicApiRuntimeContainer,
+                    req);
+            final String scriptUrl = publicApiRuntime.getScriptUrl();
+
+            final Match match = this.publicApiRuntimeContainer.getRegistry().findWebScript(req.getMethod(), scriptUrl);
+            if (match != null && match.getWebScript() != null)
+            {
+                final RequiredAuthentication reqAuth = match.getWebScript().getDescription().getRequiredAuthentication();
+
+                if (RequiredAuthentication.none == reqAuth)
+                {
+                    LOGGER.debug("Found webscript with no authentication");
+                    noAuthPublicRestApiWebScript = true;
+                }
+                // guest isn't really supported / used at all by Public v1 ReST API, but technically possible
+                else if (RequiredAuthentication.guest == reqAuth && Boolean.parseBoolean(req.getParameter(ARG_GUEST)))
+                {
+                    LOGGER.debug("Found webscript with guest authentication and request with set guest parameter");
+                    noAuthPublicRestApiWebScript = true;
+                }
+            }
+        }
+        return noAuthPublicRestApiWebScript;
     }
 
     /**
@@ -947,4 +1023,28 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         return LogFactory.getLog(KeycloakAuthenticationFilter.class);
     }
 
+    /**
+     * This derivation of the Public v1 ReST API servlet runtime exists solely to access the internal script URL resolution functionality to
+     * avoid lookup duplication when determining whether the called API operation requires authentication or not.
+     *
+     * @author Axel Faust
+     */
+    protected static class PublicApiWebScriptUtilityRuntime extends PublicApiTenantWebScriptServletRuntime
+    {
+
+        protected PublicApiWebScriptUtilityRuntime(final RuntimeContainer container, final HttpServletRequest req)
+        {
+            super(container, null, req, null, null, null);
+        }
+
+        /**
+         *
+         * {@inheritDoc}
+         */
+        @Override
+        protected String getScriptUrl()
+        {
+            return super.getScriptUrl();
+        }
+    }
 }

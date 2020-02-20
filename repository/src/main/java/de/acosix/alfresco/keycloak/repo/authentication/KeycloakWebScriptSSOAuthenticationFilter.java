@@ -45,6 +45,9 @@ import org.springframework.extensions.webscripts.RuntimeContainer;
  * details and potentially other data needed for determining which customisations are active, even before a user has had a chance to
  * authenticate.
  *
+ * Note: Due to how default Alfresco {@code web.xml} wires up authentication filters, this filter cannot handle Public v1 ReST API web
+ * scripts.
+ *
  * @author Axel Faust
  */
 public class KeycloakWebScriptSSOAuthenticationFilter extends BaseAuthenticationFilter
@@ -109,11 +112,9 @@ public class KeycloakWebScriptSSOAuthenticationFilter extends BaseAuthentication
             throws IOException, ServletException
     {
         final HttpServletRequest req = (HttpServletRequest) sreq;
+        final String pathInfo = req.getPathInfo();
 
-        final String requestURI = req.getRequestURI();
-        final String pathInfo = requestURI.substring((req.getContextPath() + req.getServletPath()).length());
-
-        LOGGER.trace("Processing request: {} SID: {}", requestURI, req.getSession(false) != null ? req.getSession().getId() : null);
+        LOGGER.debug("Processing request: {} SID: {}", pathInfo, req.getSession(false) != null ? req.getSession().getId() : null);
 
         final Match match = this.container.getRegistry().findWebScript(req.getMethod(), URLDecoder.decode(pathInfo));
         if (match != null && match.getWebScript() != null)
