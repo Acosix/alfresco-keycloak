@@ -13,28 +13,32 @@ function main()
         permissionObj = permissions.getJSONObject(idx);
         add = !permissionObj.has('remove') || !permissionObj.getBoolean('remove');
 
-        if (add)
+        authority = permissionObj.getString('authority');
+        permission = permissionObj.getString('role');
+
+        if (/^ROLE_.+$/.test(authority))
         {
-            authority = permissionObj.getString('authority');
-            permission = permissionObj.getString('role');
-
-            if (/^ROLE_.+$/.test(authority))
+            // lazy init
+            if (!keycloakRolesHash)
             {
-                // lazy init
-                if (!keycloakRolesHash)
+                keycloakRolesArr = keycloakRoles.listRoles();
+                keycloakRolesHash = {};
+                for (jdx = 0; jdx < keycloakRolesArr.length; jdx++)
                 {
-                    keycloakRolesArr = keycloakRoles.listRoles();
-                    keycloakRolesHash = {};
-                    for (jdx = 0; jdx < keycloakRolesArr.length; jdx++)
-                    {
-                        keycloakRolesHash[keycloakRolesArr[jdx].name] = true;
-                    }
+                    keycloakRolesHash[keycloakRolesArr[jdx].name] = true;
                 }
+            }
 
-                // only process if role mapped from Keycloak
-                if (keycloakRolesHash.hasOwnProperty(authority))
+            // only process if role mapped from Keycloak
+            if (keycloakRolesHash.hasOwnProperty(authority))
+            {
+                if (add)
                 {
                     node.setPermission(permission, authority);
+                }
+                else
+                {
+                    node.removePermission(permission, authority);
                 }
             }
         }
