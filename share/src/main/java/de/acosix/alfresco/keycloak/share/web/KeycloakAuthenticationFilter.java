@@ -1168,19 +1168,19 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 // not really feasible to synchronise / lock concurrent refresh on token
                 // not a big problem - apart from wasted CPU cycles / latency - since each concurrently refreshed token is valid
                 // independently
-                if (token == null || (token.canRefresh() && token.shouldRefresh(this.keycloakDeployment.getTokenMinimumTimeToLive())))
+                if (token == null || !token.isActive() || (token.canRefresh() && token.shouldRefresh(this.keycloakDeployment.getTokenMinimumTimeToLive())))
                 {
                     AccessTokenResponse response;
                     try
                     {
-                        if (token != null)
+                        if (token != null && token.canRefresh())
                         {
                             LOGGER.debug("Refreshing access token for Alfresco backend resource {}", alfrescoResourceName);
                             response = ServerRequest.invokeRefresh(this.keycloakDeployment, token.getRefreshToken());
                         }
                         else
                         {
-                            LOGGER.debug("Retrieving initial access token for Alfresco backend resource {}", alfrescoResourceName);
+                            LOGGER.debug("Retrieving initial / new access token for Alfresco backend resource {}", alfrescoResourceName);
                             response = this.getAccessToken(alfrescoResourceName, session);
                         }
                     }

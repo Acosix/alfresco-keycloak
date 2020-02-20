@@ -32,11 +32,12 @@ function process(permissions)
                 {
                     // enhance permissionObj.authority to at least add displayName
                     // may/will still look like a user in UI which only differentiates groups / users
+                    // UI does not display full authority name unless we include it in the displayName (different to authority picker)
                     permissionObj.authority = {
                         name : authority,
                         fullName : authority,
                         shortName : authority.substring(5),
-                        displayName : role.description || role.keycloakName
+                        displayName : (role.description || role.keycloakName) + ' (' + authority + ')'
                     };
                 }
             }

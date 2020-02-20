@@ -555,7 +555,8 @@ public class IDMClientImpl implements InitializingBean, IDMClient
         this.tokenLock.readLock().lock();
         try
         {
-            if (this.token != null && (!this.token.canRefresh() || !this.token.shouldRefresh(this.deployment.getTokenMinimumTimeToLive())))
+            if (this.token != null && this.token.isActive()
+                    && (!this.token.canRefresh() || !this.token.shouldRefresh(this.deployment.getTokenMinimumTimeToLive())))
             {
                 validToken = this.token.getToken();
             }
@@ -570,7 +571,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
             this.tokenLock.writeLock().lock();
             try
             {
-                if (this.token != null
+                if (this.token != null && this.token.isActive()
                         && (!this.token.canRefresh() || !this.token.shouldRefresh(this.deployment.getTokenMinimumTimeToLive())))
                 {
                     validToken = this.token.getToken();
