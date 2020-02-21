@@ -89,6 +89,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         implements InitializingBean, ActivateableBean, DependencyInjectedFilter
 {
 
+    private static final int FRESH_TOKEN_AGE_LIMIT_MS = 2000;
+
     // copied from WebScriptRequestImpl due to accessible constraints
     private static final String ARG_GUEST = "guest";
 
@@ -106,9 +108,13 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     protected boolean allowTicketLogon;
 
-    protected boolean allowLocalBasicLogon;
+    protected boolean allowHttpBasicLogon;
+
+    protected boolean handlePublicApi;
 
     protected String loginPageUrl;
+
+    protected String originalRequestUrlHeaderName;
 
     protected int bodyBufferLimit = DEFAULT_BODY_BUFFER_LIMIT;
 
@@ -148,6 +154,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         PropertyCheck.mandatory(this, "nodeService", this.nodeService);
         PropertyCheck.mandatory(this, "transactionService", this.transactionService);
 
+        // basic is handled ourselves
+        this.keycloakDeployment.setEnableBasicAuth(false);
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -179,12 +187,21 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     }
 
     /**
-     * @param allowLocalBasicLogon
-     *            the allowLocalBasicLogon to set
+     * @param allowHttpBasicLogon
+     *            the allowHttpBasicLogon to set
      */
-    public void setAllowLocalBasicLogon(final boolean allowLocalBasicLogon)
+    public void setAllowHttpBasicLogon(final boolean allowHttpBasicLogon)
     {
-        this.allowLocalBasicLogon = allowLocalBasicLogon;
+        this.allowHttpBasicLogon = allowHttpBasicLogon;
+    }
+
+    /**
+     * @param handlePublicApi
+     *            the handlePublicApi to set
+     */
+    public void setHandlePublicApi(final boolean handlePublicApi)
+    {
+        this.handlePublicApi = handlePublicApi;
     }
 
     /**
@@ -194,6 +211,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     public void setLoginPageUrl(final String loginPageUrl)
     {
         this.loginPageUrl = loginPageUrl;
+    }
+
+    /**
+     * @param originalRequestUrlHeaderName
+     *            the originalRequestUrlHeaderName to set
+     */
+    public void setOriginalRequestUrlHeaderName(final String originalRequestUrlHeaderName)
+    {
+        this.originalRequestUrlHeaderName = originalRequestUrlHeaderName;
     }
 
     /**
@@ -286,7 +312,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         }
         else
         {
-            if (!this.checkAndProcessLocalBasicAuthentication(req))
+            if (!this.checkAndProcessHttpBasicAuthentication(req))
             {
                 this.processKeycloakAuthenticationAndActions(context, req, res, chain);
             }
@@ -298,7 +324,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     }
 
     /**
-     * Checks and processes any HTTP Basic authentication against the local Alfresco authentication services if allowed.
+     * Checks and processes any HTTP Basic authentication if allowed.
      *
      * @param req
      *            the servlet request
@@ -308,40 +334,26 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * @throws ServletException
      *             if any error occurs during processing of HTTP Basic authentication
      *
-     * @return {@code true} if an existing HTTP Basic authentication header was successfully processed against the local Alfresco
-     *         authentication services, {@code false} otherwise
+     * @return {@code true} if an existing HTTP Basic authentication header was successfully processed, {@code false} otherwise
      */
-    protected boolean checkAndProcessLocalBasicAuthentication(final HttpServletRequest req) throws IOException, ServletException
+    protected boolean checkAndProcessHttpBasicAuthentication(final HttpServletRequest req) throws IOException, ServletException
     {
         boolean basicAuthSucessfull = false;
         final String authHeader = req.getHeader(HEADER_AUTHORIZATION);
         if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("basic "))
         {
-            final String basicAuth = new String(Base64.decodeBase64(authHeader.substring(6).getBytes(StandardCharsets.UTF_8)),
-                    StandardCharsets.UTF_8);
-
-            String userName;
-            String password = "";
-
-            final int pos = basicAuth.indexOf(":");
-            if (pos != -1)
-            {
-                userName = basicAuth.substring(0, pos);
-                password = basicAuth.substring(pos + 1);
-            }
-            else
-            {
-                userName = basicAuth;
-            }
+            final String[] authorizationParts = authHeader.split(" ");
+            final String decodedAuthorisation = new String(Base64.decodeBase64(authorizationParts[1]), StandardCharsets.UTF_8);
+            final Authorization auth = new Authorization(decodedAuthorisation);
 
             try
             {
-                if (userName.equalsIgnoreCase(Authorization.TICKET_USERID))
+                if (auth.isTicket())
                 {
                     if (this.allowTicketLogon)
                     {
                         LOGGER.trace("Performing HTTP Basic ticket validation");
-                        this.authenticationService.validate(password);
+                        this.authenticationService.validate(auth.getTicket());
 
                         this.createUserEnvironment(req.getSession(), this.authenticationService.getCurrentUserName(),
                                 this.authenticationService.getCurrentTicket(), false);
@@ -349,7 +361,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                         LOGGER.debug("Authenticated user {} via HTTP Basic authentication using an authentication ticket",
                                 AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));
 
-                        this.authenticationListener.userAuthenticated(new TicketCredentials(password));
+                        this.authenticationListener.userAuthenticated(new TicketCredentials(auth.getTicket()));
 
                         basicAuthSucessfull = true;
                     }
@@ -358,34 +370,34 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                         LOGGER.debug("Ticket in HTTP Basic authentication header detected but ticket logon is disabled");
                     }
                 }
-                else if (this.allowLocalBasicLogon)
+                else if (this.allowHttpBasicLogon)
                 {
-                    LOGGER.trace("Performing HTTP Basic user authentication against local Alfresco services");
+                    LOGGER.trace("Performing HTTP Basic user authentication");
 
-                    this.authenticationService.authenticate(userName, password.toCharArray());
+                    this.authenticationService.authenticate(auth.getUserName(), auth.getPasswordCharArray());
 
                     this.createUserEnvironment(req.getSession(), this.authenticationService.getCurrentUserName(),
                             this.authenticationService.getCurrentTicket(), false);
 
-                    LOGGER.debug("Authenticated user {} via HTTP Basic authentication using locally stored credentials",
+                    LOGGER.debug("Authenticated user {} via HTTP Basic authentication",
                             AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));
 
-                    this.authenticationListener.userAuthenticated(new BasicAuthCredentials(userName, password));
+                    this.authenticationListener.userAuthenticated(new BasicAuthCredentials(auth.getUserName(), auth.getPassword()));
 
                     basicAuthSucessfull = true;
                 }
             }
             catch (final AuthenticationException e)
             {
-                LOGGER.debug("HTTP Basic authentication against local Alfresco services failed", e);
+                LOGGER.debug("HTTP Basic authentication failed", e);
 
-                if (userName.equalsIgnoreCase(Authorization.TICKET_USERID))
+                if (auth.isTicket())
                 {
-                    this.authenticationListener.authenticationFailed(new TicketCredentials(password), e);
+                    this.authenticationListener.authenticationFailed(new TicketCredentials(auth.getTicket()), e);
                 }
                 else
                 {
-                    this.authenticationListener.authenticationFailed(new BasicAuthCredentials(userName, password), e);
+                    this.authenticationListener.authenticationFailed(new BasicAuthCredentials(auth.getUserName(), auth.getPassword()), e);
                 }
             }
         }
@@ -414,7 +426,61 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     {
         LOGGER.trace("Processing Keycloak authentication and actions on request to {}", req.getRequestURL());
 
-        final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res);
+        final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res)
+        {
+
+            /**
+             *
+             * {@inheritDoc}
+             */
+            @Override
+            public Request getRequest()
+            {
+                Request result;
+                if (KeycloakAuthenticationFilter.this.originalRequestUrlHeaderName != null
+                        && !KeycloakAuthenticationFilter.this.originalRequestUrlHeaderName.trim().isEmpty())
+                {
+                    result = new RequestFacade()
+                    {
+
+                        /**
+                         *
+                         * {@inheritDoc}
+                         */
+                        @Override
+                        public String getURI()
+                        {
+                            String uri;
+                            // if originalRequestUrlHeader is provided (e.g. to transport the original URL before a transparent rewrite
+                            // within a reverse proxy), it must contain the same value as getRequestURL() would, that means schema, host and
+                            // request path, but no query string
+                            final String originalRequestUrl = this
+                                    .getHeader(KeycloakAuthenticationFilter.this.originalRequestUrlHeaderName);
+                            if (originalRequestUrl != null && !originalRequestUrl.trim().isEmpty())
+                            {
+                                uri = originalRequestUrl;
+
+                                final String queryString = request.getQueryString();
+                                if (queryString != null)
+                                {
+                                    uri += '?' + queryString;
+                                }
+                            }
+                            else
+                            {
+                                uri = super.getURI();
+                            }
+                            return uri;
+                        }
+                    };
+                }
+                else
+                {
+                    result = this.requestFacade;
+                }
+                return result;
+            }
+        };
 
         final String servletPath = req.getServletPath();
         final String pathInfo = req.getPathInfo();
@@ -652,7 +718,9 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         final SessionUser sessionUser = this.getSessionUser(context, req, res, true);
         HttpSession session = req.getSession();
 
-        final boolean noAuthPublicRestApiWebScript = this.isNoAuthPublicRestApiWebScriptRequest(req, servletPath, pathInfo);
+        final boolean publicRestApi = API_SERVLET_PATH.equals(servletPath);
+        final boolean noAuthPublicRestApiWebScript = publicRestApi
+                && this.isNoAuthPublicRestApiWebScriptRequest(req, servletPath, pathInfo);
 
         // check for back-channel logout (sessionIdMapper should now of all authenticated sessions)
         if (this.active && sessionUser != null && session.getAttribute(KeycloakAccount.class.getName()) != null
@@ -678,6 +746,12 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.trace(
                     "Explicitly not skipping processKeycloakAuthenticationAndActions as state and code query parameters of OAuth2 redirect as well as state cookie are present");
         }
+        else if (publicRestApi && !this.handlePublicApi)
+        {
+            LOGGER.trace(
+                    "Explicitly skipping processKeycloakAuthenticationAndActions as filter is configured not to handle authentication on public API servlet");
+            skip = true;
+        }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
             final AccessToken accessToken = (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName());
@@ -688,9 +762,11 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                     LOGGER.trace(
                             "Skipping processKeycloakAuthenticationAndActions as Bearer authorization header for {} has already been processed by remote user mapper",
                             AlfrescoCompatibilityUtil.maskUsername(accessToken.getPreferredUsername()));
+
                     // cannot rely on session.isNew() to determine if this is a fresh login
-                    // consider "fresh" login if issued in the last second (implicitly include any token refreshes performed client-side)
-                    final boolean isFreshLogin = accessToken.getIssuedAt() * 1000l < (System.currentTimeMillis() - 1000);
+                    // consider "fresh" login if issued within age limit (implicitly include any token refreshes performed client-side)
+                    final boolean isFreshLogin = accessToken.getIssuedAt()
+                            * 1000l > (System.currentTimeMillis() - FRESH_TOKEN_AGE_LIMIT_MS);
                     this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, isFreshLogin);
 
                     // sessionUser should be guaranteed here, but still check - we need it for the cache key
@@ -1020,6 +1096,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     @Override
     protected Log getLogger()
     {
+        // ugh, Commons Logging - we don't use it ourselves, but base class requires it
         return LogFactory.getLog(KeycloakAuthenticationFilter.class);
     }
 

@@ -129,8 +129,10 @@
     <bean id="globalAuthenticationFilter" class="${project.artifactId}.authentication.KeycloakAuthenticationFilter">
         <property name="active" value="${keycloak.authentication.sso.enabled}" />
         <property name="allowTicketLogon" value="${keycloak.authentication.allowTicketLogons}" />
-        <property name="allowLocalBasicLogon" value="${keycloak.authentication.allowLocalBasicLogon}" />
+        <property name="allowHttpBasicLogon" value="${keycloak.authentication.allowHttpBasicLogon}" />
+        <property name="handlePublicApi" value="${keycloak.authentication.sso.handlePublicApi}" />
         <property name="loginPageUrl" value="${keycloak.authentication.loginPageUrl}" />
+        <property name="originalRequestUrlHeaderName" value="${keycloak.authentication.sso.originalRequestUrlHeaderName}" />
         <property name="bodyBufferLimit" value="${keycloak.authentication.bodyBufferLimit}" />
         <property name="sslRedirectPort" value="${keycloak.authentication.sslRedirectPort}" />
         <property name="keycloakDeployment" ref="keycloakDeployment" />
