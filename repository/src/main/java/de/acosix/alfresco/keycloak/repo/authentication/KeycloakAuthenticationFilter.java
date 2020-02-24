@@ -806,20 +806,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as user was authenticated by ticket URL parameter");
             skip = true;
         }
-        else if (noAuthPublicRestApiWebScript)
-        {
-            LOGGER.trace(
-                    "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
-            skip = true;
-        }
-        // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all pre-emptive auth
-        // request details have been checked
-        else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
-        {
-            LOGGER.trace(
-                    "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
-            skip = true;
-        }
+        // if user was already authenticated, validate
         else if (sessionUser != null)
         {
             final KeycloakAccount keycloakAccount = (KeycloakAccount) session.getAttribute(KeycloakAccount.class.getName());
@@ -827,6 +814,25 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             if (keycloakAccount != null)
             {
                 skip = this.validateAndRefreshKeycloakAuthentication(req, res, sessionUser.getUserName());
+
+                if (!skip)
+                {
+                    if (noAuthPublicRestApiWebScript)
+                    {
+                        LOGGER.trace(
+                                "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
+                        skip = true;
+                    }
+                    // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all
+                    // pre-emptive auth
+                    // request details have been checked
+                    else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
+                    {
+                        LOGGER.trace(
+                                "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
+                        skip = true;
+                    }
+                }
             }
             else if (accessToken != null)
             {
@@ -841,10 +847,31 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                 }
                 else
                 {
-                    LOGGER.trace(
-                            "Explicitly not skipping processKeycloakAuthenticationAndActions as access token in session from previous Bearer authorization for {} has expired",
+                    LOGGER.debug("Access token in session from previous Bearer authorization for {} has expired - invalidating session",
                             AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
                     this.invalidateSession(req);
+
+                    if (noAuthPublicRestApiWebScript)
+                    {
+                        LOGGER.trace(
+                                "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
+                        skip = true;
+                    }
+                    // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all
+                    // pre-emptive auth
+                    // request details have been checked
+                    else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
+                    {
+                        LOGGER.trace(
+                                "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
+                        skip = true;
+                    }
+                    else
+                    {
+                        LOGGER.trace(
+                                "Explicitly not skipping processKeycloakAuthenticationAndActions due to expired Bearer authorization for {}",
+                                AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
+                    }
                 }
             }
             else
@@ -853,6 +880,20 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                         "Skipping processKeycloakAuthenticationAndActions as non-Keycloak-authenticated session is already established");
                 skip = true;
             }
+        }
+        else if (noAuthPublicRestApiWebScript)
+        {
+            LOGGER.trace(
+                    "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
+            skip = true;
+        }
+        // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all pre-emptive auth
+        // request details have been checked
+        else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
+        {
+            LOGGER.trace(
+                    "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
+            skip = true;
         }
         // TODO Check for login page URL (rarely configured since Repository by default has no login page since 5.0)
 
