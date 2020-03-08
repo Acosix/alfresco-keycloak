@@ -26,7 +26,7 @@ import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessTok
 import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.IDToken;
 
 /**
- * Instances of this class encapsulate an access token with its associated refresh data.
+ * Instances of this class encapsulate a potentially refreshable access token.
  *
  * @author Axel Faust
  */

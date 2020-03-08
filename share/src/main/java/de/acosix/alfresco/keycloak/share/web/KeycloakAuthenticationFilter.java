@@ -85,6 +85,7 @@ import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.OAuth2Constants;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AdapterDeploymentContext;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AuthenticatedActionsHandler;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.BearerTokenRequestAuthenticator;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.HttpClientBuilder;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeployment;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeploymentBuilder;
@@ -122,9 +123,11 @@ import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
 {
 
-    private static final String KEYCLOAK_ACCOUNT_SESSION_KEY = KeycloakAccount.class.getName();
+    public static final String KEYCLOAK_ACCOUNT_SESSION_KEY = KeycloakAccount.class.getName();
 
-    private static final String BACKEND_ACCESS_TOKEN_SESSION_KEY = AccessTokenAwareSlingshotAlfrescoConnector.class.getName();
+    public static final String ACCESS_TOKEN_SESSION_KEY = AccessToken.class.getName();
+
+    public static final String BACKEND_ACCESS_TOKEN_SESSION_KEY = AccessTokenAwareSlingshotAlfrescoConnector.class.getName();
 
     private static final String HEADER_AUTHORIZATION = "Authorization";
 
@@ -543,6 +546,111 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
         }
 
+        final String authHeader = req.getHeader(HEADER_AUTHORIZATION);
+        if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
+        {
+            this.processBearerAuthentication(context, req, res, chain, keycloakAuthConfig.getPerformTokenExchange(), facade);
+        }
+        else
+        {
+            this.processFilterAuthentication(context, req, res, chain, bodyBufferLimit, sslRedirectPort, facade);
+        }
+    }
+
+    /**
+     * Processes authentication when an explicit "Bearer" authentication header is present in a request. Such authentication is only
+     * supported when Share is not using OAuth2 token exchange with the Repository backend, and requires a bit of special handling due to
+     * Keycloak library access restrictions, in order to obtain the access token for validation and passing on to the Repository-tier.
+     *
+     * @param context
+     *            the servlet context
+     * @param req
+     *            the servlet request
+     * @param res
+     *            the servlet response
+     * @param chain
+     *            the filter chain
+     * @param performTokenExchange
+     *            whether Share has been configured to perform OAuth2 token exchange to authenticate against the Repository backend
+     * @param facade
+     *            the Keycloak HTTP facade
+     * @throws IOException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     * @throws ServletException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     */
+    protected void processBearerAuthentication(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
+            final FilterChain chain, final Boolean performTokenExchange, final OIDCServletHttpFacade facade)
+            throws IOException, ServletException
+    {
+        if (Boolean.TRUE.equals(performTokenExchange))
+        {
+            LOGGER.warn(
+                    "Authentication was attempted using Bearer token - this cannot be supported using token exchange for accessing the primary backend endpoint {}",
+                    this.primaryEndpoint);
+            LOGGER.warn("Continueing with filter chain processing without handling the Bearer token");
+
+            this.continueFilterChain(context, req, res, chain);
+        }
+        else
+        {
+            final BearerTokenRequestAuthenticator authenticator = new BearerTokenRequestAuthenticator(this.keycloakDeployment);
+            final AuthOutcome authOutcome = authenticator.authenticate(facade);
+
+            if (authOutcome == AuthOutcome.AUTHENTICATED)
+            {
+                final AccessToken token = authenticator.getToken();
+                final RefreshableAccessTokenHolder tokenHolder = new RefreshableAccessTokenHolder(token, token,
+                        authenticator.getTokenString(), null);
+                this.onKeycloakAuthenticationSuccess(context, req, res, chain, facade, tokenHolder);
+            }
+            else if (authOutcome == AuthOutcome.FAILED)
+            {
+                LOGGER.warn("Bearer token authentication failed - issueing failure challenge with details");
+                // not using regular onKeycloakAuthenticationFailure handling since that only applies to proper OIDC filter authentication,
+                // with the potential of redirecting to the IdP authentication UI
+                req.getSession().invalidate();
+
+                authenticator.getChallenge().challenge(facade);
+            }
+            else
+            {
+                LOGGER.warn(
+                        "Unexpected authentication outcome {} on Bearer authentication with guaranteed token presence - continueing with filter chain processing",
+                        authOutcome);
+
+                this.continueFilterChain(context, req, res, chain);
+            }
+        }
+    }
+
+    /**
+     * Processes the regular OIDC filter authentication on a request.
+     *
+     * @param context
+     *            the servlet context
+     * @param req
+     *            the servlet request
+     * @param res
+     *            the servlet response
+     * @param chain
+     *            the filter chain
+     * @param bodyBufferLimit
+     *            the configured size limit to apply to any HTTP POST/PUT body buffering that may need to be applied to process the
+     *            authentication via an intermediary redirect
+     * @param sslRedirectPort
+     *            the configured port to use for any forced redirection to HTTPS/SSL communication
+     * @param facade
+     *            the Keycloak HTTP facade
+     * @throws IOException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     * @throws ServletException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     */
+    protected void processFilterAuthentication(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
+            final FilterChain chain, final Integer bodyBufferLimit, final Integer sslRedirectPort, final OIDCServletHttpFacade facade)
+            throws IOException, ServletException
+    {
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, facade,
                 bodyBufferLimit != null ? bodyBufferLimit.intValue() : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment,
                 this.sessionIdMapper);
@@ -689,7 +797,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     }
 
     /**
-     * Processes a sucessfull authentication via Keycloak.
+     * Processes a successful authentication via Keycloak.
      *
      * @param context
      *            the servlet context
@@ -750,6 +858,64 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         LOGGER.debug("Continueing with filter chain processing");
         final HttpServletRequestWrapper requestWrapper = tokenStore.buildWrapper();
         this.continueFilterChain(context, requestWrapper, res, chain);
+    }
+
+    /**
+     * Processes a successful authentication via Keycloak.
+     *
+     * @param context
+     *            the servlet context
+     * @param req
+     *            the servlet request
+     * @param res
+     *            the servlet response
+     * @param chain
+     *            the filter chain
+     * @param facade
+     *            the Keycloak HTTP facade
+     * @param tokenHolder
+     *            the holder for access token taken from the successful authentication
+     * @throws IOException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     * @throws ServletException
+     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     */
+    protected void onKeycloakAuthenticationSuccess(final ServletContext context, final HttpServletRequest req,
+            final HttpServletResponse res, final FilterChain chain, final OIDCServletHttpFacade facade,
+            final RefreshableAccessTokenHolder tokenHolder) throws IOException, ServletException
+    {
+        final HttpSession session = req.getSession();
+
+        session.setAttribute(ACCESS_TOKEN_SESSION_KEY, tokenHolder);
+
+        final String userId = tokenHolder.getAccessToken().getPreferredUsername();
+        LOGGER.debug("User {} successfully authenticated via Keycloak", userId);
+
+        session.setAttribute(UserFactory.SESSION_ATTRIBUTE_EXTERNAL_AUTH, Boolean.TRUE);
+        session.setAttribute(UserFactory.SESSION_ATTRIBUTE_KEY_USER_ID, userId);
+
+        if (facade.isEnded())
+        {
+            LOGGER.debug("Authenticator already handled response");
+            return;
+        }
+
+        final String servletPath = req.getServletPath();
+        final String pathInfo = req.getPathInfo();
+        final String servletRequestUri = servletPath + (pathInfo != null ? pathInfo : "");
+        if (servletRequestUri.matches(KEYCLOAK_ACTION_URL_PATTERN))
+        {
+            LOGGER.debug("Applying Keycloak authenticated actions handler");
+            final AuthenticatedActionsHandler actions = new AuthenticatedActionsHandler(this.keycloakDeployment, facade);
+            if (actions.handledRequest())
+            {
+                LOGGER.debug("Keycloak authenticated actions processed the request - stopping filter chain execution");
+                return;
+            }
+        }
+
+        LOGGER.debug("Continueing with filter chain processing");
+        this.continueFilterChain(context, req, res, chain);
     }
 
     /**
@@ -858,13 +1024,29 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         // check for back-channel logout (sessionIdMapper should now of all authenticated sessions)
         if (this.externalAuthEnabled && this.filterEnabled && this.keycloakDeployment != null && currentSession != null
-                && AuthenticationUtil.isAuthenticated(req) && currentSession.getAttribute(KEYCLOAK_ACCOUNT_SESSION_KEY) != null
-                && !this.sessionIdMapper.hasSession(currentSession.getId()))
+                && AuthenticationUtil.isAuthenticated(req))
         {
-            LOGGER.debug("Session {} for Keycloak-authenticated user {} was invalidated by back-channel logout", currentSession.getId(),
-                    AuthenticationUtil.getUserId(req));
-            currentSession.invalidate();
-            currentSession = req.getSession(false);
+            if (currentSession.getAttribute(KEYCLOAK_ACCOUNT_SESSION_KEY) != null
+                    && !this.sessionIdMapper.hasSession(currentSession.getId()))
+            {
+                LOGGER.debug("Session {} for Keycloak-authenticated user {} was invalidated by back-channel logout", currentSession.getId(),
+                        AuthenticationUtil.getUserId(req));
+                currentSession.invalidate();
+                currentSession = req.getSession(false);
+            }
+            else if (currentSession.getAttribute(ACCESS_TOKEN_SESSION_KEY) != null)
+            {
+                final RefreshableAccessTokenHolder accessToken = (RefreshableAccessTokenHolder) currentSession
+                        .getAttribute(ACCESS_TOKEN_SESSION_KEY);
+                if (!accessToken.isActive())
+                {
+                    LOGGER.debug("Access token in session from previous Bearer authorization for {} has expired - invalidating session",
+                            AuthenticationUtil.getUserId(req));
+
+                    currentSession.invalidate();
+                    currentSession = req.getSession(false);
+                }
+            }
         }
 
         if (!this.externalAuthEnabled || !this.filterEnabled)
@@ -888,7 +1070,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
-            LOGGER.debug("Explicitly not skipping processKeycloakAuthenticationAndActions as Bearer authorization header is present");
+            LOGGER.debug(
+                    "Explicitly not skipping processKeycloakAuthenticationAndActions as Bearer authorization header is present and Bearer authentication is not disallowed");
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("basic "))
         {
@@ -922,15 +1105,23 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             final String noauth = proxyMatcher.group(2);
             if (noauth != null && !noauth.trim().isEmpty())
             {
-                LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as proxy servlet to noauth endpoint {} is being called");
+                LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as proxy servlet to noauth endpoint {} is being called",
+                        endpoint);
                 skip = true;
             }
             else if (!endpoint.equals(this.primaryEndpoint)
                     && (this.secondaryEndpoints == null || !this.secondaryEndpoints.contains(endpoint)))
             {
                 LOGGER.debug(
-                        "Skipping processKeycloakAuthenticationAndActions on proxy servlet call as endpoint {} has not been configured as a primary / secondary endpoint to handle");
+                        "Skipping processKeycloakAuthenticationAndActions on proxy servlet call as endpoint {} has not been configured as a primary / secondary endpoint to handle",
+                        endpoint);
                 skip = true;
+            }
+            else
+            {
+                LOGGER.debug(
+                        "Explicitely not skipping processKeycloakAuthenticationAndActions on proxy servlet call to endpoint {} which is expected to serve web scripts requiring authentication",
+                        endpoint);
             }
         }
         else if (PAGE_SERVLET_PATH.equals(servletPath) && (LOGIN_PATH_INFORMATION.equals(pathInfo)
@@ -1168,7 +1359,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 // not really feasible to synchronise / lock concurrent refresh on token
                 // not a big problem - apart from wasted CPU cycles / latency - since each concurrently refreshed token is valid
                 // independently
-                if (token == null || !token.isActive() || (token.canRefresh() && token.shouldRefresh(this.keycloakDeployment.getTokenMinimumTimeToLive())))
+                if (token == null || !token.isActive()
+                        || (token.canRefresh() && token.shouldRefresh(this.keycloakDeployment.getTokenMinimumTimeToLive())))
                 {
                     AccessTokenResponse response;
                     try

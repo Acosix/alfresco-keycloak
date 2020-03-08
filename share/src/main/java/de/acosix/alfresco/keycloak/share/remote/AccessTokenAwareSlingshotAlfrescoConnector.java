@@ -31,6 +31,7 @@ import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OidcKeycloakAccount;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.KeycloakAccount;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
+import de.acosix.alfresco.keycloak.share.web.KeycloakAuthenticationFilter;
 
 /**
  * @author Axel Faust
@@ -61,17 +62,21 @@ public class AccessTokenAwareSlingshotAlfrescoConnector extends SlingshotAlfresc
     protected void applyRequestAuthentication(final RemoteClient remoteClient, final ConnectorContext context)
     {
         final HttpSession session = ServletUtil.getSession();
-        final KeycloakAccount keycloakAccount = (KeycloakAccount) (session != null ? session.getAttribute(KeycloakAccount.class.getName())
+        final KeycloakAccount keycloakAccount = (KeycloakAccount) (session != null
+                ? session.getAttribute(KeycloakAuthenticationFilter.KEYCLOAK_ACCOUNT_SESSION_KEY)
                 : null);
         final RefreshableAccessTokenHolder accessToken = (RefreshableAccessTokenHolder) (session != null
-                ? session.getAttribute(AccessTokenAwareSlingshotAlfrescoConnector.class.getName())
+                ? session.getAttribute(KeycloakAuthenticationFilter.ACCESS_TOKEN_SESSION_KEY)
                 : null);
-        if (accessToken != null)
+        final RefreshableAccessTokenHolder endpointSpecificAccessToken = (RefreshableAccessTokenHolder) (session != null
+                ? session.getAttribute(KeycloakAuthenticationFilter.BACKEND_ACCESS_TOKEN_SESSION_KEY)
+                : null);
+        if (endpointSpecificAccessToken != null)
         {
-            if (accessToken.isActive())
+            if (endpointSpecificAccessToken.isActive())
             {
                 LOGGER.debug("Using access token for backend found in session for request");
-                final String tokenString = accessToken.getToken();
+                final String tokenString = endpointSpecificAccessToken.getToken();
                 remoteClient.setRequestProperties(Collections.singletonMap("Authorization", "Bearer " + tokenString));
             }
             else
@@ -85,6 +90,13 @@ public class AccessTokenAwareSlingshotAlfrescoConnector extends SlingshotAlfresc
                     "Did not find access token for backend in session - using regularly authenticated Keycloak account access token for request instead");
             final KeycloakSecurityContext keycloakSecurityContext = ((OidcKeycloakAccount) keycloakAccount).getKeycloakSecurityContext();
             final String tokenString = keycloakSecurityContext.getTokenString();
+            remoteClient.setRequestProperties(Collections.singletonMap("Authorization", "Bearer " + tokenString));
+        }
+        else if (accessToken != null)
+        {
+            LOGGER.debug(
+                    "Did not find access token for backend in session - using Bearer access token provided in original authentication request for request instead");
+            final String tokenString = accessToken.getToken();
             remoteClient.setRequestProperties(Collections.singletonMap("Authorization", "Bearer " + tokenString));
         }
         else
