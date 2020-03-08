@@ -15,7 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.roles;
 
-import java.util.Set;
+import java.util.List;
 
 import org.alfresco.util.ParameterCheck;
 import org.slf4j.Logger;
@@ -31,15 +31,26 @@ public class PatternRoleNameFilter implements RoleNameFilter
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PatternRoleNameFilter.class);
 
-    protected Set<String> allowedRoleNamePatterns;
+    protected List<String> allowedRoleNamePatterns;
+
+    protected List<String> forbiddenRoleNamePatterns;
 
     /**
      * @param allowedRoleNamePatterns
      *            the allowedRoleNamePatterns to set
      */
-    public void setAllowedRoleNamePatterns(final Set<String> allowedRoleNamePatterns)
+    public void setAllowedRoleNamePatterns(final List<String> allowedRoleNamePatterns)
     {
         this.allowedRoleNamePatterns = allowedRoleNamePatterns;
+    }
+
+    /**
+     * @param forbiddenRoleNamePatterns
+     *            the forbiddenRoleNamePatterns to set
+     */
+    public void setForbiddenRoleNamePatterns(final List<String> forbiddenRoleNamePatterns)
+    {
+        this.forbiddenRoleNamePatterns = forbiddenRoleNamePatterns;
     }
 
     /**
@@ -50,13 +61,17 @@ public class PatternRoleNameFilter implements RoleNameFilter
     {
         ParameterCheck.mandatoryString("roleName", roleName);
 
-        boolean exposed = false;
+        boolean exposed;
 
-        if (this.allowedRoleNamePatterns != null)
-        {
-            exposed = this.allowedRoleNamePatterns.stream().anyMatch(roleName::matches);
-            LOGGER.debug("Determined exposure flag of {} for role {} using a static match pattern set", exposed, roleName);
-        }
+        final boolean matchAllowedPattern = this.allowedRoleNamePatterns != null
+                ? this.allowedRoleNamePatterns.stream().anyMatch(roleName::matches)
+                : true;
+        final boolean notMatchForbiddenPattern = this.forbiddenRoleNamePatterns != null
+                ? !this.forbiddenRoleNamePatterns.stream().anyMatch(roleName::matches)
+                : true;
+
+        exposed = matchAllowedPattern && notMatchForbiddenPattern;
+        LOGGER.debug("Determined exposure flag of {} for role {} using a static match pattern set", exposed, roleName);
 
         return exposed;
     }
