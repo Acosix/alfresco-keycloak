@@ -17,10 +17,11 @@ package de.acosix.alfresco.keycloak.repo.util;
 
 import java.io.Serializable;
 
-import org.alfresco.cmis.client.authentication.OAuthCMISAuthenticationProvider.AccessToken;
 import org.alfresco.util.ParameterCheck;
 
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.Time;
+import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessTokenResponse;
 import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.IDToken;
 

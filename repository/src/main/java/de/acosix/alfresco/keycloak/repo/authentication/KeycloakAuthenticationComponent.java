@@ -256,7 +256,6 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     public RefreshableAccessTokenHolder checkAndRefreshTicketToken(final RefreshableAccessTokenHolder ticketToken)
             throws AuthenticationException
     {
-
         RefreshableAccessTokenHolder result = null;
         if (ticketToken.canRefresh() && ticketToken.shouldRefresh(this.deployment.getTokenMinimumTimeToLive()))
         {
