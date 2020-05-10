@@ -313,10 +313,13 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
         final AccessTokenResponse response;
         final VerifiedTokens tokens;
+        String realUserName = userName;
         try
         {
             response = this.getAccessTokenImpl(userName, new String(password));
             tokens = AdapterTokenVerifier.verifyTokens(response.getToken(), response.getIdToken(), this.deployment);
+
+            realUserName = tokens.getAccessToken().getPreferredUsername();
 
             // for potential one-off authentication, we do not care particularly about the token TTL - so no validation here
 
@@ -336,7 +339,9 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
             throw new AuthenticationException("Failed to authenticate against Keycloak", ioex);
         }
 
-        this.setCurrentUser(userName);
+        // TODO Override setCurrentUser to perform user existence validation and role retrieval for non-Keycloak logins (e.g. via public API
+        // setCurrentUser)
+        this.setCurrentUser(realUserName);
         this.handleUserTokens(tokens.getAccessToken(), tokens.getIdToken(), true);
     }
 
