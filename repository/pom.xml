@@ -72,6 +72,12 @@
         </dependency>
 
         <dependency>
+            <groupId>de.acosix.alfresco.utility</groupId>
+            <artifactId>de.acosix.alfresco.utility.repo</artifactId>
+            <classifier>installable</classifier>
+        </dependency>
+
+        <dependency>
             <groupId>org.orderofthebee.support-tools</groupId>
             <artifactId>support-tools-repo</artifactId>
         </dependency>
