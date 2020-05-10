@@ -29,7 +29,7 @@
     </ordering>
 
     <filter>
-        <filter-name>>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
         <filter-class>org.springframework.extensions.webscripts.servlet.BeanProxyFilter</filter-class>
         <init-param>
             <param-name>beanName</param-name>
@@ -38,7 +38,7 @@
     </filter>
 
     <filter-mapping>
-        <filter-name>>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
         <url-pattern>/*</url-pattern>
     </filter-mapping>
 </web-fragment>
