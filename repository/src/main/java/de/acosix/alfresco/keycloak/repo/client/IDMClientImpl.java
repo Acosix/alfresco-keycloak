@@ -638,7 +638,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
         final AccessToken accessToken = tokens.getAccessToken();
 
-        if ((accessToken.getExpiration() - this.deployment.getTokenMinimumTimeToLive()) <= Time.currentTime())
+        if ((accessToken.getExp() - this.deployment.getTokenMinimumTimeToLive()) <= Time.currentTime())
         {
             throw new AlfrescoRuntimeException("Failed to retrieve / refresh the access token with a longer time-to-live than the minimum");
         }

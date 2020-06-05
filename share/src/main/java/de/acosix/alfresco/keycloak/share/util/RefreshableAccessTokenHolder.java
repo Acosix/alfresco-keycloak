@@ -43,7 +43,7 @@ public class RefreshableAccessTokenHolder implements Serializable
 
     protected final String refreshToken;
 
-    protected final int refreshExpiration;
+    protected final long refreshExpiration;
 
     /**
      * Constructs a new instance of this class from an access token response, typically from an initial authentication or token refresh
@@ -64,7 +64,7 @@ public class RefreshableAccessTokenHolder implements Serializable
 
         this.token = tokenResponse.getToken();
         this.refreshToken = tokenResponse.getRefreshToken();
-        this.refreshExpiration = Time.currentTime() + (int) tokenResponse.getRefreshExpiresIn();
+        this.refreshExpiration = Time.currentTime() + tokenResponse.getRefreshExpiresIn();
     }
 
     /**
@@ -93,7 +93,7 @@ public class RefreshableAccessTokenHolder implements Serializable
         this.token = token;
         this.refreshToken = refreshToken;
         // no explicit refresh expiration, so assume validity period is 1/100th
-        this.refreshExpiration = Time.currentTime() - (accessToken.getExpiration() - Time.currentTime()) / 100;
+        this.refreshExpiration = Time.currentTime() - (accessToken.getExp() - Time.currentTime()) / 100;
     }
 
     /**
@@ -139,7 +139,7 @@ public class RefreshableAccessTokenHolder implements Serializable
      */
     public boolean shouldRefresh(final int minTokenTTL)
     {
-        final boolean shouldRefresh = this.refreshToken != null && this.accessToken.getExpiration() - minTokenTTL < Time.currentTime();
+        final boolean shouldRefresh = this.refreshToken != null && this.accessToken.getExp() - minTokenTTL < Time.currentTime();
         return shouldRefresh;
     }
 
