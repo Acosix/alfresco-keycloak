@@ -106,6 +106,8 @@
                                 <goal>shade</goal>
                             </goals>
                             <configuration>
+                                <createSourcesJar>true</createSourcesJar>
+                                <shadeSourcesContent>true</shadeSourcesContent>
                                 <relocations>
                                     <relocation>
                                         <pattern>org.keycloak</pattern>
