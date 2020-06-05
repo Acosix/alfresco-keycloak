@@ -74,6 +74,7 @@ import org.springframework.extensions.surf.mvc.PageViewResolver;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
 import org.springframework.extensions.surf.types.Page;
 import org.springframework.extensions.surf.types.PageType;
+import org.springframework.extensions.surf.util.URLEncoder;
 import org.springframework.extensions.webscripts.Description.RequiredAuthentication;
 import org.springframework.extensions.webscripts.Status;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
@@ -998,7 +999,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     error = req.getParameter(ERROR_PARAMETER);
                 }
                 final String redirectUrl = req.getContextPath() + "/page?pt=login"
-                        + (error == null ? "" : "&" + ERROR_PARAMETER + "=" + error);
+                        + (error == null ? "" : "&" + ERROR_PARAMETER + "=" + URLEncoder.encode(error));
                 res.sendRedirect(redirectUrl);
             }
         }
