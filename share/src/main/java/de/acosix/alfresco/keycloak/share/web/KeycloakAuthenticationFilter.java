@@ -15,6 +15,9 @@
  */
 package de.acosix.alfresco.keycloak.share.web;
 
+import static org.alfresco.web.site.SlingshotPageView.REDIRECT_QUERY;
+import static org.alfresco.web.site.SlingshotPageView.REDIRECT_URI;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.InetAddress;
@@ -91,6 +94,7 @@ import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.HttpClientBuilde
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeployment;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeploymentBuilder;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OAuthRequestAuthenticator;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OIDCAuthenticationError;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OidcKeycloakAccount;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.PreAuthActionsHandler;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.ServerRequest;
@@ -131,6 +135,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     public static final String BACKEND_ACCESS_TOKEN_SESSION_KEY = AccessTokenAwareSlingshotAlfrescoConnector.class.getName();
 
+    // copied from SSOAuthenticationFilter (inaccessible constant there)
+    public static final String ERROR_PARAMETER = "error";
+
+    // well known value - need not be accessible to other classes
     private static final String HEADER_AUTHORIZATION = "Authorization";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAuthenticationFilter.class);
@@ -948,9 +956,59 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         this.resetStateCookies(context, req, res);
 
-        // TODO If error occurred as part of redirect back from Keycloak, strip state / code params from URL query
-        // TODO If login page may follow, see about providing error message
-        this.continueFilterChain(context, req, res, chain);
+        final String servletPath = req.getServletPath();
+        if (PAGE_SERVLET_PATH.equals(servletPath))
+        {
+            if (this.isNoAuthPage(req))
+            {
+                this.continueFilterChain(context, req, res, chain);
+            }
+            else
+            {
+                LOGGER.debug("Redirecting to login page");
+
+                final HttpSession session = req.getSession();
+                session.setAttribute(REDIRECT_URI, req.getRequestURI());
+                String queryString = req.getQueryString();
+                if (queryString != null)
+                {
+                    // strip OAuth state / code params from URL query
+                    final String paramNamesStr = OAuth2Constants.CODE + '|' + OAuth2Constants.STATE + '|' + OAuth2Constants.SESSION_STATE;
+                    final String matchStr = "(?:(?:\\?|&)(?:" + paramNamesStr + ")=[^$&]*)";
+
+                    queryString = queryString.replaceAll(matchStr, "");
+                    if (!queryString.isEmpty() && queryString.startsWith("&"))
+                    {
+                        queryString = '?' + queryString.substring(1);
+                    }
+                    session.setAttribute(REDIRECT_QUERY, queryString);
+                }
+
+                String error;
+                if (authError instanceof OIDCAuthenticationError)
+                {
+                    error = ((OIDCAuthenticationError) authError).getDescription();
+                }
+                else if (authError instanceof AuthenticationError)
+                {
+                    error = authError.toString();
+                }
+                else
+                {
+                    error = req.getParameter(ERROR_PARAMETER);
+                }
+                final String redirectUrl = req.getContextPath() + "/page?pt=login"
+                        + (error == null ? "" : "&" + ERROR_PARAMETER + "=" + error);
+                res.sendRedirect(redirectUrl);
+            }
+        }
+        else
+        {
+            // likely an XHR call from Share JS - client is expected to handle this by reloading page, which would include re-handling of
+            // login if necessary
+            res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            res.flushBuffer();
+        }
     }
 
     /**
