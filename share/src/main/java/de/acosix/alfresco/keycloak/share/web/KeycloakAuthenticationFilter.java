@@ -83,6 +83,7 @@ import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElem
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.OAuth2Constants;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.TokenVerifier;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AdapterDeploymentContext;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AuthenticatedActionsHandler;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.BearerTokenRequestAuthenticator;
@@ -95,6 +96,7 @@ import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.PreAuthActionsHa
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.ServerRequest;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.rotation.AdapterTokenVerifier;
+import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.FilterRequestAuthenticator;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCFilterSessionStore;
 import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCServletHttpFacade;
@@ -832,7 +834,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             session.setAttribute(UserFactory.SESSION_ATTRIBUTE_EXTERNAL_AUTH, Boolean.TRUE);
             session.setAttribute(UserFactory.SESSION_ATTRIBUTE_KEY_USER_ID, userId);
 
-            this.handleAlfrescoResourceAccessToken(session);
+            this.handleAlfrescoResourceAccessToken(session, false);
         }
 
         if (facade.isEnded())
@@ -937,13 +939,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     protected void onKeycloakAuthenticationFailure(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain) throws IOException, ServletException
     {
-        LOGGER.warn("Keycloak authentication failed due to {}", req.getAttribute(AuthenticationError.class.getName()));
+        final Object authError = req.getAttribute(AuthenticationError.class.getName());
+        LOGGER.warn("Keycloak authentication failed due to {}",
+                authError != null ? authError : "<missing AuthenticationError details in request context>");
         LOGGER.debug("Resetting session and state cookie before continueing with filter chain");
 
         req.getSession().invalidate();
 
         this.resetStateCookies(context, req, res);
 
+        // TODO If error occurred as part of redirect back from Keycloak, strip state / code params from URL query
+        // TODO If login page may follow, see about providing error message
         this.continueFilterChain(context, req, res, chain);
     }
 
@@ -1091,9 +1097,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
             else
             {
-                // TODO Validate via custom /touch to check if session is still valid
-                // custom => handle potential 302 instead of 401 response from Keycloak-enabled backend
-                // custom => deal with redirect host being unknown (similar to our auth-server-url vs. directAuthHost case)
+                /*
+                 * Note: We could validate session with a custom call to /touch but we leave that to any remaining SSO filters. We patch
+                 * remoteClient to submit a custom HTTP header to backend to avoid 302 redirects to Keycloak which other SSO filters cannot
+                 * handle, and this also avoids any issues with (public) Keycloak auth server URL being unknown, e.g. in a Docker scenario
+                 */
                 LOGGER.debug(
                         "Skipping processKeycloakAuthenticationAndActions as non-Keycloak-authenticated session is already established");
                 skip = true;
@@ -1174,7 +1182,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         if (currentSession != null)
         {
             LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as Keycloak-authentication session is still valid");
-            this.handleAlfrescoResourceAccessToken(currentSession);
+            this.handleAlfrescoResourceAccessToken(currentSession, false);
             skip = true;
         }
         else
@@ -1333,8 +1341,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      *
      * @param session
      *            the active session managing any persistent access token state
+     * @param retry
+     *            {@code true} if the invocation of the operation is a retry as the result of a (hopefully temporary) verification failure
+     *            in the current thread
      */
-    protected void handleAlfrescoResourceAccessToken(final HttpSession session)
+    protected void handleAlfrescoResourceAccessToken(final HttpSession session, final boolean retry)
     {
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
                 .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
@@ -1390,28 +1401,44 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     }
 
                     final String tokenString = response.getToken();
-                    final AdapterTokenVerifier.VerifiedTokens tokens;
                     try
                     {
-                        tokens = AdapterTokenVerifier.verifyTokens(tokenString, response.getIdToken(), this.keycloakDeployment);
+                        // cannot use simple AdapterTokenVerifier.verifyTokens as it checks for wrong audience
+                        // we also do not care about any IDToken retrieved (implicitly) with token exchange
+                        final TokenVerifier<AccessToken> tokenVerifier = AdapterTokenVerifier.createVerifier(tokenString,
+                                this.keycloakDeployment, true, AccessToken.class);
+                        tokenVerifier.audience(alfrescoResourceName);
+                        tokenVerifier.issuedFor(this.keycloakDeployment.getResourceName());
+
+                        final AccessToken accessToken = tokenVerifier.verify().getToken();
+
+                        if ((accessToken.getExp() - this.keycloakDeployment.getTokenMinimumTimeToLive()) <= Time.currentTime())
+                        {
+                            throw new AlfrescoRuntimeException(
+                                    "Failed to retrieve / refresh the access token for the Alfresco backend with a longer time-to-live than the minimum");
+                        }
+
+                        token = new RefreshableAccessTokenHolder(response, new VerifiedTokens(accessToken, null));
+                        session.setAttribute(BACKEND_ACCESS_TOKEN_SESSION_KEY, token);
+                        LOGGER.debug("Successfully retrieved / refresh access token for Alfresco backend");
                     }
                     catch (final VerificationException vex)
                     {
-                        LOGGER.error("Verification of access token for Alfresco backend failed", vex);
-                        throw new AlfrescoRuntimeException("Failed to verify access token for Alfresco backend", vex);
+                        session.removeAttribute(BACKEND_ACCESS_TOKEN_SESSION_KEY);
+                        if (!retry && token != null && token.canRefresh())
+                        {
+                            LOGGER.warn(
+                                    "Verification of refreshed access token for Alfresco backend failed - removed previous token from the session before retrying token exchange from scratch");
+
+                            this.handleAlfrescoResourceAccessToken(session, true);
+                        }
+                        else
+                        {
+                            LOGGER.error("Verification of access token for Alfresco backend failed in retry", vex);
+                            throw new AlfrescoRuntimeException("Keycloak token exchange for access to backend yielded invalid access token",
+                                    vex);
+                        }
                     }
-
-                    final AccessToken accessToken = tokens.getAccessToken();
-
-                    if ((accessToken.getExpiration() - this.keycloakDeployment.getTokenMinimumTimeToLive()) <= Time.currentTime())
-                    {
-                        throw new AlfrescoRuntimeException(
-                                "Failed to retrieve / refresh the access token for the Alfresco backend with a longer time-to-live than the minimum");
-                    }
-
-                    token = new RefreshableAccessTokenHolder(response, tokens);
-                    session.setAttribute(BACKEND_ACCESS_TOKEN_SESSION_KEY, token);
-                    LOGGER.debug("Successfully retrieved / refresh access token for Alfresco backend");
                 }
             }
             else if (alfrescoResourceName == null)
@@ -1455,8 +1482,21 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         formParams.add(new BasicNameValuePair(OAuth2Constants.REQUESTED_TOKEN_TYPE, OAuth2Constants.REFRESH_TOKEN_TYPE));
 
         final OidcKeycloakAccount keycloakAccount = (OidcKeycloakAccount) session.getAttribute(KEYCLOAK_ACCOUNT_SESSION_KEY);
-        final String tokenString = keycloakAccount.getKeycloakSecurityContext().getTokenString();
-        formParams.add(new BasicNameValuePair(OAuth2Constants.SUBJECT_TOKEN, tokenString));
+        final RefreshableAccessTokenHolder accessToken = (RefreshableAccessTokenHolder) session.getAttribute(ACCESS_TOKEN_SESSION_KEY);
+        if (keycloakAccount != null)
+        {
+            final String tokenString = keycloakAccount.getKeycloakSecurityContext().getTokenString();
+            formParams.add(new BasicNameValuePair(OAuth2Constants.SUBJECT_TOKEN, tokenString));
+        }
+        else if (accessToken != null && accessToken.isActive())
+        {
+            formParams.add(new BasicNameValuePair(OAuth2Constants.SUBJECT_TOKEN, accessToken.getToken()));
+        }
+        else
+        {
+            throw new IllegalStateException(
+                    "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
+        }
 
         ClientCredentialsProviderUtils.setClientCredentials(this.keycloakDeployment, post, formParams);
 

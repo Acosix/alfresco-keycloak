@@ -133,6 +133,7 @@
         <property name="handlePublicApi" value="${keycloak.authentication.sso.handlePublicApi}" />
         <property name="loginPageUrl" value="${keycloak.authentication.loginPageUrl}" />
         <property name="originalRequestUrlHeaderName" value="${keycloak.authentication.sso.originalRequestUrlHeaderName}" />
+        <property name="noKeycloakHandlingHeaderName" value="x-${moduleId}-no-keycloak-handling" />
         <property name="bodyBufferLimit" value="${keycloak.authentication.bodyBufferLimit}" />
         <property name="sslRedirectPort" value="${keycloak.authentication.sslRedirectPort}" />
         <property name="keycloakDeployment" ref="keycloakDeployment" />

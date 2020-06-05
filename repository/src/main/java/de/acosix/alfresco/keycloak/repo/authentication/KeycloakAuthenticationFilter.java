@@ -116,6 +116,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     protected String originalRequestUrlHeaderName;
 
+    protected String noKeycloakHandlingHeaderName;
+
     protected int bodyBufferLimit = DEFAULT_BODY_BUFFER_LIMIT;
 
     // use 8443 as default SSL redirect based on Tomcat default server.xml configuration
@@ -145,6 +147,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         PropertyCheck.mandatory(this, "keycloakAuthenticationComponent", this.keycloakAuthenticationComponent);
         PropertyCheck.mandatory(this, "keycloakTicketTokenCache", this.keycloakTicketTokenCache);
         PropertyCheck.mandatory(this, "publicApiRuntimeContainer", this.publicApiRuntimeContainer);
+
+        PropertyCheck.mandatory(this, "noKeycloakHandlingHeaderName", this.noKeycloakHandlingHeaderName);
 
         // parent class does not check, so we do
         PropertyCheck.mandatory(this, "authenticationService", this.authenticationService);
@@ -220,6 +224,15 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     public void setOriginalRequestUrlHeaderName(final String originalRequestUrlHeaderName)
     {
         this.originalRequestUrlHeaderName = originalRequestUrlHeaderName;
+    }
+
+    /**
+     * @param noKeycloakHandlingHeaderName
+     *            the noKeycloakHandlingHeaderName to set
+     */
+    public void setNoKeycloakHandlingHeaderName(final String noKeycloakHandlingHeaderName)
+    {
+        this.noKeycloakHandlingHeaderName = noKeycloakHandlingHeaderName;
     }
 
     /**
@@ -710,6 +723,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         boolean skip = false;
 
         final String authHeader = req.getHeader(HEADER_AUTHORIZATION);
+        final String noKeycloakLoginRedirectHeader = req.getHeader(this.noKeycloakHandlingHeaderName);
 
         final String servletPath = req.getServletPath();
         final String pathInfo = req.getPathInfo();
@@ -765,8 +779,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
                     // cannot rely on session.isNew() to determine if this is a fresh login
                     // consider "fresh" login if issued within age limit (implicitly include any token refreshes performed client-side)
-                    final boolean isFreshLogin = accessToken.getIssuedAt()
-                            * 1000l > (System.currentTimeMillis() - FRESH_TOKEN_AGE_LIMIT_MS);
+                    final boolean isFreshLogin = accessToken.getIat() * 1000l > (System.currentTimeMillis() - FRESH_TOKEN_AGE_LIMIT_MS);
                     this.keycloakAuthenticationComponent.handleUserTokens(accessToken, accessToken, isFreshLogin);
 
                     // sessionUser should be guaranteed here, but still check - we need it for the cache key
@@ -857,9 +870,9 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                                 "Skipping processKeycloakAuthenticationAndActions as request is aimed at a Public v1 ReST API which does not require authentication");
                         skip = true;
                     }
-                    // check no-auth flag (derived e.g. from checking if target web script requires authentication) only after all
-                    // pre-emptive auth
-                    // request details have been checked
+
+                    // check no-auth flag (derived e.g. from checking if target web script requires authentication) as last resort to see if
+                    // we need to force authentication after invalidating session
                     else if (Boolean.TRUE.equals(req.getAttribute(NO_AUTH_REQUIRED)))
                     {
                         LOGGER.trace(
@@ -893,6 +906,13 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         {
             LOGGER.trace(
                     "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
+            skip = true;
+        }
+        else if (Boolean.parseBoolean(noKeycloakLoginRedirectHeader))
+        {
+            LOGGER.trace(
+                    "Skipping processKeycloakAuthenticationAndActions as client provided custom 'no Keycloak handling' header {} with value that resolves to 'true'",
+                    this.noKeycloakHandlingHeaderName);
             skip = true;
         }
         // TODO Check for login page URL (rarely configured since Repository by default has no login page since 5.0)

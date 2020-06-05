@@ -47,12 +47,17 @@
         </property>
     </bean>
 
-    <bean id="${moduleId}.maxRemoteClientRedirectPatch"
+    <bean id="${moduleId}.remoteClientNoKeycloakLoginRedirectHeaderPatch"
         class="de.acosix.alfresco.utility.common.spring.PropertyAlteringBeanFactoryPostProcessor">
         <property name="targetBeanName" value="connector.remoteclient.abstract" />
-        <property name="propertyName" value="maxRedirects" />
-        <property name="value" value="1" />
-        <property name="enabled" value="\${${moduleId}.surf.onlyOneRedirect.enabled}" />
+        <property name="propertyName" value="requestHeaders" />
+        <property name="valueMap">
+            <map>
+                <entry key="x-${moduleId}-no-keycloak-handling" value="true" />
+            </map>
+        </property>
+        <property name="enabled" value="true" />
+        <property name="merge" value="true" />
     </bean>
 
     <bean id="${moduleId}.SessionIdMapper" class="${project.artifactId}.web.DefaultSessionIdMapper">

@@ -245,7 +245,9 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
             }
             else
             {
-                LOGGER.warn("Failed to load user groups for {} with backend call resulting in HTTP {} response and message {}", userId,
+                // TODO Specific handling for expectable error codes (401 / 302)
+                LOGGER.warn("Failed to load user groups for {} with backend call resulting in HTTP response with status {} {}",
+                        userId,
                         res.getStatus().getCode(), res.getStatus().getMessage());
                 userGroupsCSVList = "";
             }

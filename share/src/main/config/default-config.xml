@@ -50,6 +50,8 @@
             <credentials>
                 <provider>secret</provider>
             </credentials>
+            <!-- for some reason, this is not a sane default in Keycloak Adapter config -->
+            <verify-token-audience>true</verify-token-audience>
         </keycloak-adapter-config>
     </config>
     

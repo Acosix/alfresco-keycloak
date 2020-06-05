@@ -71,6 +71,7 @@ public class AccessTokenAwareSlingshotAlfrescoConnector extends SlingshotAlfresc
         final RefreshableAccessTokenHolder endpointSpecificAccessToken = (RefreshableAccessTokenHolder) (session != null
                 ? session.getAttribute(KeycloakAuthenticationFilter.BACKEND_ACCESS_TOKEN_SESSION_KEY)
                 : null);
+
         if (endpointSpecificAccessToken != null)
         {
             if (endpointSpecificAccessToken.isActive())
