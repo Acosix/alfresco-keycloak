@@ -154,8 +154,16 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
                     if (userGroupsCSVList == null
                             || (lastLoaded != null && lastLoaded.getTime() + cachedUserGroupsTimeout < System.currentTimeMillis()))
                     {
-                        session.setAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS,
-                                this.loadUserGroupsCSVList((HttpServletRequest) request, session, userId));
+                        final String reloadedUserGroupsCSVList = this.loadUserGroupsCSVList((HttpServletRequest) request, session, userId);
+                        if (reloadedUserGroupsCSVList != null)
+                        {
+                            session.setAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS, reloadedUserGroupsCSVList);
+                        }
+                        else
+                        {
+                            LOGGER.debug(
+                                    "User groups session attribute cannot be updated after failure to load - will retry after next cache timeout");
+                        }
                         session.setAttribute(SESSION_ATTRIBUTE_KEY_USER_GROUPS_LAST_LOADED, new Date());
                     }
                     else if (lastLoaded == null)
@@ -245,17 +253,23 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
             }
             else
             {
-                // TODO Specific handling for expectable error codes (401 / 302)
-                LOGGER.warn("Failed to load user groups for {} with backend call resulting in HTTP response with status {} {}",
-                        userId,
-                        res.getStatus().getCode(), res.getStatus().getMessage());
-                userGroupsCSVList = "";
+                if (res.getStatus().getCode() == 401)
+                {
+                    LOGGER.debug("Failed to load user groups for {} with backend call as authentication was not / no longer active",
+                            userId);
+                }
+                else
+                {
+                    LOGGER.warn("Failed to load user groups for {} with backend call resulting in HTTP response with status {} {}", userId,
+                            res.getStatus().getCode(), res.getStatus().getMessage());
+                }
+                userGroupsCSVList = null;
             }
         }
         catch (final ConnectorServiceException | ParseException ex)
         {
             LOGGER.error("Failed to load user groups for {}", userId, ex);
-            userGroupsCSVList = "";
+            userGroupsCSVList = null;
         }
 
         return userGroupsCSVList;
