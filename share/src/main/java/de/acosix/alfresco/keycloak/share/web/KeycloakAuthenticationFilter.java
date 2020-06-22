@@ -23,6 +23,7 @@ import java.io.InputStream;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +71,7 @@ import org.springframework.extensions.surf.RequestContext;
 import org.springframework.extensions.surf.RequestContextUtil;
 import org.springframework.extensions.surf.ServletUtil;
 import org.springframework.extensions.surf.UserFactory;
+import org.springframework.extensions.surf.exception.ConnectorServiceException;
 import org.springframework.extensions.surf.mvc.PageViewResolver;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
 import org.springframework.extensions.surf.types.Page;
@@ -77,7 +79,10 @@ import org.springframework.extensions.surf.types.PageType;
 import org.springframework.extensions.surf.util.URLEncoder;
 import org.springframework.extensions.webscripts.Description.RequiredAuthentication;
 import org.springframework.extensions.webscripts.Status;
+import org.springframework.extensions.webscripts.connector.Connector;
+import org.springframework.extensions.webscripts.connector.ConnectorContext;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
+import org.springframework.extensions.webscripts.connector.Response;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -139,8 +144,12 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     // copied from SSOAuthenticationFilter (inaccessible constant there)
     public static final String ERROR_PARAMETER = "error";
 
-    // well known value - need not be accessible to other classes
+    // well known values - need not be accessible to other classes
     private static final String HEADER_AUTHORIZATION = "Authorization";
+
+    private static final String HEADER_WWWAUTHENTICATE = "WWW-Authenticate";
+
+    private static final String HEADER_ACCEPT_LANGUAGE = "Accept-Language";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAuthenticationFilter.class);
 
@@ -686,13 +695,25 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
         else
         {
+            boolean continueFilterChain = true;
             if (authOutcome == AuthOutcome.NOT_ATTEMPTED)
             {
-                LOGGER.debug("No authentication took place - continueing with filter chain processing");
+                LOGGER.debug("No authentication took place");
 
-                if (this.loginFormEnhancementEnabled)
+                if (this.isBackendRequiringBasicOrKeycloakAuthentication(req, req.getSession()))
                 {
-                    this.prepareLoginFormEnhancement(context, req, res, authenticator);
+                    // any pages / URLs requiring no authentication have already been handled in checkForSkipCondition
+                    continueFilterChain = false;
+                    this.redirectToLoginPage(req, res, null);
+                }
+
+                if (continueFilterChain)
+                {
+                    LOGGER.debug("Continueing with filter chain processing");
+                    if (this.loginFormEnhancementEnabled)
+                    {
+                        this.prepareLoginFormEnhancement(context, req, res, authenticator);
+                    }
                 }
             }
             else
@@ -700,8 +721,12 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 LOGGER.warn("Unexpected authentication outcome {} - continueing with filter chain processing", authOutcome);
             }
 
-            this.continueFilterChain(context, req, res, chain);
+            if (continueFilterChain)
+            {
+                this.continueFilterChain(context, req, res, chain);
+            }
         }
+
     }
 
     /**
@@ -957,6 +982,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         this.resetStateCookies(context, req, res);
 
+        // need to check for no auth page in this case since it may be that a pro-active authentication failed but isn't actually required
+        // to succeed to access the target
         final String servletPath = req.getServletPath();
         if (PAGE_SERVLET_PATH.equals(servletPath))
         {
@@ -966,47 +993,59 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
             else
             {
-                LOGGER.debug("Redirecting to login page");
-
-                final HttpSession session = req.getSession();
-                session.setAttribute(REDIRECT_URI, req.getRequestURI());
-                String queryString = req.getQueryString();
-                if (queryString != null)
-                {
-                    // strip OAuth state / code params from URL query
-                    final String paramNamesStr = OAuth2Constants.CODE + '|' + OAuth2Constants.STATE + '|' + OAuth2Constants.SESSION_STATE;
-                    final String matchStr = "(?:(?:\\?|&)(?:" + paramNamesStr + ")=[^$&]*)";
-
-                    queryString = queryString.replaceAll(matchStr, "");
-                    if (!queryString.isEmpty() && queryString.startsWith("&"))
-                    {
-                        queryString = '?' + queryString.substring(1);
-                    }
-                    session.setAttribute(REDIRECT_QUERY, queryString);
-                }
-
-                String error;
-                if (authError instanceof OIDCAuthenticationError)
-                {
-                    error = ((OIDCAuthenticationError) authError).getDescription();
-                }
-                else if (authError instanceof AuthenticationError)
-                {
-                    error = authError.toString();
-                }
-                else
-                {
-                    error = req.getParameter(ERROR_PARAMETER);
-                }
-                final String redirectUrl = req.getContextPath() + "/page?pt=login"
-                        + (error == null ? "" : "&" + ERROR_PARAMETER + "=" + URLEncoder.encode(error));
-                res.sendRedirect(redirectUrl);
+                this.redirectToLoginPage(req, res, authError);
             }
         }
         else
         {
-            // likely an XHR call from Share JS - client is expected to handle this by reloading page, which would include re-handling of
-            // login if necessary
+            this.redirectToLoginPage(req, res, authError);
+        }
+    }
+
+    protected void redirectToLoginPage(final HttpServletRequest req, final HttpServletResponse res, final Object authError)
+            throws IOException
+    {
+        LOGGER.debug("Redirecting to login page");
+
+        final HttpSession session = req.getSession();
+        session.setAttribute(REDIRECT_URI, req.getRequestURI());
+        String queryString = req.getQueryString();
+        if (queryString != null)
+        {
+            // strip OAuth state / code params from URL query
+            final String paramNamesStr = OAuth2Constants.CODE + '|' + OAuth2Constants.STATE + '|' + OAuth2Constants.SESSION_STATE;
+            final String matchStr = "(?:(?:\\?|&)(?:" + paramNamesStr + ")=[^$&]*)";
+
+            queryString = queryString.replaceAll(matchStr, "");
+            if (!queryString.isEmpty() && queryString.startsWith("&"))
+            {
+                queryString = '?' + queryString.substring(1);
+            }
+            session.setAttribute(REDIRECT_QUERY, queryString);
+        }
+
+        if (PAGE_SERVLET_PATH.equals(req.getServletPath()))
+        {
+            String error;
+            if (authError instanceof OIDCAuthenticationError)
+            {
+                error = ((OIDCAuthenticationError) authError).getDescription();
+            }
+            else if (authError instanceof AuthenticationError)
+            {
+                error = authError.toString();
+            }
+            else
+            {
+                error = req.getParameter(ERROR_PARAMETER);
+            }
+
+            final String redirectUrl = req.getContextPath() + "/page?pt=login"
+                    + (error == null ? "" : "&" + ERROR_PARAMETER + "=" + URLEncoder.encode(error));
+            res.sendRedirect(redirectUrl);
+        }
+        else
+        {
             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             res.flushBuffer();
         }
@@ -1392,6 +1431,81 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 ? Arrays.asList(cookies).stream().map(Cookie::getName).filter(stateCookieName::equals).findAny().isPresent()
                 : false;
         return hasStateCookie;
+    }
+
+    /**
+     * Checks if the backend requires HTTP Basic or Keycloak authentication for the current request context, which may include an externally
+     * authenticated user.
+     *
+     * @return {@code true} if the backend requires HTTP Basic or Keycloak authentication, {@code false} otherwise
+     */
+    protected boolean isBackendRequiringBasicOrKeycloakAuthentication(final HttpServletRequest req, final HttpSession session)
+    {
+        LOGGER.debug("Checking if backend requires authentication");
+
+        String userId = AuthenticationUtil.getUserId(req);
+        if (userId == null)
+        {
+            userId = req.getRemoteUser();
+            if (userId != null)
+            {
+                LOGGER.debug("Considering externally authenticated user {}", userId);
+                session.setAttribute(UserFactory.SESSION_ATTRIBUTE_EXTERNAL_AUTH, Boolean.TRUE);
+            }
+        }
+
+        boolean requiresAuth = false;
+        try
+        {
+            final Connector conn = this.connectorService.getConnector(this.primaryEndpoint, userId, session);
+
+            ConnectorContext ctx;
+            if (req.getHeader(HEADER_ACCEPT_LANGUAGE) != null)
+            {
+                ctx = new ConnectorContext(null, Collections.singletonMap(HEADER_ACCEPT_LANGUAGE, req.getHeader(HEADER_ACCEPT_LANGUAGE)));
+            }
+            else
+            {
+                ctx = new ConnectorContext();
+            }
+
+            final Response remoteRes = conn.call("/touch", ctx);
+            switch (remoteRes.getStatus().getCode())
+            {
+                case Status.STATUS_UNAUTHORIZED:
+                    final String authenticate = remoteRes.getStatus().getHeaders().get(HEADER_WWWAUTHENTICATE);
+                    requiresAuth = authenticate.equals("Basic") || authenticate.startsWith("Basic ");
+                    if (requiresAuth)
+                    {
+                        LOGGER.debug("Backend requires HTTP Basic authentication");
+                    }
+                    break;
+                case Status.STATUS_FOUND:
+                    final String redirectTarget = remoteRes.getStatus().getHeaders().get("Location");
+                    final String authServerBaseUrl = this.keycloakDeployment.getAuthServerBaseUrl();
+                    requiresAuth = redirectTarget.startsWith(authServerBaseUrl);
+                    if (requiresAuth)
+                    {
+                        LOGGER.debug("Backend requires Keycloak authentication");
+                    }
+                    break;
+                default: // no special handling for most status codes
+            }
+
+            if (!requiresAuth)
+            {
+                LOGGER.debug("Backend does not require HTTP Basic or Keycloak authentication");
+            }
+        }
+        catch (final ConnectorServiceException csex)
+        {
+            LOGGER.error(
+                    "Could not determine if backend requires HTTP Basic or Keycloak authentication due to technical error - going to assume that it does",
+                    csex);
+            requiresAuth = true;
+        }
+
+        return requiresAuth;
     }
 
     /**
