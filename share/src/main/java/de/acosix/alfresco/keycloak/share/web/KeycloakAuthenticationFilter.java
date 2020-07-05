@@ -135,6 +135,8 @@ import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
 {
 
+    public static final String KEYCLOAK_AUTHENTICATED_COOKIE = "Acosix." + KeycloakAuthenticationFilter.class.getSimpleName();
+
     public static final String KEYCLOAK_ACCOUNT_SESSION_KEY = KeycloakAccount.class.getName();
 
     public static final String ACCESS_TOKEN_SESSION_KEY = AccessToken.class.getName();
@@ -168,6 +170,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     private static final String LOGIN_PATH_INFORMATION = "/dologin";
 
     private static final String LOGOUT_PATH_INFORMATION = "/dologout";
+
+    private static final String LOGOUT_SERVICE_PATH = "/service/dologout";
 
     private static final int DEFAULT_BODY_BUFFER_LIMIT = 32 * 1024;// 32 KiB
 
@@ -491,6 +495,13 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
             tokenStore.logout();
 
+            final Cookie keycloakCookie = new Cookie(KEYCLOAK_AUTHENTICATED_COOKIE, "false");
+            keycloakCookie.setPath(context.getContextPath());
+            keycloakCookie.setMaxAge(0);
+            keycloakCookie.setHttpOnly(true);
+            keycloakCookie.setSecure(req.isSecure());
+            res.addCookie(keycloakCookie);
+
             chain.doFilter(req, res);
         }
         else
@@ -684,7 +695,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         {
             this.onKeycloakAuthenticationSuccess(context, req, res, chain, facade, tokenStore);
         }
-        else if (authOutcome == AuthOutcome.NOT_ATTEMPTED && this.forceSso)
+        // send SSO challenge if SSO is enforced or user previously used Keycloak
+        // node: explicit logout resets relevant cookie for previous Keycloak use
+        else if (authOutcome == AuthOutcome.NOT_ATTEMPTED && (this.forceSso || this.hasKeycloakCookie(req)))
         {
             LOGGER.debug("No authentication took place - sending authentication challenge");
             authenticator.getChallenge().challenge(facade);
@@ -753,6 +766,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         captureFacade.getCookies().stream().map(cookie -> {
             cookie.setPath(context.getContextPath());
+            cookie.setHttpOnly(true);
+            cookie.setSecure(req.isSecure());
             return cookie;
         }).forEach(res::addCookie);
 
@@ -822,6 +837,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         captureFacade.getCookies().stream().map(cookie -> {
             // always scope to context path - otherwise we end up getting multiple cookies for multiple paths
             cookie.setPath(context.getContextPath());
+            cookie.setHttpOnly(true);
+            cookie.setSecure(req.isSecure());
             return cookie;
         }).forEach(res::addCookie);
 
@@ -952,6 +969,36 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         LOGGER.debug("Continueing with filter chain processing");
         this.continueFilterChain(context, req, res, chain);
+    }
+
+    protected void ensureKeycloakCookieSet(final HttpServletRequest req, final HttpServletResponse res)
+    {
+        final boolean hasKeycloakCookie = this.hasKeycloakCookie(req);
+
+        if (!hasKeycloakCookie)
+        {
+            final Cookie keycloakCookie = new Cookie(KEYCLOAK_AUTHENTICATED_COOKIE, "true");
+            keycloakCookie.setPath(req.getServletContext().getContextPath());
+            keycloakCookie.setMaxAge(-1);
+            keycloakCookie.setHttpOnly(true);
+            keycloakCookie.setSecure(req.isSecure());
+            res.addCookie(keycloakCookie);
+        }
+    }
+
+    protected boolean hasKeycloakCookie(final HttpServletRequest req)
+    {
+        final Cookie[] cookies = req.getCookies();
+        boolean hasKeycloakCookie = false;
+        if (cookies != null)
+        {
+            for (final Cookie cookie : cookies)
+            {
+                hasKeycloakCookie = hasKeycloakCookie
+                        || (KEYCLOAK_AUTHENTICATED_COOKIE.equalsIgnoreCase(cookie.getName()) && Boolean.parseBoolean(cookie.getValue()));
+            }
+        }
+        return hasKeycloakCookie;
     }
 
     /**
@@ -1280,6 +1327,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         if (currentSession != null)
         {
             LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as Keycloak-authentication session is still valid");
+            this.ensureKeycloakCookieSet(req, res);
             this.handleAlfrescoResourceAccessToken(currentSession, false);
             skip = true;
         }
@@ -1412,7 +1460,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     {
         final String servletPath = req.getServletPath();
         final String pathInfo = req.getPathInfo();
-        final boolean isLogoutRequest = PAGE_SERVLET_PATH.equals(servletPath) && LOGOUT_PATH_INFORMATION.equals(pathInfo);
+        final boolean isLogoutRequest = (PAGE_SERVLET_PATH.equals(servletPath) && LOGOUT_PATH_INFORMATION.equals(pathInfo))
+                || LOGOUT_SERVICE_PATH.equals(servletPath);
         return isLogoutRequest;
     }
 
@@ -1731,8 +1780,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 final Cookie resetCookie = new Cookie(cookie.getName(), "");
                 resetCookie.setPath(context.getContextPath());
                 resetCookie.setMaxAge(0);
-                resetCookie.setHttpOnly(false);
-                resetCookie.setSecure(false);
+                resetCookie.setHttpOnly(true);
+                resetCookie.setSecure(req.isSecure());
                 res.addCookie(resetCookie);
             });
         }

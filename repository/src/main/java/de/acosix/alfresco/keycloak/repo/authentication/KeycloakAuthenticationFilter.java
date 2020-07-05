@@ -581,7 +581,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             final OIDCFilterSessionStore tokenStore) throws IOException, ServletException
     {
         final HttpSession session = req.getSession();
-        final Object keycloakAccount = session != null ? session.getAttribute(KeycloakAccount.class.getName()) : null;
+        final Object keycloakAccount = session.getAttribute(KeycloakAccount.class.getName());
         if (keycloakAccount instanceof OidcKeycloakAccount)
         {
             final KeycloakSecurityContext keycloakSecurityContext = ((OidcKeycloakAccount) keycloakAccount).getKeycloakSecurityContext();
@@ -1144,8 +1144,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                 final Cookie resetCookie = new Cookie(cookie.getName(), "");
                 resetCookie.setPath(context.getContextPath());
                 resetCookie.setMaxAge(0);
-                resetCookie.setHttpOnly(false);
-                resetCookie.setSecure(false);
+                resetCookie.setHttpOnly(true);
+                resetCookie.setSecure(req.isSecure());
                 res.addCookie(resetCookie);
             });
         }
