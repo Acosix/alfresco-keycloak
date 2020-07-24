@@ -693,7 +693,14 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         }
         LOGGER.trace("Resetting session and state cookie before continueing with filter chain");
 
-        req.getSession().invalidate();
+        try
+        {
+            req.getSession().invalidate();
+        }
+        catch (final IllegalStateException ignore)
+        {
+            // Keycloak authenticator may have already invalidated it - no way to check and avoid exception
+        }
 
         this.resetStateCookies(context, req, res);
 
@@ -723,13 +730,13 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         boolean skip = false;
 
         final String authHeader = req.getHeader(HEADER_AUTHORIZATION);
-        final String noKeycloakLoginRedirectHeader = req.getHeader(this.noKeycloakHandlingHeaderName);
+        final String noKeycloakHandlingRedirectHeader = req.getHeader(this.noKeycloakHandlingHeaderName);
 
         final String servletPath = req.getServletPath();
         final String pathInfo = req.getPathInfo();
         final String servletRequestUri = servletPath + (pathInfo != null ? pathInfo : "");
 
-        final SessionUser sessionUser = this.getSessionUser(context, req, res, true);
+        SessionUser sessionUser = this.getSessionUser(context, req, res, true);
         HttpSession session = req.getSession();
 
         final boolean publicRestApi = API_SERVLET_PATH.equals(servletPath);
@@ -743,6 +750,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.debug("Session {} for Keycloak-authenticated user {} was invalidated by back-channel logout", session.getId(),
                     AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
             this.invalidateSession(req);
+            sessionUser = null;
             session = req.getSession(false);
         }
 
@@ -908,7 +916,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                     "Skipping processKeycloakAuthenticationAndActions as filter higher up in chain determined authentication as not required");
             skip = true;
         }
-        else if (Boolean.parseBoolean(noKeycloakLoginRedirectHeader))
+        else if (Boolean.parseBoolean(noKeycloakHandlingRedirectHeader))
         {
             LOGGER.trace(
                     "Skipping processKeycloakAuthenticationAndActions as client provided custom 'no Keycloak handling' header {} with value that resolves to 'true'",

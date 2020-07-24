@@ -1025,7 +1025,14 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 authError != null ? authError : "<missing AuthenticationError details in request context>");
         LOGGER.debug("Resetting session and state cookie before continueing with filter chain");
 
-        req.getSession().invalidate();
+        try
+        {
+            req.getSession().invalidate();
+        }
+        catch (final IllegalStateException ignore)
+        {
+            // Keycloak authenticator may have already invalidated it - no way to check and avoid exception
+        }
 
         this.resetStateCookies(context, req, res);
 
@@ -1126,6 +1133,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         {
             // variant with request AND response is only available in Spring 5+
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes((HttpServletRequest) request));
+            // a bit redundant since request attributes already holds the request, but hey, that's Alfresco
+            // ServletUtil uses an attribute in the request attributes object separate from the main request
+            // see ServletUtil.VIEW_REQUEST_ATTRIBUTE_NAME
+            ServletUtil.setRequest((HttpServletRequest) request);
         }
 
         try
@@ -1589,7 +1600,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     token = (RefreshableAccessTokenHolder) backendAccessTokenCandidate;
                 }
 
-                // not really feasible to synchronise / lock concurrent refresh on token
+                // not really feasible to synchronise / lock concurrent refresh on token, especially given that we cannot lock across
+                // potentially multiple Share instances
                 // not a big problem - apart from wasted CPU cycles / latency - since each concurrently refreshed token is valid
                 // independently
                 if (token == null || !token.isActive()

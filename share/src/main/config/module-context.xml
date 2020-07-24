@@ -53,6 +53,7 @@
         <property name="propertyName" value="requestHeaders" />
         <property name="valueMap">
             <map>
+                <!-- unless we pro-actively provide a bearer token, repository should not handle Keycloak on remote API for requests from Share -->
                 <entry key="x-${moduleId}-no-keycloak-handling" value="true" />
             </map>
         </property>
