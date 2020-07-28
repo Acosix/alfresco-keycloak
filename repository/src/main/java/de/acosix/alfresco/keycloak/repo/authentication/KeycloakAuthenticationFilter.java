@@ -94,6 +94,12 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     // copied from WebScriptRequestImpl due to accessible constraints
     private static final String ARG_GUEST = "guest";
 
+    // copied from BasicHttpAuthenticator (inline literal constant)
+    private static final String ARG_ALF_TICKET = "alf_ticket";
+
+    // copied from base class - inaccessible there
+    private static final String LOGIN_EXTERNAL_AUTH = "_alfExternalAuth";
+
     private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAuthenticationFilter.class);
 
     private static final String HEADER_AUTHORIZATION = "Authorization";
@@ -737,7 +743,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         final String servletRequestUri = servletPath + (pathInfo != null ? pathInfo : "");
 
         SessionUser sessionUser = this.getSessionUser(context, req, res, true);
-        HttpSession session = req.getSession();
+        HttpSession session = req.getSession(false);
 
         final boolean publicRestApi = API_SERVLET_PATH.equals(servletPath);
         final boolean noAuthPublicRestApiWebScript = publicRestApi
@@ -776,6 +782,10 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
+            if (session == null)
+            {
+                throw new IllegalStateException("Session should have been initialised by Bearer authentication in remote user mapper");
+            }
             final AccessToken accessToken = (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName());
             if (accessToken != null)
             {
@@ -929,6 +939,85 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     }
 
     /**
+     *
+     * {@inheritDoc}
+     */
+    // mostly copied from base class
+    // overridden / patched to avoid forced session initialisation
+    @Override
+    protected SessionUser getSessionUser(final ServletContext servletContext, final HttpServletRequest httpServletRequest,
+            final HttpServletResponse httpServletResponse, final boolean externalAuth)
+    {
+        String userId = null;
+        if (this.remoteUserMapper != null
+                && (!(this.remoteUserMapper instanceof ActivateableBean) || ((ActivateableBean) this.remoteUserMapper).isActive()))
+        {
+            userId = this.remoteUserMapper.getRemoteUser(httpServletRequest);
+            LOGGER.trace("Found a remote user: {}", AlfrescoCompatibilityUtil.maskUsername(userId));
+        }
+
+        final String sessionAttrib = this.getUserAttributeName();
+        // deviation: don't force session
+        HttpSession session = httpServletRequest.getSession(false);
+        SessionUser sessionUser = session != null ? (SessionUser) session.getAttribute(sessionAttrib) : null;
+
+        if (sessionUser != null)
+        {
+            try
+            {
+                LOGGER.trace("Found a session user: {}", AlfrescoCompatibilityUtil.maskUsername(sessionUser.getUserName()));
+                this.authenticationService.validate(sessionUser.getTicket());
+                if (externalAuth)
+                {
+                    session.setAttribute(LOGIN_EXTERNAL_AUTH, Boolean.TRUE);
+                }
+                else
+                {
+                    session.removeAttribute(LOGIN_EXTERNAL_AUTH);
+                }
+            }
+            catch (final AuthenticationException e)
+            {
+                LOGGER.debug("The ticket may have expired or the person could have been removed, invalidating session.", e);
+                this.invalidateSession(httpServletRequest);
+                sessionUser = null;
+            }
+        }
+
+        if (userId != null)
+        {
+            LOGGER.debug("We have a previously-cached user with the wrong identity - replace them.");
+
+            if (sessionUser != null && !sessionUser.getUserName().equals(userId))
+            {
+                LOGGER.debug("Removing the session user, invalidating session.");
+                session.removeAttribute(sessionAttrib);
+                session.invalidate();
+                sessionUser = null;
+            }
+
+            if (sessionUser == null)
+            {
+                LOGGER.debug("Propagating through the user identity: {}", AlfrescoCompatibilityUtil.maskUsername(userId));
+                this.authenticationComponent.setCurrentUser(userId);
+                session = httpServletRequest.getSession();
+
+                try
+                {
+                    sessionUser = this.createUserEnvironment(session, this.authenticationService.getCurrentUserName(),
+                            this.authenticationService.getCurrentTicket(), true);
+                }
+                catch (final Throwable e)
+                {
+                    LOGGER.debug("Error during ticket validation and user creation: {}", e.getMessage(), e);
+                }
+            }
+        }
+
+        return sessionUser;
+    }
+
+    /**
      * Checks whether a particular request is aimed at a Public v1 ReST API web script which does not require any authentication.
      *
      * @param req
@@ -1072,7 +1161,12 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             throws IOException, ServletException
     {
         boolean ticketValid = false;
-        final String ticket = req.getParameter(ARG_TICKET);
+        // prefer ticket over alf_ticket, as default Alfresco filters only handle ticket
+        String ticket = req.getParameter(ARG_TICKET);
+        if (ticket == null)
+        {
+            ticket = req.getParameter(ARG_ALF_TICKET);
+        }
 
         if (ticket != null && ticket.length() != 0)
         {
@@ -1081,20 +1175,19 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
             try
             {
-                final SessionUser user = this.getSessionUser(context, req, resp, true);
+                // implicitly validates the ticket of the session user is still valid
+                SessionUser user = this.getSessionUser(context, req, resp, true);
 
                 if (user != null && !ticket.equals(user.getTicket()))
                 {
                     LOGGER.debug("Invalidating current session as URL-provided authentication ticket does not match");
                     this.invalidateSession(req);
+                    user = null;
                 }
 
                 if (user == null)
                 {
                     this.authenticationService.validate(ticket);
-
-                    this.createUserEnvironment(req.getSession(), this.authenticationService.getCurrentUserName(),
-                            this.authenticationService.getCurrentTicket(), true);
 
                     LOGGER.debug("Authenticated user {} via URL-provided authentication ticket",
                             AlfrescoCompatibilityUtil.maskUsername(this.authenticationService.getCurrentUserName()));

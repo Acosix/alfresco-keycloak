@@ -17,22 +17,58 @@ package de.acosix.alfresco.keycloak.repo.authentication;
 
 import java.io.IOException;
 
+import javax.servlet.FilterChain;
+import javax.servlet.ServletContext;
 import javax.servlet.ServletException;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.alfresco.repo.SessionUser;
-import org.alfresco.repo.webdav.auth.AuthenticationDriver;
-import org.alfresco.repo.webdav.auth.BaseAuthenticationFilter;
+import org.alfresco.repo.web.scripts.bean.LoginPost;
 import org.alfresco.web.app.servlet.WebscriptCookieAuthenticationFilter;
 
 /**
- * This sub-class of the default web script cookie filter only exists to ensure the proper session attribute names are used for mapping the
- * authenticated session user.
+ * This sub-class of the default web script cookie filter only exists to ensure that the filter does NOT completely intercept the call for
+ * the {@link LoginPost login web script}, otherwise clients relying on the response body may not function correctly, and that it ensures
+ * proper any previously existing session is invalidated when the login web script is called with explicit credentials.
  *
  * @author Axel Faust
  */
 public class KeycloakWebScriptCookieAuthenticationFilter extends WebscriptCookieAuthenticationFilter
 {
+
+    // copied from base class - inaccessible otherwise
+    private static final String API_LOGIN = "/api/login";
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public void doFilter(final ServletContext context, final ServletRequest sreq, final ServletResponse sresp, final FilterChain chain)
+            throws IOException, ServletException
+    {
+        final HttpServletRequest req = (HttpServletRequest) sreq;
+
+        if (API_LOGIN.equals(req.getPathInfo()) && req.getMethod().equalsIgnoreCase("POST"))
+        {
+            final HttpSession session = req.getSession(false);
+            if (session != null)
+            {
+                session.invalidate();
+            }
+
+            // from here on the default web script will handle things, including - most importantly - the response instead of 204 no content
+            // response by base class
+            chain.doFilter(req, sresp);
+        }
+        else
+        {
+            chain.doFilter(sreq, sresp);
+        }
+    }
 
     /**
      *
@@ -41,14 +77,7 @@ public class KeycloakWebScriptCookieAuthenticationFilter extends WebscriptCookie
     @Override
     protected SessionUser createUserEnvironment(final HttpSession session, final String userName) throws IOException, ServletException
     {
-        final SessionUser sessionUser = super.createUserEnvironment(session, userName);
-
-        // ensure all common attribute names are mapped
-        // Alfresco is really inconsistent with these attribute names
-        session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
-        session.setAttribute(BaseAuthenticationFilter.AUTHENTICATION_USER, sessionUser);
-
-        return sessionUser;
+        throw new UnsupportedOperationException("Should never be called");
     }
 
     /**
@@ -59,13 +88,6 @@ public class KeycloakWebScriptCookieAuthenticationFilter extends WebscriptCookie
     protected SessionUser createUserEnvironment(final HttpSession session, final String userName, final String ticket,
             final boolean externalAuth) throws IOException, ServletException
     {
-        final SessionUser sessionUser = super.createUserEnvironment(session, userName, ticket, externalAuth);
-
-        // ensure all common attribute names are mapped
-        // Alfresco is really inconsistent with these attribute names
-        session.setAttribute(AuthenticationDriver.AUTHENTICATION_USER, sessionUser);
-        session.setAttribute(BaseAuthenticationFilter.AUTHENTICATION_USER, sessionUser);
-
-        return sessionUser;
+        throw new UnsupportedOperationException("Should never be called");
     }
 }
