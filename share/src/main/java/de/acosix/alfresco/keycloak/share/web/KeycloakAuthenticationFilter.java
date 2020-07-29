@@ -74,6 +74,7 @@ import org.springframework.extensions.surf.UserFactory;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
 import org.springframework.extensions.surf.mvc.PageViewResolver;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
+import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.extensions.surf.types.Page;
 import org.springframework.extensions.surf.types.PageType;
 import org.springframework.extensions.surf.util.URLEncoder;
@@ -84,8 +85,6 @@ import org.springframework.extensions.webscripts.connector.ConnectorContext;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
 import org.springframework.extensions.webscripts.connector.Response;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.context.request.ServletRequestAttributes;
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
@@ -438,32 +437,53 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                         this.keycloakDeployment.getAuthServerBaseUrl());
             }
 
-            if (keycloakDeploymentReady && this.isLogoutRequest(req))
+            // Alfresco handling of RequestContext / ServletUtil / any other context holder is so immensely broken, it isn't even funny
+            // Request context is indirectly required for some framework page lookups (which lack null guards) as part of our handling
+            // Our context is almost guaranteed to be overridden by some Surf component, which repeats the whole initialisation dance
+            RequestContext requestContext;
+            try
             {
-                this.processLogout(context, req, res, chain);
+                requestContext = RequestContextUtil.initRequestContext(this.applicationContext, req, true);
             }
-            else
+            catch (final Exception ex)
             {
-                final boolean skip = !keycloakDeploymentReady || this.checkForSkipCondition(req, res);
+                LOGGER.error("Error calling initRequestContext", ex);
+                throw new ServletException(ex);
+            }
 
-                if (skip)
+            try
+            {
+                if (keycloakDeploymentReady && this.isLogoutRequest(req))
                 {
-                    if (keycloakDeploymentReady && !AuthenticationUtil.isAuthenticated(req) && this.loginFormEnhancementEnabled
-                            && this.isLoginPage(req))
-                    {
-                        this.prepareLoginFormEnhancement(context, req, res);
-                    }
-
-                    this.continueFilterChain(context, request, response, chain);
-                }
-                else if (res.isCommitted())
-                {
-                    LOGGER.debug("Response has already been committed by skip condition-check - not processing it any further");
+                    this.processLogout(context, req, res, chain);
                 }
                 else
                 {
-                    this.processKeycloakAuthenticationAndActions(context, req, res, chain);
+                    final boolean skip = !keycloakDeploymentReady || this.checkForSkipCondition(req, res);
+
+                    if (skip)
+                    {
+                        if (!AuthenticationUtil.isAuthenticated(req) && keycloakDeploymentReady && this.loginFormEnhancementEnabled
+                                && this.isLoginPage(req))
+                        {
+                            this.prepareLoginFormEnhancement(context, req, res);
+                        }
+
+                        this.continueFilterChain(context, request, response, chain);
+                    }
+                    else if (res.isCommitted())
+                    {
+                        LOGGER.debug("Response has already been committed by skip condition-check - not processing it any further");
+                    }
+                    else
+                    {
+                        this.processKeycloakAuthenticationAndActions(context, req, res, chain);
+                    }
                 }
+            }
+            finally
+            {
+                requestContext.release();
             }
         }
         finally
@@ -1127,34 +1147,14 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final HttpSession session = ((HttpServletRequest) request).getSession(false);
         final Object keycloakAccount = session != null ? session.getAttribute(KEYCLOAK_ACCOUNT_SESSION_KEY) : null;
 
-        // FrameworkServlet is not involved in all requests (e.g. when proxy controller is involved)
-        // ensure ServletUtil.getRequest() / getSession() always works regardless (for AccessTokenAwareSlingshotAlfrescoConnector)
-        if (request instanceof HttpServletRequest)
+        // no point in forwarding to default SSO filter if already authenticated
+        if (this.defaultSsoFilter != null && keycloakAccount == null && !this.ignoreDefaultFilter)
         {
-            // variant with request AND response is only available in Spring 5+
-            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes((HttpServletRequest) request));
-            // a bit redundant since request attributes already holds the request, but hey, that's Alfresco
-            // ServletUtil uses an attribute in the request attributes object separate from the main request
-            // see ServletUtil.VIEW_REQUEST_ATTRIBUTE_NAME
-            ServletUtil.setRequest((HttpServletRequest) request);
+            this.defaultSsoFilter.doFilter(context, request, response, chain);
         }
-
-        try
+        else
         {
-            // no point in forwarding to default SSO filter if already authenticated
-            if (this.defaultSsoFilter != null && keycloakAccount == null && !this.ignoreDefaultFilter)
-            {
-                this.defaultSsoFilter.doFilter(context, request, response, chain);
-            }
-            else
-            {
-                chain.doFilter(request, response);
-            }
-        }
-        finally
-        {
-            // avoid leak - we are the top-most filter, so after we are done, no one should have interest in the holder anyway
-            RequestContextHolder.resetRequestAttributes();
+            chain.doFilter(request, response);
         }
     }
 
@@ -1362,17 +1362,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     protected boolean isNoAuthPage(final HttpServletRequest req) throws ServletException
     {
         final String pathInfo = req.getPathInfo();
-        RequestContext context = null;
-        try
-        {
-            context = RequestContextUtil.initRequestContext(this.applicationContext, req, true);
-        }
-        catch (final Exception ex)
-        {
-            LOGGER.error("Error calling initRequestContext", ex);
-            throw new ServletException(ex);
-        }
 
+        final RequestContext context = ThreadLocalRequestContext.getRequestContext();
         Page page = context.getPage();
         if (page == null && pathInfo != null)
         {
@@ -1394,6 +1385,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         {
             noAuthPage = true;
         }
+
         return noAuthPage;
     }
 
@@ -1421,17 +1413,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         else
         {
             // check for custom login page
-            RequestContext context = null;
-            try
-            {
-                context = RequestContextUtil.initRequestContext(this.applicationContext, req, true);
-            }
-            catch (final Exception ex)
-            {
-                LOGGER.error("Error calling initRequestContext", ex);
-                throw new ServletException(ex);
-            }
-
+            final RequestContext context = ThreadLocalRequestContext.getRequestContext();
             Page page = context.getPage();
             if (page == null && pathInfo != null)
             {
