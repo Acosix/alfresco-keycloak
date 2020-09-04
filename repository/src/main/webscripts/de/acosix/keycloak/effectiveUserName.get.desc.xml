@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<webscript>
+    <shortname>Get effective user name</shortname>
+    <description>Retrieves the effective name for the currently authenticated user</description>
+    <url>/acosix/api/keycloak/effectiveUserName</url>
+    <format default="json">argument</format>
+    <authentication>user</authentication>
+    <transaction buffersize="4096" allow="readonly">required</transaction>
+</webscript>
