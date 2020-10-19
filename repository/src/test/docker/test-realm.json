@@ -80,6 +80,8 @@
                     "manage-account"
                 ],
                 "realm-management": [
+                    "query-groups",
+                    "query-users",
                     "view-users",
                     "view-clients"
                 ]

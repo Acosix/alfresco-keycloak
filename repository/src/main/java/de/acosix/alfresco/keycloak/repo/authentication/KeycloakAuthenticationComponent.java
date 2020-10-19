@@ -376,9 +376,10 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
                 if (currentAuthentication instanceof UsernamePasswordAuthenticationToken)
                 {
                     GrantedAuthority[] grantedAuthorities = currentAuthentication.getAuthorities();
-                    final List<GrantedAuthority> grantedAuthoritiesL = new ArrayList<>(Arrays.asList(grantedAuthorities));
 
-                    mappedAuthorities.stream().map(GrantedAuthorityImpl::new).forEach(grantedAuthoritiesL::add);
+                    final List<GrantedAuthority> grantedAuthoritiesL = mappedAuthorities.stream().map(GrantedAuthorityImpl::new)
+                            .collect(Collectors.toList());
+                    grantedAuthoritiesL.addAll(Arrays.asList(grantedAuthorities));
 
                     grantedAuthorities = grantedAuthoritiesL.toArray(new GrantedAuthority[0]);
                     ((UsernamePasswordAuthenticationToken) currentAuthentication).setAuthorities(grantedAuthorities);

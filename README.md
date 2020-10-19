@@ -2,7 +2,7 @@
 
 # About
 
-This addon aims to provide a Keycloak-related extensions / customisations to the out-of-the-box Alfresco authentication and authorization functionalities for the Alfresco Repository and Share tiers.
+This addon aims to provide a Keycloak-related extensions / customisations to the out-of-the-box Alfresco authentication and authorisation functionalities for the Alfresco Repository and Share tiers.
 
 ## Compatbility
 
@@ -10,14 +10,43 @@ This module is built to be compatible with Alfresco 6.0 and above. It may be use
 
 ## Features
 
-At this time, only the Share sub-module of this project provides a feature enhancement.
+The Repository sub-module provides a custom authentication subsystem dealing with Keycloak (separate to Alfresco's default `identity-service`) and customisations which support:
+
+- user + password login via `AuthenticationService.authenticate` / `AuthenticationComponent.authenticate`
+- `Bearer` token authentication using a client-obtained access token
+- redirection to Keycloak login UI and OIDC authentication flow (SSO), if client not already authenticated in session, no pre-emptive details provided in request and API requires authentication
+- mapping of person properties on authentication from user access / identity token
+- mapping of authorities from user access token (for purpose of permission / role checks)
+- handling Keycloak back-channel requests
+    - back-channel logout requests from Keycloak (i.e. SSO including "single sign-out")
+    - bulk-invalidation of access tokens issued before a certain point in time
+    - availability test / basic validation
+    - JWKS (public key) update
+- active user / group synchronisation against Keycloak's directory (which may include users / groups synchronised from multiple federated directories)
+- Java service, JavaScript service and web script to expose roles mapped from Keycloak for retrieval (e.g. to be used in permission management)
 
 The Share sub-module provides a Keycloak-based filter and customisations that support:
 
-- enhancement of the login dialog to allow users to perform an external authentication via a Keycloak server as an alternative to the password-based login
-- enforcement of an external authentication via a Keycloak server for all users via a SSO filter enhancement
-- back-channel logout and other operations actively initiated by a Keycloak server, e.g. invalidating all authentication tokens issued after a specific point in time
-- active logout which also logs out the user centrally on the Keycloak server
+- redirection to Keycloak login UI and OIDC authentication flow (SSO), if client not already authenticated in session, no pre-emptive details provided in request and SSO authentication required/enforced via configuration
+- enhancement of the login dialog to allow users to perform an alternative, external authentication via Keycloak
+- handling Keycloak back-channel requests
+    - back-channel logout requests from Keycloak (i.e. SSO including "single sign-out")
+    - bulk-invalidation of access tokens issued before a certain point in time
+    - availability test / basic validation
+    - JWKS (public key) update
+- Share logout action triggering a Keycloak logout (logging user out of other applications handled by Keycloak if those support Keycloak back-channel logout requests)
+- [RFC 8693 OAuth 2.0 Token Exchange](https://tools.ietf.org/html/rfc8693) (a [preview functionality in Keycloak](https://www.keycloak.org/docs/latest/securing_apps/#_token-exchange) to properly delegate the Share-tier authentication to the Repository, if signed on via Keycloak SSO
+
+# Configuration
+
+The configuration of both the Keycloak server and this module offer a large number of properties to adjust, and various modes of operation. Therefore, the following sub-documents have been created to provide details and guides:
+
+- [Getting Started (Simple Configuration)](./docs/Simple-Configuration.md)
+- Repository Configuration Reference
+    - [Keycloak Subsystem](./docs/Reference-Repository-Subsystem.md)
+    - [Keycloak Adapter](./docs/Reference-Repository-Adapter.md)
+    - [Extension API](./docs/Reference-Repository-Extension.md)
+- [Share Configuration Reference](./docs/Reference-Repository.md)
 
 # Build
 
@@ -26,7 +55,7 @@ This project uses a Maven build using templates from the [Acosix Alfresco Maven]
 ## Maven toolchains
 
 By inheritance from the Acosix Alfresco Maven framework, this project uses the [Maven Toolchains plugin](http://maven.apache.org/plugins/maven-toolchains-plugin/) to allow potential cross-compilation against different Java versions. This plugin is used to avoid potentially inconsistent compiler and library versions compared to when only the source/target compiler options of the Maven compiler plugin are set, which (as an example) has caused issues with some Alfresco releases in the past where Alfresco compiled for Java 7 using the Java 8 libraries.
-In order to build the project it is necessary to provide a basic toolchain configuration via the user specific Maven configuration home (usually ~/.m2/). That file (toolchains.xml) only needs to list the path to a compatible JDK for the Java version required by this project. The following is a sample file defining a Java 7 and 8 development kit.
+In order to build the project it is necessary to provide a basic toolchain configuration via the user specific Maven configuration home (usually ~/.m2/). That file (toolchains.xml) only needs to list the path to a compatible JDK for the Java version required by this project. The following is a sample file defining a Java 8 and 11 development kit.
 
 ```xml
 <?xml version='1.0' encoding='UTF-8'?>
@@ -38,17 +67,18 @@ In order to build the project it is necessary to provide a basic toolchain confi
       <vendor>oracle</vendor>
     </provides>
     <configuration>
-      <jdkHome>C:\Program Files\Java\jdk1.8.0_112</jdkHome>
+      <jdkHome>C:\Program Files\Java\jdk1.8.0_231</jdkHome>
     </configuration>
   </toolchain>
   <toolchain>
     <type>jdk</type>
     <provides>
-      <version>1.7</version>
+      <version>1.11</version>
       <vendor>oracle</vendor>
+      <id>openjdk11</id>
     </provides>
     <configuration>
-      <jdkHome>C:\Program Files\Java\jdk1.7.0_80</jdkHome>
+      <jdkHome>C:\Program Files\Java\jdk-11.0.2</jdkHome>
     </configuration>
   </toolchain>
 </toolchains>
@@ -64,7 +94,7 @@ In a default build using ```mvn clean install```, this project will build the ex
 mvn clean install -Ddocker.tests.enabled=true
 ```
 
-This project currently does not contain any integration tests, as a proper setup which includes Keycloak has not yet been achieved.
+This project currently does not yet contain any specific integration tests but does use integration tests to verify Alfresco correctly starts up with the addon installed.
 
 ## Dependencies
 
@@ -77,7 +107,9 @@ This module depends on the following projects / libraries:
     - keycloak-authz-client
 - Acosix Alfresco Utility (Apache License, Version 2.0) - core extension
 
-The Share AMP of this project includes all the Keycloak library JARs that the extension depends on. The Acosix Alfresco Utility project provides the core extension for Alfresco Content Services as a separate artifact from the full module, which needs to be installed in Alfresco Content Services before the AMP of this project can be installed.
+All Keycloak dependencies are aggregated into single uber-JAR / shaded dependency library for the Repository and Share respectively. This aggregation is handled via the sub-modules `repository-dependencies` and `share-dependencies`. This has been done to isolate this addon from whatever version of Keycloak libraries Alfresco pre-packages to support its `identity-service` authentication subsystem. These aggregated libraries are included in the respective AMPs of this project and only need to be installed separately if the simple JAR deployment method is used to install the modules of this addon.
+
+The Acosix Alfresco Utility project provides the core extension for Alfresco Content Services as a separate artifact from the full module, which needs to be installed in Alfresco Content Services before the AMP of this project can be installed.
 
 When the installable JAR produced by the build of this project is used for installation, the developer / user is responsible to either manually install all the required components / libraries provided by the listed projects, or use a build system to collect all relevant direct / transitive dependencies.
 **Note**: The Acosix Alfresco Utility project is also built using templates from the Acosix Alfresco Maven project, and as such produces similar artifacts. Automatic resolution and collection of (transitive) dependencies using Maven / Gradle will resolve the Java *classes* JAR as a dependency, and **not** the installable (Simple Alfresco Module) variant. It is recommended to exclude Acosix Alfresco Utility from transitive resolution and instead include it directly / explicitly.
