@@ -126,10 +126,6 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     protected int bodyBufferLimit = DEFAULT_BODY_BUFFER_LIMIT;
 
-    // use 8443 as default SSL redirect based on Tomcat default server.xml configuration
-    // can't rely on SysAdminParams#getAlfrescoPort either because that may be proxied / non-SSL
-    protected int sslRedirectPort = 8443;
-
     protected KeycloakDeployment keycloakDeployment;
 
     protected SessionIdMapper sessionIdMapper;
@@ -248,15 +244,6 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     public void setBodyBufferLimit(final int bodyBufferLimit)
     {
         this.bodyBufferLimit = bodyBufferLimit;
-    }
-
-    /**
-     * @param sslRedirectPort
-     *            the sslRedirectPort to set
-     */
-    public void setSslRedirectPort(final int sslRedirectPort)
-    {
-        this.sslRedirectPort = sslRedirectPort;
     }
 
     /**
@@ -540,8 +527,11 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, facade,
                 this.bodyBufferLimit > 0 ? this.bodyBufferLimit : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment, this.sessionIdMapper);
+
+        final int sslPort = this.determineLikelySslPort(req);
+
         final FilterRequestAuthenticator authenticator = new FilterRequestAuthenticator(this.keycloakDeployment, tokenStore, facade, req,
-                this.sslRedirectPort);
+                sslPort);
         final AuthOutcome authOutcome = authenticator.authenticate();
 
         if (authOutcome == AuthOutcome.AUTHENTICATED)
@@ -1250,6 +1240,38 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                 res.addCookie(resetCookie);
             });
         }
+    }
+
+    /**
+     * Determines the likely SSL port to be used in redirects from the incoming request. This operation should only be used to determine a
+     * technical default value in lieu of an explicitly configured value.
+     *
+     * @param req
+     *            the incoming request
+     * @return the assumed SSL port to be used in redirects
+     */
+    protected int determineLikelySslPort(final HttpServletRequest req)
+    {
+        int rqPort = req.getServerPort();
+        final String forwardedPort = req.getHeader("X-Forwarded-Port");
+        if (forwardedPort != null && forwardedPort.matches("^\\d+$"))
+        {
+            rqPort = Integer.parseInt(forwardedPort);
+        }
+        final int sslPort;
+        if (rqPort == 80 || rqPort == 443)
+        {
+            sslPort = 443;
+        }
+        else if (req.isSecure() && "https".equals(req.getScheme()))
+        {
+            sslPort = rqPort;
+        }
+        else
+        {
+            sslPort = 8443;
+        }
+        return sslPort;
     }
 
     /**

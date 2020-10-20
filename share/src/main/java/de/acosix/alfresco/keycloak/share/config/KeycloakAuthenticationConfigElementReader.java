@@ -65,13 +65,6 @@ public class KeycloakAuthenticationConfigElementReader implements ConfigElementR
             configElement.setBodyBufferLimit(value.isEmpty() ? null : Integer.valueOf(value));
         }
 
-        final Element sslRedirectPort = element.element("ssl-redirect-port");
-        if (sslRedirectPort != null)
-        {
-            final String value = sslRedirectPort.getTextTrim();
-            configElement.setSslRedirectPort(value.isEmpty() ? null : Integer.valueOf(value));
-        }
-
         final Element sessionMapperLimit = element.element("session-mapper-limit");
         if (sessionMapperLimit != null)
         {

@@ -30,9 +30,9 @@
 
     <bean id="keycloakDeployment" class="${project.artifactId}.spring.KeycloakDeploymentBeanFactory">
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
-        <property name="connectionTimeout" value="${keycloak.authentication.connectionTimeout}" />
-        <property name="socketTimeout" value="${keycloak.authentication.socketTimeout}" />
-        <property name="directAuthHost" value="${keycloak.authentication.directAuthHost}" />
+        <property name="connectionTimeout" value="${keycloak.adapter.connectionTimeout}" />
+        <property name="socketTimeout" value="${keycloak.adapter.socketTimeout}" />
+        <property name="directAuthHost" value="${keycloak.adapter.directAuthHost}" />
     </bean>
 
     <bean id="sessionIdMapper" class="${project.artifactId}.authentication.SimpleCacheBackedSessionIdMapper">
@@ -135,7 +135,6 @@
         <property name="originalRequestUrlHeaderName" value="${keycloak.authentication.sso.originalRequestUrlHeaderName}" />
         <property name="noKeycloakHandlingHeaderName" value="x-${moduleId}-no-keycloak-handling" />
         <property name="bodyBufferLimit" value="${keycloak.authentication.bodyBufferLimit}" />
-        <property name="sslRedirectPort" value="${keycloak.authentication.sslRedirectPort}" />
         <property name="keycloakDeployment" ref="keycloakDeployment" />
         <property name="sessionIdMapper" ref="sessionIdMapper" />
 

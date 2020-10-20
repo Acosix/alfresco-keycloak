@@ -39,8 +39,6 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     protected final ConfigValueHolder<Integer> bodyBufferLimit = new ConfigValueHolder<>();
 
-    protected final ConfigValueHolder<Integer> sslRedirectPort = new ConfigValueHolder<>();
-
     protected final ConfigValueHolder<Integer> sessionMapperLimit = new ConfigValueHolder<>();
 
     protected final ConfigValueHolder<Boolean> ignoreDefaultFilter = new ConfigValueHolder<>();
@@ -123,23 +121,6 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
     public Integer getBodyBufferLimit()
     {
         return this.bodyBufferLimit.getValue();
-    }
-
-    /**
-     * @param sslRedirectPort
-     *            the sslRedirectPort to set
-     */
-    public void setSslRedirectPort(final Integer sslRedirectPort)
-    {
-        this.sslRedirectPort.setValue(sslRedirectPort);
-    }
-
-    /**
-     * @return the sslRedirectPort
-     */
-    public Integer getSslRedirectPort()
-    {
-        return this.sslRedirectPort.getValue();
     }
 
     /**
@@ -265,16 +246,6 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
                     otherConfigElement.getBodyBufferLimit() != null ? otherConfigElement.getBodyBufferLimit() : this.getBodyBufferLimit());
         }
 
-        if (otherConfigElement.sslRedirectPort.isUnset())
-        {
-            combined.sslRedirectPort.unset();
-        }
-        else
-        {
-            combined.setSslRedirectPort(
-                    otherConfigElement.getSslRedirectPort() != null ? otherConfigElement.getSslRedirectPort() : this.getSslRedirectPort());
-        }
-
         if (otherConfigElement.sessionMapperLimit.isUnset())
         {
             combined.sessionMapperLimit.unset();
@@ -340,9 +311,6 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
         builder.append(", ");
         builder.append("bodyBufferLimit=");
         builder.append(this.bodyBufferLimit);
-        builder.append(", ");
-        builder.append("sslRedirectPort=");
-        builder.append(this.sslRedirectPort);
         builder.append(", ");
         builder.append("sessionMapperLimit=");
         builder.append(this.sessionMapperLimit);

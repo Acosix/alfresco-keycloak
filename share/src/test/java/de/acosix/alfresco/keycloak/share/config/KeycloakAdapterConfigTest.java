@@ -52,7 +52,6 @@ public class KeycloakAdapterConfigTest
         Assert.assertTrue(keycloakAuthConfig.getEnhanceLoginForm());
         Assert.assertTrue(keycloakAuthConfig.getEnableSsoFilter());
         Assert.assertFalse(keycloakAuthConfig.getForceKeycloakSso());
-        Assert.assertEquals(Integer.valueOf(8443), keycloakAuthConfig.getSslRedirectPort());
         Assert.assertEquals(Integer.valueOf(10485760), keycloakAuthConfig.getBodyBufferLimit());
         Assert.assertEquals(Integer.valueOf(1000), keycloakAuthConfig.getSessionMapperLimit());
 
@@ -99,7 +98,6 @@ public class KeycloakAdapterConfigTest
         Assert.assertFalse(keycloakAuthConfig.getEnhanceLoginForm());
         Assert.assertFalse(keycloakAuthConfig.getEnableSsoFilter());
         Assert.assertFalse(keycloakAuthConfig.getForceKeycloakSso());
-        Assert.assertEquals(Integer.valueOf(8443), keycloakAuthConfig.getSslRedirectPort());
         Assert.assertEquals(Integer.valueOf(10485760), keycloakAuthConfig.getBodyBufferLimit());
         Assert.assertEquals(Integer.valueOf(2000), keycloakAuthConfig.getSessionMapperLimit());
 

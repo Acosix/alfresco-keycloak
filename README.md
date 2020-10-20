@@ -37,6 +37,8 @@ The Share sub-module provides a Keycloak-based filter and customisations that su
 - Share logout action triggering a Keycloak logout (logging user out of other applications handled by Keycloak if those support Keycloak back-channel logout requests)
 - [RFC 8693 OAuth 2.0 Token Exchange](https://tools.ietf.org/html/rfc8693) (a [preview functionality in Keycloak](https://www.keycloak.org/docs/latest/securing_apps/#_token-exchange) to properly delegate the Share-tier authentication to the Repository, if signed on via Keycloak SSO
 
+All authentication functionality of this addon is based on OpenID Connect. Though Keycloak does support SAML clients, no support was implemented to have Alfresco act as a SAML client against Keycloak as an alternative to OpenID Connect client behaviour.
+
 # Configuration
 
 The configuration of both the Keycloak server and this module offer a large number of properties to adjust, and various modes of operation. Therefore, the following sub-documents have been created to provide details and guides:
@@ -44,7 +46,7 @@ The configuration of both the Keycloak server and this module offer a large numb
 - [Getting Started (Simple Configuration)](./docs/Simple-Configuration.md)
 - Repository Configuration Reference
     - [Keycloak Subsystem](./docs/Reference-Repository-Subsystem.md)
-    - [Keycloak Adapter](./docs/Reference-Repository-Adapter.md)
+    - [Keycloak Adapter](./docs/Reference-Adapter.md)
     - [Extension API](./docs/Reference-Repository-Extension.md)
 - [Share Configuration Reference](./docs/Reference-Repository.md)
 

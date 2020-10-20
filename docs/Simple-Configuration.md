@@ -99,11 +99,11 @@ The following core configuration properties can be set (more extensive list in t
 | `...groupFilter.containedInGroup.property.groupPaths` |  | Comma-separated list of group paths (e.g. `/Group A/Group B,/Group A/Group C`) to use in filtering which groups are synchronised to Alfresco (by default - configured separately - any match qualifies, and transitive containment is considered) |
 | `...groupFilter.containedInGroup.property.groupIds` |  | Comma-separated list of group IDs to use in filtering which groups are synchronised to Alfresco (by default - configured separately - any match qualifies, and transitive containment is considered) |
 | `keycloak.adapter.auth-server-url` | `http://localhost:8180/auth` | Publically resolvable base URL to the Keycloak server to be used in redirect URLs and remote calls |
-| `keycloak.authentication.directAuthHost` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved by the Alfresco Repository host or round-trips via a public gateway / proxy should be avoided |
-| `keycloak.adapter.realm` | `alfresco` | Technical name of the Keycloak realm |
-| `keycloak.adapter.resource` | `alfresco` | Technical name of the client set up for the Alfresco Repository in the realm |
-| `keycloak.adapter.keycloak.adapter.credentials.secret` |  | Shared secret for validation of authorisation codes / access tokens |
-| `keycloak.adapter.verify-token-audience` | `true` | Flag enabling validation of the audience specified in an access token - must be disabled if Share or any other application which authenticates users via Keycloak is not delegating user authentication using RFC 8693 OAuth 2.0 Token Exchange |
+| `...directAuthHost` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved by the Alfresco Repository host or round-trips via a public gateway / proxy should be avoided |
+| `...realm` | `alfresco` | Technical name of the Keycloak realm |
+| `...resource` | `alfresco` | Technical name of the client set up for the Alfresco Repository in the realm |
+| `...keycloak.adapter.credentials.secret` |  | Shared secret for validation of authorisation codes / access tokens |
+| `...verify-token-audience` | `true` | Flag enabling validation of the audience specified in an access token - must be disabled if Share or any other application which authenticates users via Keycloak is not delegating user authentication using RFC 8693 OAuth 2.0 Token Exchange |
 
 ## Alfresco Share
 

@@ -31,8 +31,6 @@
             <enhance-login-form>true</enhance-login-form>
             <enable-sso-filter>true</enable-sso-filter>
             <force-keycloak-sso>false</force-keycloak-sso>
-            <!-- use 8443 as default SSL redirect based on Tomcat default server.xml configuration -->
-            <ssl-redirect-port>8443</ssl-redirect-port>
             <body-buffer-limit>10485760</body-buffer-limit>
             <session-mapper-limit>1000</session-mapper-limit>
             <ignore-default-filter>true</ignore-default-filter>
@@ -43,8 +41,9 @@
             <!-- by default use the same client as alfresco (not really "clean") -->
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
-            <resource>alfresco</resource>
+            <resource>alfresco-share</resource>
             <ssl-required>none</ssl-required>
+            <confidential-port>-1</confidential-port>
             <!-- other than content-app / Identity Service, Share must/should be a confidential client to exchange code for access token + refresh -->
             <public-client>false</public-client>
             <credentials>

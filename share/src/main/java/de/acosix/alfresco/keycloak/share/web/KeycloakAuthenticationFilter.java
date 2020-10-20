@@ -556,7 +556,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
         final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
-        final Integer sslRedirectPort = keycloakAuthConfig.getSslRedirectPort();
 
         final OIDCServletHttpFacade facade = new OIDCServletHttpFacade(req, res);
 
@@ -604,7 +603,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
         else
         {
-            this.processFilterAuthentication(context, req, res, chain, bodyBufferLimit, sslRedirectPort, facade);
+            this.processFilterAuthentication(context, req, res, chain, bodyBufferLimit, facade);
         }
     }
 
@@ -689,8 +688,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * @param bodyBufferLimit
      *            the configured size limit to apply to any HTTP POST/PUT body buffering that may need to be applied to process the
      *            authentication via an intermediary redirect
-     * @param sslRedirectPort
-     *            the configured port to use for any forced redirection to HTTPS/SSL communication
      * @param facade
      *            the Keycloak HTTP facade
      * @throws IOException
@@ -699,8 +696,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      *             if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void processFilterAuthentication(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
-            final FilterChain chain, final Integer bodyBufferLimit, final Integer sslRedirectPort, final OIDCServletHttpFacade facade)
-            throws IOException, ServletException
+            final FilterChain chain, final Integer bodyBufferLimit, final OIDCServletHttpFacade facade) throws IOException, ServletException
     {
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, facade,
                 bodyBufferLimit != null ? bodyBufferLimit.intValue() : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment,
@@ -708,7 +704,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         // use 8443 as default SSL redirect based on Tomcat default server.xml configuration
         final FilterRequestAuthenticator authenticator = new FilterRequestAuthenticator(this.keycloakDeployment, tokenStore, facade, req,
-                sslRedirectPort != null ? sslRedirectPort.intValue() : 8443);
+                this.keycloakDeployment.getConfidentialPort());
         final AuthOutcome authOutcome = authenticator.authenticate();
 
         if (authOutcome == AuthOutcome.AUTHENTICATED)
@@ -814,7 +810,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
 
         final Integer bodyBufferLimit = keycloakAuthConfig.getBodyBufferLimit();
-        final Integer sslRedirectPort = keycloakAuthConfig.getSslRedirectPort();
 
         // fake a request that will yield a redirect
         final HttpServletRequest wrappedReq = new HttpServletRequestWrapper(req)
@@ -838,9 +833,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final OIDCFilterSessionStore tokenStore = new OIDCFilterSessionStore(req, captureFacade,
                 bodyBufferLimit != null ? bodyBufferLimit.intValue() : DEFAULT_BODY_BUFFER_LIMIT, this.keycloakDeployment, null);
 
-        // use 8443 as default SSL redirect based on Tomcat default server.xml configuration
-        final OAuthRequestAuthenticator authenticator = new OAuthRequestAuthenticator(null, captureFacade, this.keycloakDeployment,
-                sslRedirectPort != null ? sslRedirectPort.intValue() : 8443, tokenStore);
+        final int sslPort = this.determineLikelySslPort(req);
+        final OAuthRequestAuthenticator authenticator = new OAuthRequestAuthenticator(null, captureFacade, this.keycloakDeployment, sslPort,
+                tokenStore);
 
         final AuthOutcome authOutcome = authenticator.authenticate();
         if (authOutcome != AuthOutcome.NOT_ATTEMPTED)
@@ -1779,6 +1774,38 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 res.addCookie(resetCookie);
             });
         }
+    }
+
+    /**
+     * Determines the likely SSL port to be used in redirects from the incoming request. This operation should only be used to determine a
+     * technical default value in lieu of an explicitly configured value.
+     *
+     * @param req
+     *            the incoming request
+     * @return the assumed SSL port to be used in redirects
+     */
+    protected int determineLikelySslPort(final HttpServletRequest req)
+    {
+        int rqPort = req.getServerPort();
+        final String forwardedPort = req.getHeader("X-Forwarded-Port");
+        if (forwardedPort != null && forwardedPort.matches("^\\d+$"))
+        {
+            rqPort = Integer.parseInt(forwardedPort);
+        }
+        final int sslPort;
+        if (rqPort == 80 || rqPort == 443)
+        {
+            sslPort = 443;
+        }
+        else if (req.isSecure() && "https".equals(req.getScheme()))
+        {
+            sslPort = rqPort;
+        }
+        else
+        {
+            sslPort = 8443;
+        }
+        return sslPort;
     }
 
     /**
