@@ -37,7 +37,9 @@ public abstract class BaseAttributeProcessor implements InitializingBean
 
     protected NamespaceService namespaceService;
 
-    protected Map<String, String> attributePropertyMappings;
+    protected boolean mapNull;
+
+    protected Map<String, String> attributes;
 
     protected Map<String, QName> attributePropertyQNameMappings;
 
@@ -50,10 +52,10 @@ public abstract class BaseAttributeProcessor implements InitializingBean
     {
         PropertyCheck.mandatory(this, "namespaceService", this.namespaceService);
 
-        if (this.attributePropertyMappings != null && !this.attributePropertyMappings.isEmpty())
+        if (this.attributes != null && !this.attributes.isEmpty())
         {
             this.attributePropertyQNameMappings = new HashMap<>();
-            this.attributePropertyMappings
+            this.attributes
                     .forEach((k, v) -> this.attributePropertyQNameMappings.put(k, QName.resolveToQName(this.namespaceService, v)));
         }
     }
@@ -68,12 +70,21 @@ public abstract class BaseAttributeProcessor implements InitializingBean
     }
 
     /**
-     * @param attributePropertyMappings
-     *            the attributePropertyMappings to set
+     * @param attributes
+     *            the attributes to set
      */
-    public void setAttributePropertyMappings(final Map<String, String> attributePropertyMappings)
+    public void setAttributes(final Map<String, String> attributes)
     {
-        this.attributePropertyMappings = attributePropertyMappings;
+        this.attributes = attributes;
+    }
+
+    /**
+     * @param mapNull
+     *            the mapNull to set
+     */
+    public void setMapNull(final boolean mapNull)
+    {
+        this.mapNull = mapNull;
     }
 
     /**
@@ -123,6 +134,10 @@ public abstract class BaseAttributeProcessor implements InitializingBean
                 value = new ArrayList<>(values);
             }
             nodeDescription.getProperties().put(propertyQName, value);
+        }
+        else if (this.mapNull)
+        {
+            nodeDescription.getProperties().put(propertyQName, null);
         }
     }
 }

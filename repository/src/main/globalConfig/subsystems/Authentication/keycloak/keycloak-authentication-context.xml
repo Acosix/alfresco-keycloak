@@ -50,8 +50,8 @@
         <property name="active" value="${keycloak.authentication.enabled}" />
         <property name="defaultAdministratorUserNameList" value="${keycloak.authentication.defaultAdministratorUserNames}" />
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
-        <property name="allowGuestLogin" value="${keycloak.authentication.failExpiredUserNamePasswordLoginTokens}" />
-        <property name="failExpiredTicketTokens" value="${keycloak.authentication.allowGuestLogin}" />
+        <property name="allowGuestLogin" value="${keycloak.authentication.allowGuestLogin}" />
+        <property name="failExpiredTicketTokens" value="${keycloak.authentication.failExpiredTicketTokens}" />
         <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
         <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
