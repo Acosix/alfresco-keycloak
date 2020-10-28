@@ -23,8 +23,7 @@ import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.PropertyMap;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 /**
  * This user synchronisation mapping processor maps the default Alfresco person properties from a Keycloak user.

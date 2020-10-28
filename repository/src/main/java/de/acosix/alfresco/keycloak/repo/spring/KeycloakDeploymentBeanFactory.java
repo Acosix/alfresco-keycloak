@@ -27,13 +27,12 @@ import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.params.ConnRouteParams;
 import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.params.HttpParams;
+import org.keycloak.adapters.HttpClientBuilder;
+import org.keycloak.adapters.KeycloakDeployment;
+import org.keycloak.adapters.KeycloakDeploymentBuilder;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.HttpClientBuilder;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeploymentBuilder;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
 
 /**
  * @author Axel Faust

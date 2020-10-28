@@ -36,6 +36,8 @@ import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.util.PropertyMap;
+import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -44,8 +46,6 @@ import org.springframework.context.ApplicationContextAware;
 
 import de.acosix.alfresco.keycloak.repo.client.IDMClient;
 import de.acosix.alfresco.keycloak.repo.client.IDMClientImpl;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
 
 /**
  * This class provides a Keycloak-based user registry to support synchronisation with Keycloak managed users and groups.

@@ -19,10 +19,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.keycloak.representations.idm.GroupRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
 
 /**
  * This class provides filter capabilities for groups to be synchronised based on their parent group and whether they are contained in

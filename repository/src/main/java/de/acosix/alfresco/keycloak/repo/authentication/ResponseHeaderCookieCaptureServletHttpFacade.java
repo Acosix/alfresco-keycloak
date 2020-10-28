@@ -26,9 +26,8 @@ import java.util.Map;
 import javax.servlet.http.HttpServletRequest;
 
 import org.alfresco.util.Pair;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.servlet.ServletHttpFacade;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.HttpFacade;
+import org.keycloak.adapters.servlet.ServletHttpFacade;
+import org.keycloak.adapters.spi.HttpFacade;
 
 /**
  * This {@link HttpFacade} wraps servlet requests and responses in such a way that any response headers / cookies being set by Keycloak

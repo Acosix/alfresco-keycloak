@@ -18,11 +18,10 @@ package de.acosix.alfresco.keycloak.repo.sync;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.keycloak.representations.idm.UserRepresentation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
 
 /**
  * This class provides filter capabilities for users to be synchronised based on the groups they are a member of and whether they are

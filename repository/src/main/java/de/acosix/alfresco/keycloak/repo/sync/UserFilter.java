@@ -15,7 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 /**
  * Instances of this interface are used to determine which users should be synchronised. All instances of this interface in the Keycloak

@@ -20,13 +20,12 @@ import java.util.Map;
 
 import org.junit.Assert;
 import org.junit.Test;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.springframework.extensions.config.Config;
 import org.springframework.extensions.config.ConfigElement;
 import org.springframework.extensions.config.ConfigSource;
 import org.springframework.extensions.config.source.UrlConfigSource;
 import org.springframework.extensions.config.xml.XMLConfigService;
-
-import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
 
 /**
  * @author Axel Faust

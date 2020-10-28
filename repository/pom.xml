@@ -50,16 +50,81 @@
         </dependency>
 
         <dependency>
-            <groupId>${project.groupId}</groupId>
-            <artifactId>${project.artifactId}.deps</artifactId>
-            <version>${project.version}</version>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-adapter-core</artifactId>
             <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
                 <exclusion>
-                    <groupId>org.keycloak</groupId>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
                 <exclusion>
                     <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-servlet-adapter-spi</artifactId>
+            <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <!-- use default from Alfresco Repository -->
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
+                    <artifactId>httpcomponents-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <dependency>
+            <groupId>org.keycloak</groupId>
+            <artifactId>keycloak-servlet-filter-adapter</artifactId>
+            <exclusions>
+                <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
+                <exclusion>
+                    <groupId>com.sun.activation</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.fasterxml.jackson.core</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.jboss.resteasy</groupId>
+                    <artifactId>*</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>org.apache.httpcomponents</groupId>
                     <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
@@ -156,6 +221,91 @@
                     </configuration>
                 </plugin>
 
+                <plugin>
+                    <artifactId>maven-shade-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>shade</goal>
+                            </goals>
+                            <configuration>
+                                <createSourcesJar>true</createSourcesJar>
+                                <shadeSourcesContent>true</shadeSourcesContent>
+                                <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
+                                <artifactSet>
+                                    <includes>
+                                        <include>org.keycloak:*</include>
+                                        <include>org.jboss.logging:*</include>
+                                    </includes>
+                                </artifactSet>
+                                <relocations>
+                                    <relocation>
+                                        <pattern>org.keycloak</pattern>
+                                        <shadedPattern>de.acosix.alfresco.keycloak.deps.keycloak</shadedPattern>
+                                    </relocation>
+                                    <relocation>
+                                        <pattern>org.jboss.logging</pattern>
+                                        <shadedPattern>de.acosix.alfresco.keycloak.deps.jboss.logging</shadedPattern>
+                                    </relocation>
+                                </relocations>
+                                <transformers>
+                                    <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer" />
+                                    <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ApacheLicenseResourceTransformer" />
+                                    <transformer
+                                        implementation="org.apache.maven.plugins.shade.resource.ApacheNoticeResourceTransformer">
+                                        <addHeader>false</addHeader>
+                                    </transformer>
+                                </transformers>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <plugin>
+                    <artifactId>maven-dependency-plugin</artifactId>
+                    <executions>
+                        <execution>
+                            <id>unpack-shaded-jar</id>
+                            <phase>package</phase>
+                            <goals>
+                                <goal>unpack</goal>
+                            </goals>
+                            <configuration>
+                                <artifactItems>
+                                    <artifactItem>
+                                        <groupId>${project.groupId}</groupId>
+                                        <artifactId>${project.artifactId}</artifactId>
+                                        <version>${project.version}</version>
+                                    </artifactItem>
+                                </artifactItems>
+                                <outputDirectory>${project.build.outputDirectory}</outputDirectory>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
+
+                <!-- need to exclude shaded class files from API validation -->
+                <plugin>
+                    <groupId>de.thetaphi</groupId>
+                    <artifactId>forbiddenapis</artifactId>
+                    <configuration>
+                        <excludes>
+                            <exclude>de/acosix/alfresco/keycloak/deps/**/*.class</exclude>
+                        </excludes>
+                    </configuration>
+                </plugin>
+
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>findbugs-maven-plugin</artifactId>
+                    <configuration>
+                        <onlyAnalyze>de.acosix.alfresco.keycloak.repo.*</onlyAnalyze>
+                    </configuration>
+                </plugin>
+
             </plugins>
         </pluginManagement>
 
@@ -164,6 +314,19 @@
             <plugin>
                 <groupId>io.fabric8</groupId>
                 <artifactId>docker-maven-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-shade-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-dependency-plugin</artifactId>
+            </plugin>
+
+            <!-- explicitly listed to be ordered after dependency + shade -->
+            <plugin>
+                <artifactId>maven-assembly-plugin</artifactId>
             </plugin>
 
         </plugins>

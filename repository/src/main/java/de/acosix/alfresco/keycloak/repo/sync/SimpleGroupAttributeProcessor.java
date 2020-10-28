@@ -16,8 +16,7 @@
 package de.acosix.alfresco.keycloak.repo.sync;
 
 import org.alfresco.repo.security.sync.NodeDescription;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 
 /**
  * Instances of this class perform simple mappings from Keycloak group attributes to authority container node description properties.

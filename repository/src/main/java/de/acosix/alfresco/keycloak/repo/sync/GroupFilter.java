@@ -15,7 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 
 /**
  * Instances of this interface are used to determine which groups should be synchronised. All instances of this interface in the Keycloak

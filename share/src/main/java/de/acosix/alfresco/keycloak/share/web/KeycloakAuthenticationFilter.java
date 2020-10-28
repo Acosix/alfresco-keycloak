@@ -59,6 +59,39 @@ import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
 import org.apache.http.util.EntityUtils;
+import org.keycloak.KeycloakSecurityContext;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.TokenVerifier;
+import org.keycloak.adapters.AdapterDeploymentContext;
+import org.keycloak.adapters.AuthenticatedActionsHandler;
+import org.keycloak.adapters.BearerTokenRequestAuthenticator;
+import org.keycloak.adapters.HttpClientBuilder;
+import org.keycloak.adapters.KeycloakDeployment;
+import org.keycloak.adapters.KeycloakDeploymentBuilder;
+import org.keycloak.adapters.OAuthRequestAuthenticator;
+import org.keycloak.adapters.OIDCAuthenticationError;
+import org.keycloak.adapters.OidcKeycloakAccount;
+import org.keycloak.adapters.PreAuthActionsHandler;
+import org.keycloak.adapters.ServerRequest;
+import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
+import org.keycloak.adapters.rotation.AdapterTokenVerifier;
+import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
+import org.keycloak.adapters.servlet.FilterRequestAuthenticator;
+import org.keycloak.adapters.servlet.OIDCFilterSessionStore;
+import org.keycloak.adapters.servlet.OIDCServletHttpFacade;
+import org.keycloak.adapters.spi.AuthOutcome;
+import org.keycloak.adapters.spi.AuthenticationError;
+import org.keycloak.adapters.spi.KeycloakAccount;
+import org.keycloak.adapters.spi.SessionIdMapper;
+import org.keycloak.adapters.spi.UserSessionManagement;
+import org.keycloak.common.VerificationException;
+import org.keycloak.common.util.KeycloakUriBuilder;
+import org.keycloak.common.util.Time;
+import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.adapters.config.AdapterConfig;
+import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -89,39 +122,6 @@ import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilte
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.OAuth2Constants;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.TokenVerifier;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AdapterDeploymentContext;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.AuthenticatedActionsHandler;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.BearerTokenRequestAuthenticator;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.HttpClientBuilder;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeployment;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.KeycloakDeploymentBuilder;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OAuthRequestAuthenticator;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OIDCAuthenticationError;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OidcKeycloakAccount;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.PreAuthActionsHandler;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.ServerRequest;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.rotation.AdapterTokenVerifier;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.FilterRequestAuthenticator;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCFilterSessionStore;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.servlet.OIDCServletHttpFacade;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.AuthOutcome;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.AuthenticationError;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.KeycloakAccount;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.SessionIdMapper;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.UserSessionManagement;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.common.VerificationException;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.common.util.KeycloakUriBuilder;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.common.util.Time;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.constants.ServiceUrlConstants;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.AccessTokenResponse;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.util.JsonSerialization;
 import de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfrescoConnector;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 
@@ -1474,6 +1474,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if the backend requires HTTP Basic or Keycloak authentication for the current request context, which may include an externally
      * authenticated user.
      *
+     * @param req
+     *            the request to check
+     * @param session
+     *            the active session managing any persistent access token state
      * @return {@code true} if the backend requires HTTP Basic or Keycloak authentication, {@code false} otherwise
      */
     protected boolean isBackendRequiringBasicOrKeycloakAuthentication(final HttpServletRequest req, final HttpSession session)
@@ -1678,6 +1682,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * @param session
      *            the active session managing any persistent access token state
      * @return the response to obtaining the access token for the Alfresco backend
+     * @throws IOException
+     *             if any error occurs calling Keycloak to exchange the access token
      */
     protected AccessTokenResponse getAccessToken(final String alfrescoResourceName, final HttpSession session) throws IOException
     {

@@ -107,9 +107,10 @@ This module depends on the following projects / libraries:
     - keycloak-servlet-adapter-spi
     - keycloak-servlet-filter-adapter
     - keycloak-authz-client
+- [JBoss Logging](https://github.com/jboss-logging/jboss-logging) (Apache License, Version 2.0)
 - Acosix Alfresco Utility (Apache License, Version 2.0) - core extension
 
-All Keycloak dependencies are aggregated into single uber-JAR / shaded dependency library for the Repository and Share respectively. This aggregation is handled via the sub-modules `repository-dependencies` and `share-dependencies`. This has been done to isolate this addon from whatever version of Keycloak libraries Alfresco pre-packages to support its `identity-service` authentication subsystem. These aggregated libraries are included in the respective AMPs of this project and only need to be installed separately if the simple JAR deployment method is used to install the modules of this addon.
+All Keycloak and JBoss dependencies are aggregated (shaded) directly into the module library for Repository and Share respectively. This has been done to isolate this addon from whatever version of Keycloak libraries Alfresco pre-packages to support its `identity-service` authentication subsystem.
 
 The Acosix Alfresco Utility project provides the core extension for Alfresco Content Services as a separate artifact from the full module, which needs to be installed in Alfresco Content Services before the AMP of this project can be installed.
 

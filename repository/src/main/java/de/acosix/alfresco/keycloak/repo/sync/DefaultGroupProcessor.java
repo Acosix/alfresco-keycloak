@@ -19,8 +19,7 @@ import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.util.PropertyMap;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
 
 /**
  * This group synchronisation mapping processor maps the default Alfresco authority container properties from a Keycloak group.

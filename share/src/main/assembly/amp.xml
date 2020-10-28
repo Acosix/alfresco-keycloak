@@ -46,7 +46,6 @@
             <outputDirectory>lib</outputDirectory>
             <includes>
                 <include>org.bouncycastle:*</include>
-                <include>${project.groupId}:${project.artifactId}.deps:*</include>
             </includes>
             <scope>compile</scope>
         </dependencySet>

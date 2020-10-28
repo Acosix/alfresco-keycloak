@@ -18,12 +18,11 @@ package de.acosix.alfresco.keycloak.repo.util;
 import java.io.Serializable;
 
 import org.alfresco.util.ParameterCheck;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.Time;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessTokenResponse;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.IDToken;
+import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
+import org.keycloak.common.util.Time;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.IDToken;
 
 /**
  * Instances of this class encapsulate a potentially refreshable access token.

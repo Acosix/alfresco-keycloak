@@ -19,8 +19,7 @@ import java.util.Set;
 
 import org.alfresco.service.cmr.security.AuthorityService;
 import org.alfresco.service.cmr.security.AuthorityType;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessToken;
 
 /**
  * Instances of this interface are used to map / extract authorities for an authenticated user from Keycloak authenticated users for use as

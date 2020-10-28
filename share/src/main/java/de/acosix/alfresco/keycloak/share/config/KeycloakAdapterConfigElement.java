@@ -15,6 +15,8 @@
  */
 package de.acosix.alfresco.keycloak.share.config;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -32,12 +34,11 @@ import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.ConfigElement;
 
-import de.acosix.alfresco.keycloak.share.deps.jackson.annotation.JsonProperty;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.representations.adapters.config.AdapterConfig;
 import de.acosix.alfresco.utility.share.config.BaseCustomConfigElement;
 import de.acosix.alfresco.utility.share.config.ConfigValueHolder;
 

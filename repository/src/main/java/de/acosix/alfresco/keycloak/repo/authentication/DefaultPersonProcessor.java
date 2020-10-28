@@ -20,9 +20,8 @@ import java.util.Map;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.service.namespace.QName;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.IDToken;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.IDToken;
 
 /**
  * This user authentication mapping processor maps the default Alfresco person properties from an authenticated Keycloak user.

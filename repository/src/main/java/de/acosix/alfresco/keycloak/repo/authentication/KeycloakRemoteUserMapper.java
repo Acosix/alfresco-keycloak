@@ -26,14 +26,13 @@ import org.alfresco.repo.security.authentication.AuthenticationUtil;
 import org.alfresco.repo.security.authentication.external.RemoteUserMapper;
 import org.alfresco.service.cmr.security.PersonService;
 import org.alfresco.util.PropertyCheck;
+import org.keycloak.adapters.BearerTokenRequestAuthenticator;
+import org.keycloak.adapters.KeycloakDeployment;
+import org.keycloak.adapters.spi.AuthOutcome;
+import org.keycloak.representations.AccessToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.BearerTokenRequestAuthenticator;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.spi.AuthOutcome;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
 
 /**
  * @author Axel Faust

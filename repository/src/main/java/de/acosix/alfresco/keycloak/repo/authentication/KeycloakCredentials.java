@@ -17,8 +17,7 @@ package de.acosix.alfresco.keycloak.repo.authentication;
 
 import org.alfresco.repo.web.auth.WebCredentials;
 import org.alfresco.util.ParameterCheck;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessToken;
 
 /**
  * @author Axel Faust

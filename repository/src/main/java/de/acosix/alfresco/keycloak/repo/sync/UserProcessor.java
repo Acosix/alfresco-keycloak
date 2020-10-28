@@ -19,8 +19,7 @@ import java.util.Collection;
 
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.namespace.QName;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 /**
  * Instances of this interface are used to map data from Keycloak users to the Alfresco person node description. All instances of this

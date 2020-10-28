@@ -21,8 +21,7 @@ import java.util.HashSet;
 
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.namespace.QName;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 /**
  * Instances of this class perform simple mappings from Keycloak user attributes to person node description properties.

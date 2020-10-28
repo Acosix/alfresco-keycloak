@@ -27,13 +27,13 @@ import java.util.stream.Stream;
 import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessToken.Access;
+import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken.Access;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.adapters.config.AdapterConfig;
 import de.acosix.alfresco.keycloak.repo.roles.RoleNameFilter;
 import de.acosix.alfresco.keycloak.repo.roles.RoleNameMapper;
 

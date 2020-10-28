@@ -15,6 +15,9 @@
  */
 package de.acosix.alfresco.keycloak.repo.client;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.MappingIterator;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -37,29 +40,26 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+import org.keycloak.OAuth2Constants;
+import org.keycloak.adapters.KeycloakDeployment;
+import org.keycloak.adapters.ServerRequest;
+import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
+import org.keycloak.adapters.rotation.AdapterTokenVerifier;
+import org.keycloak.common.VerificationException;
+import org.keycloak.common.util.KeycloakUriBuilder;
+import org.keycloak.common.util.Time;
+import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.representations.AccessToken;
+import org.keycloak.representations.AccessTokenResponse;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.MappingIterator;
-
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.OAuth2Constants;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.KeycloakDeployment;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.ServerRequest;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.adapters.rotation.AdapterTokenVerifier;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.VerificationException;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.KeycloakUriBuilder;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.common.util.Time;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.constants.ServiceUrlConstants;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessToken;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.AccessTokenResponse;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.ClientRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.RoleRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.util.JsonSerialization;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
 
 /**

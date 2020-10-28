@@ -17,10 +17,10 @@ package de.acosix.alfresco.keycloak.repo.client;
 
 import java.util.function.Consumer;
 
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.ClientRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.GroupRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.RoleRepresentation;
-import de.acosix.alfresco.keycloak.repo.deps.keycloak.representations.idm.UserRepresentation;
+import org.keycloak.representations.idm.ClientRepresentation;
+import org.keycloak.representations.idm.GroupRepresentation;
+import org.keycloak.representations.idm.RoleRepresentation;
+import org.keycloak.representations.idm.UserRepresentation;
 
 /**
  * Instances of this interface wrap the relevant Keycloak admin ReST API for the synchronisation of users, groups and roles from a Keycloak

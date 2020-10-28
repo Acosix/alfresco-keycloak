@@ -25,18 +25,18 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import org.keycloak.adapters.spi.InMemorySessionIdMapper;
+import org.keycloak.adapters.spi.SessionIdMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.extensions.config.ConfigService;
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.InMemorySessionIdMapper;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.SessionIdMapper;
 
 /**
  * This implementation of a {@link SessionIdMapper Keycloak session ID mapper} is based on the {@link InMemorySessionIdMapper in-memory
- * mapper}, but uses a better model for synchronization and respects configured size limits, ejecting least-recently active sessions first.
+ * mapper}, but uses a better model for synchronisation and respects configured size limits, ejecting least-recently active sessions first.
  * Activity of session with regards to being determined the "least-recently active" session is based upon validation calls to
  * {@link #hasSession(String) hasSession}.
  *

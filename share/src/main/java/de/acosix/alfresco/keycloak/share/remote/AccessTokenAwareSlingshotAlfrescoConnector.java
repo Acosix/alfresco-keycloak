@@ -20,6 +20,9 @@ import java.util.Collections;
 import javax.servlet.http.HttpSession;
 
 import org.alfresco.web.site.servlet.SlingshotAlfrescoConnector;
+import org.keycloak.KeycloakSecurityContext;
+import org.keycloak.adapters.OidcKeycloakAccount;
+import org.keycloak.adapters.spi.KeycloakAccount;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.RemoteConfigElement.ConnectorDescriptor;
@@ -27,9 +30,6 @@ import org.springframework.extensions.surf.ServletUtil;
 import org.springframework.extensions.webscripts.connector.ConnectorContext;
 import org.springframework.extensions.webscripts.connector.RemoteClient;
 
-import de.acosix.alfresco.keycloak.share.deps.keycloak.KeycloakSecurityContext;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.OidcKeycloakAccount;
-import de.acosix.alfresco.keycloak.share.deps.keycloak.adapters.spi.KeycloakAccount;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 import de.acosix.alfresco.keycloak.share.web.KeycloakAuthenticationFilter;
 import de.acosix.alfresco.utility.share.connector.MutableSlingshotRemoteClient;
