@@ -83,6 +83,7 @@
     </bean>
 
     <bean id="${moduleId}.KeycloakAuthenticationFilter" abstract="true" class="${project.artifactId}.web.KeycloakAuthenticationFilter">
+        <property name="requestContextFactory" ref="webframework.factory.requestcontext.servlet" />
         <property name="configService" ref="web.config" />
         <property name="connectorService" ref="connector.service" />
         <property name="pageViewResolver" ref="pageViewResolver" />

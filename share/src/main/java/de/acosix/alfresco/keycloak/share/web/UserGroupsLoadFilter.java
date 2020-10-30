@@ -26,7 +26,6 @@ import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
-import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SlingshotLoginController;
 import org.json.simple.JSONArray;
@@ -36,17 +35,11 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.extensions.config.ConfigElement;
 import org.springframework.extensions.config.ConfigService;
-import org.springframework.extensions.surf.RequestContext;
-import org.springframework.extensions.surf.RequestContextUtil;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
-import org.springframework.extensions.surf.exception.RequestContextException;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
 import org.springframework.extensions.surf.support.AlfrescoUserFactory;
-import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.extensions.surf.util.URLEncoder;
 import org.springframework.extensions.webscripts.Status;
 import org.springframework.extensions.webscripts.connector.Connector;
@@ -65,7 +58,7 @@ import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilte
  *
  * @author Axel Faust
  */
-public class UserGroupsLoadFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
+public class UserGroupsLoadFilter implements DependencyInjectedFilter, InitializingBean
 {
 
     public static final String SESSION_ATTRIBUTE_KEY_USER_GROUPS_LAST_LOADED = SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS
@@ -75,20 +68,9 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
 
     private static final long DEFAULT_CACHED_USER_GROUPS_TIMEOUT = 60000;
 
-    protected ApplicationContext applicationContext;
-
     protected ConfigService configService;
 
     protected ConnectorService connectorService;
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setApplicationContext(final ApplicationContext applicationContext)
-    {
-        this.applicationContext = applicationContext;
-    }
 
     /**
      *
@@ -97,7 +79,6 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
     @Override
     public void afterPropertiesSet()
     {
-        PropertyCheck.mandatory(this, "applicationContext", this.applicationContext);
         PropertyCheck.mandatory(this, "configService", this.configService);
         PropertyCheck.mandatory(this, "connectorService", this.connectorService);
     }
@@ -197,22 +178,6 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
             // logic nearly identical to SlingshotLoginController
             final Connector connector = this.connectorService.getConnector(AlfrescoUserFactory.ALFRESCO_ENDPOINT_ID, userId, session);
 
-            // bug in default Alfresco RequestCachingConnector: with ConnectorContext having HttpMethod.GET, null check of
-            // ThreadLocalRequestContext.getRequestContext() is short-circuited, causing NPE on access
-            final RequestContext requestContext = ThreadLocalRequestContext.getRequestContext();
-            if (requestContext == null)
-            {
-                try
-                {
-                    RequestContextUtil.initRequestContext(this.applicationContext, request, true);
-                }
-                catch (final RequestContextException e)
-                {
-                    LOGGER.error("Failed to initialise request context", e);
-                    throw new AlfrescoRuntimeException("Failed to initialise request context", e);
-                }
-            }
-
             final ConnectorContext c = new ConnectorContext(HttpMethod.GET);
             c.setContentType("application/json");
             final Response res = connector.call("/api/people/" + URLEncoder.encode(userId) + "?groups=true", c);
@@ -221,7 +186,7 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
             {
                 final String responseText = res.getResponse();
                 final JSONParser jsonParser = new JSONParser();
-                final Object userData = jsonParser.parse(responseText.toString());
+                final Object userData = jsonParser.parse(responseText);
 
                 final StringBuilder groups = new StringBuilder(512);
                 if (userData instanceof JSONObject)

@@ -72,7 +72,6 @@ import org.keycloak.adapters.OAuthRequestAuthenticator;
 import org.keycloak.adapters.OIDCAuthenticationError;
 import org.keycloak.adapters.OidcKeycloakAccount;
 import org.keycloak.adapters.PreAuthActionsHandler;
-import org.keycloak.adapters.ServerRequest;
 import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
@@ -95,18 +94,16 @@ import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationContextAware;
 import org.springframework.extensions.config.ConfigService;
 import org.springframework.extensions.config.RemoteConfigElement;
 import org.springframework.extensions.config.RemoteConfigElement.EndpointDescriptor;
 import org.springframework.extensions.surf.RequestContext;
-import org.springframework.extensions.surf.RequestContextUtil;
 import org.springframework.extensions.surf.ServletUtil;
 import org.springframework.extensions.surf.UserFactory;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
 import org.springframework.extensions.surf.mvc.PageViewResolver;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
+import org.springframework.extensions.surf.support.ServletRequestContextFactory;
 import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.extensions.surf.types.Page;
 import org.springframework.extensions.surf.types.PageType;
@@ -118,6 +115,9 @@ import org.springframework.extensions.webscripts.connector.ConnectorContext;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
 import org.springframework.extensions.webscripts.connector.Response;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.context.request.ServletWebRequest;
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
@@ -131,7 +131,7 @@ import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
  *
  * @author Axel Faust
  */
-public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
+public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean
 {
 
     public static final String KEYCLOAK_AUTHENTICATED_COOKIE = "Acosix." + KeycloakAuthenticationFilter.class.getSimpleName();
@@ -176,9 +176,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     private static final ThreadLocal<String> LOGIN_REDIRECT_URL = new ThreadLocal<>();
 
-    protected ApplicationContext applicationContext;
-
     protected DependencyInjectedFilter defaultSsoFilter;
+
+    protected ServletRequestContextFactory requestContextFactory;
 
     protected ConfigService configService;
 
@@ -237,15 +237,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     }
 
     /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void setApplicationContext(final ApplicationContext applicationContext)
-    {
-        this.applicationContext = applicationContext;
-    }
-
-    /**
      *
      * {@inheritDoc}
      */
@@ -253,6 +244,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     public void afterPropertiesSet()
     {
         PropertyCheck.mandatory(this, "primaryEndpoint", this.primaryEndpoint);
+        PropertyCheck.mandatory(this, "requestContextFactory", this.requestContextFactory);
         PropertyCheck.mandatory(this, "configService", this.configService);
         PropertyCheck.mandatory(this, "connectorService", this.connectorService);
         PropertyCheck.mandatory(this, "pageViewResolver", this.pageViewResolver);
@@ -362,6 +354,15 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     }
 
     /**
+     * @param requestContextFactory
+     *            the requestContextFactory to set
+     */
+    public void setRequestContextFactory(final ServletRequestContextFactory requestContextFactory)
+    {
+        this.requestContextFactory = requestContextFactory;
+    }
+
+    /**
      * @param configService
      *            the configService to set
      */
@@ -438,18 +439,23 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
 
             // Alfresco handling of RequestContext / ServletUtil / any other context holder is so immensely broken, it isn't even funny
-            // Request context is indirectly required for some framework page lookups (which lack null guards) as part of our handling
-            // Our context is almost guaranteed to be overridden by some Surf component, which repeats the whole initialisation dance
-            RequestContext requestContext;
-            try
+            RequestContext requestContext = ThreadLocalRequestContext.getRequestContext();
+            if (requestContext == null)
             {
-                requestContext = RequestContextUtil.initRequestContext(this.applicationContext, req, true);
+                try
+                {
+                    requestContext = this.requestContextFactory.newInstance(new ServletWebRequest(req));
+                    request.setAttribute(RequestContext.ATTR_REQUEST_CONTEXT, context);
+                }
+                catch (final Exception ex)
+                {
+                    LOGGER.error("Error calling initRequestContext", ex);
+                    throw new ServletException(ex);
+                }
             }
-            catch (final Exception ex)
-            {
-                LOGGER.error("Error calling initRequestContext", ex);
-                throw new ServletException(ex);
-            }
+            // TODO Figure out how to support Enteprise 6.2 / 7.x or 6.3+, which overload the constructor
+            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
+            ServletUtil.setRequest(req);
 
             try
             {
@@ -900,7 +906,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             session.setAttribute(UserFactory.SESSION_ATTRIBUTE_EXTERNAL_AUTH, Boolean.TRUE);
             session.setAttribute(UserFactory.SESSION_ATTRIBUTE_KEY_USER_ID, userId);
 
-            this.handleAlfrescoResourceAccessToken(session, false);
+            this.handleAlfrescoResourceAccessToken(session);
         }
 
         if (facade.isEnded())
@@ -1334,7 +1340,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         {
             LOGGER.debug("Skipping processKeycloakAuthenticationAndActions as Keycloak-authentication session is still valid");
             this.ensureKeycloakCookieSet(req, res);
-            this.handleAlfrescoResourceAccessToken(currentSession, false);
+            this.handleAlfrescoResourceAccessToken(currentSession);
             skip = true;
         }
         else
@@ -1555,11 +1561,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      *
      * @param session
      *            the active session managing any persistent access token state
-     * @param retry
-     *            {@code true} if the invocation of the operation is a retry as the result of a (hopefully temporary) verification failure
-     *            in the current thread
      */
-    protected void handleAlfrescoResourceAccessToken(final HttpSession session, final boolean retry)
+    protected void handleAlfrescoResourceAccessToken(final HttpSession session)
     {
         final KeycloakAuthenticationConfigElement keycloakAuthConfig = (KeycloakAuthenticationConfigElement) this.configService
                 .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAuthenticationConfigElement.NAME);
@@ -1591,28 +1594,15 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     AccessTokenResponse response;
                     try
                     {
-                        if (token != null && token.canRefresh())
-                        {
-                            LOGGER.debug("Refreshing access token for Alfresco backend resource {}", alfrescoResourceName);
-                            response = ServerRequest.invokeRefresh(this.keycloakDeployment, token.getRefreshToken());
-                        }
-                        else
-                        {
-                            LOGGER.debug("Retrieving initial / new access token for Alfresco backend resource {}", alfrescoResourceName);
-                            response = this.getAccessToken(alfrescoResourceName, session);
-                        }
+                        // Note: we tried to simply just refresh with the refresh the already exchanged token for the target resource
+                        // but audience typically is not correct in the resulting token
+                        LOGGER.debug("Retrieving / refreshing access token for Alfresco backend resource {}", alfrescoResourceName);
+                        response = this.getAccessToken(alfrescoResourceName, session);
                     }
                     catch (final IOException ioex)
                     {
                         LOGGER.error("Error retrieving / refreshing access token for Alfresco backend", ioex);
                         throw new AlfrescoRuntimeException("Error retrieving / refreshing access token for Alfresco backend", ioex);
-                    }
-                    catch (final ServerRequest.HttpFailure httpFailure)
-                    {
-                        LOGGER.error("Refreshing access token for Alfresco backend failed: {} {}", httpFailure.getStatus(),
-                                httpFailure.getError());
-                        throw new AlfrescoRuntimeException("Failed to refresh access token for Alfresco backend: " + httpFailure.getStatus()
-                                + " " + httpFailure.getError());
                     }
 
                     final String tokenString = response.getToken();
@@ -1639,20 +1629,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     }
                     catch (final VerificationException vex)
                     {
-                        session.removeAttribute(BACKEND_ACCESS_TOKEN_SESSION_KEY);
-                        if (!retry && token != null && token.canRefresh())
-                        {
-                            LOGGER.warn(
-                                    "Verification of refreshed access token for Alfresco backend failed - removed previous token from the session before retrying token exchange from scratch");
-
-                            this.handleAlfrescoResourceAccessToken(session, true);
-                        }
-                        else
-                        {
-                            LOGGER.error("Verification of access token for Alfresco backend failed in retry", vex);
-                            throw new AlfrescoRuntimeException("Keycloak token exchange for access to backend yielded invalid access token",
-                                    vex);
-                        }
+                        LOGGER.error("Verification of access token for Alfresco backend failed in retry", vex);
+                        throw new AlfrescoRuntimeException("Keycloak token exchange for access to backend yielded invalid access token",
+                                vex);
                     }
                 }
             }

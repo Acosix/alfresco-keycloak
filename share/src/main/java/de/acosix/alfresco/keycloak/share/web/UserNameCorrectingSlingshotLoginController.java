@@ -23,7 +23,6 @@ import javax.servlet.http.HttpServletRequestWrapper;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpSession;
 
-import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SlingshotLoginController;
 import org.json.simple.JSONObject;
@@ -32,13 +31,9 @@ import org.json.simple.parser.ParseException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.extensions.surf.RequestContext;
-import org.springframework.extensions.surf.RequestContextUtil;
 import org.springframework.extensions.surf.UserFactory;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
-import org.springframework.extensions.surf.exception.RequestContextException;
 import org.springframework.extensions.surf.support.AlfrescoUserFactory;
-import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.extensions.webscripts.Status;
 import org.springframework.extensions.webscripts.connector.Connector;
 import org.springframework.extensions.webscripts.connector.ConnectorContext;
@@ -182,22 +177,6 @@ public class UserNameCorrectingSlingshotLoginController extends SlingshotLoginCo
         try
         {
             final Connector connector = this.connectorService.getConnector(AlfrescoUserFactory.ALFRESCO_ENDPOINT_ID, userId, session);
-
-            // bug in default Alfresco RequestCachingConnector: with ConnectorContext having HttpMethod.GET, null check of
-            // ThreadLocalRequestContext.getRequestContext() is short-circuited, causing NPE on access
-            final RequestContext requestContext = ThreadLocalRequestContext.getRequestContext();
-            if (requestContext == null)
-            {
-                try
-                {
-                    RequestContextUtil.initRequestContext(this.getApplicationContext(), request, true);
-                }
-                catch (final RequestContextException e)
-                {
-                    LOGGER.error("Failed to initialise request context", e);
-                    throw new AlfrescoRuntimeException("Failed to initialise request context", e);
-                }
-            }
 
             final ConnectorContext c = new ConnectorContext(HttpMethod.GET);
             c.setContentType("application/json");
