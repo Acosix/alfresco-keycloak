@@ -78,12 +78,19 @@
         <property name="enabled" value="true" />
     </bean>
 
+    <bean id="${moduleId}.populatingRequestContextInterecptorImplementationPatch"
+        class="de.acosix.alfresco.utility.common.spring.ImplementationClassReplacingBeanFactoryPostProcessor">
+        <property name="targetBeanName" value="requestContextInterceptor" />
+        <property name="originalClassName" value="org.springframework.extensions.surf.mvc.RequestContextInterceptor" />
+        <property name="replacementClassName" value="${project.artifactId}.web.PopulatingRequestContextInterceptor" />
+        <property name="enabled" value="true" />
+    </bean>
+
     <bean id="${moduleId}.SessionIdMapper" class="${project.artifactId}.web.DefaultSessionIdMapper">
         <property name="configService" ref="web.config" />
     </bean>
 
     <bean id="${moduleId}.KeycloakAuthenticationFilter" abstract="true" class="${project.artifactId}.web.KeycloakAuthenticationFilter">
-        <property name="requestContextFactory" ref="webframework.factory.requestcontext.servlet" />
         <property name="configService" ref="web.config" />
         <property name="connectorService" ref="connector.service" />
         <property name="pageViewResolver" ref="pageViewResolver" />

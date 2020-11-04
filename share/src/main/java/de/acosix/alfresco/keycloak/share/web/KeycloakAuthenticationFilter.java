@@ -94,16 +94,18 @@ import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationContextAware;
 import org.springframework.extensions.config.ConfigService;
 import org.springframework.extensions.config.RemoteConfigElement;
 import org.springframework.extensions.config.RemoteConfigElement.EndpointDescriptor;
 import org.springframework.extensions.surf.RequestContext;
+import org.springframework.extensions.surf.RequestContextUtil;
 import org.springframework.extensions.surf.ServletUtil;
 import org.springframework.extensions.surf.UserFactory;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
 import org.springframework.extensions.surf.mvc.PageViewResolver;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
-import org.springframework.extensions.surf.support.ServletRequestContextFactory;
 import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.extensions.surf.types.Page;
 import org.springframework.extensions.surf.types.PageType;
@@ -117,7 +119,6 @@ import org.springframework.extensions.webscripts.connector.Response;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
-import org.springframework.web.context.request.ServletWebRequest;
 
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
@@ -131,7 +132,7 @@ import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
  *
  * @author Axel Faust
  */
-public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean
+public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
 {
 
     public static final String KEYCLOAK_AUTHENTICATED_COOKIE = "Acosix." + KeycloakAuthenticationFilter.class.getSimpleName();
@@ -176,9 +177,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     private static final ThreadLocal<String> LOGIN_REDIRECT_URL = new ThreadLocal<>();
 
-    protected DependencyInjectedFilter defaultSsoFilter;
+    protected ApplicationContext applicationContext;
 
-    protected ServletRequestContextFactory requestContextFactory;
+    protected DependencyInjectedFilter defaultSsoFilter;
 
     protected ConfigService configService;
 
@@ -237,14 +238,23 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     }
 
     /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void setApplicationContext(final ApplicationContext applicationContext)
+    {
+        this.applicationContext = applicationContext;
+    }
+
+    /**
      *
      * {@inheritDoc}
      */
     @Override
     public void afterPropertiesSet()
     {
+        PropertyCheck.mandatory(this, "applicationContext", this.applicationContext);
         PropertyCheck.mandatory(this, "primaryEndpoint", this.primaryEndpoint);
-        PropertyCheck.mandatory(this, "requestContextFactory", this.requestContextFactory);
         PropertyCheck.mandatory(this, "configService", this.configService);
         PropertyCheck.mandatory(this, "connectorService", this.connectorService);
         PropertyCheck.mandatory(this, "pageViewResolver", this.pageViewResolver);
@@ -354,15 +364,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     }
 
     /**
-     * @param requestContextFactory
-     *            the requestContextFactory to set
-     */
-    public void setRequestContextFactory(final ServletRequestContextFactory requestContextFactory)
-    {
-        this.requestContextFactory = requestContextFactory;
-    }
-
-    /**
      * @param configService
      *            the configService to set
      */
@@ -438,24 +439,21 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                         this.keycloakDeployment.getAuthServerBaseUrl());
             }
 
-            // Alfresco handling of RequestContext / ServletUtil / any other context holder is so immensely broken, it isn't even funny
-            RequestContext requestContext = ThreadLocalRequestContext.getRequestContext();
-            if (requestContext == null)
-            {
-                try
-                {
-                    requestContext = this.requestContextFactory.newInstance(new ServletWebRequest(req));
-                    request.setAttribute(RequestContext.ATTR_REQUEST_CONTEXT, context);
-                }
-                catch (final Exception ex)
-                {
-                    LOGGER.error("Error calling initRequestContext", ex);
-                    throw new ServletException(ex);
-                }
-            }
             // TODO Figure out how to support Enteprise 6.2 / 7.x or 6.3+, which overload the constructor
             RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
-            ServletUtil.setRequest(req);
+            // Alfresco handling of RequestContext / ServletUtil / any other context holder is so immensely broken, it isn't even funny
+            // this request context is for any handling that needs it until it gets nuked / bulldozed by RequestContextInterceptor
+            // ...after which we will have to enhance that class' partially initialised context
+            RequestContext requestContext;
+            try
+            {
+                requestContext = RequestContextUtil.initRequestContext(this.applicationContext, req, true);
+            }
+            catch (final Exception ex)
+            {
+                LOGGER.error("Error calling initRequestContext", ex);
+                throw new ServletException(ex);
+            }
 
             try
             {
@@ -469,8 +467,12 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
                     if (skip)
                     {
-                        if (!AuthenticationUtil.isAuthenticated(req) && keycloakDeploymentReady && this.loginFormEnhancementEnabled
-                                && this.isLoginPage(req))
+                        final boolean authenticated = AuthenticationUtil.isAuthenticated(req);
+                        if (authenticated)
+                        {
+                            this.completeRequestContext(req);
+                        }
+                        else if (keycloakDeploymentReady && this.loginFormEnhancementEnabled && this.isLoginPage(req))
                         {
                             this.prepareLoginFormEnhancement(context, req, res);
                         }
@@ -490,6 +492,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             finally
             {
                 requestContext.release();
+                RequestContextHolder.resetRequestAttributes();
             }
         }
         finally
@@ -929,6 +932,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
         }
 
+        this.completeRequestContext(req);
+
         LOGGER.debug("Continueing with filter chain processing");
         final HttpServletRequestWrapper requestWrapper = tokenStore.buildWrapper();
         this.continueFilterChain(context, requestWrapper, res, chain);
@@ -987,6 +992,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 return;
             }
         }
+
+        this.completeRequestContext(req);
 
         LOGGER.debug("Continueing with filter chain processing");
         this.continueFilterChain(context, req, res, chain);
@@ -1123,6 +1130,27 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         {
             res.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             res.flushBuffer();
+        }
+    }
+
+    /**
+     * Completes the request context in the current thread by populating missing data, foremost any user details for the authenticated user.
+     *
+     * @param req
+     *            the servlet request
+     * @throws ServletException
+     *             if an error occurs populating the request context
+     */
+    protected void completeRequestContext(final HttpServletRequest req) throws ServletException
+    {
+        try
+        {
+            RequestContextUtil.populateRequestContext(ThreadLocalRequestContext.getRequestContext(), req);
+        }
+        catch (final Exception ex)
+        {
+            LOGGER.error("Error calling populateRequestContext", ex);
+            throw new ServletException(ex);
         }
     }
 
