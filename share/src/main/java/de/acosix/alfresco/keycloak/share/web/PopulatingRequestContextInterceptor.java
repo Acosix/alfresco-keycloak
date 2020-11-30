@@ -15,8 +15,11 @@
  */
 package de.acosix.alfresco.keycloak.share.web;
 
+import javax.servlet.http.HttpServletRequest;
+
 import org.springframework.extensions.surf.RequestContext;
 import org.springframework.extensions.surf.RequestContextUtil;
+import org.springframework.extensions.surf.ServletUtil;
 import org.springframework.extensions.surf.mvc.RequestContextInterceptor;
 import org.springframework.extensions.surf.support.ThreadLocalRequestContext;
 import org.springframework.web.context.request.ServletWebRequest;
@@ -42,6 +45,15 @@ public class PopulatingRequestContextInterceptor extends RequestContextIntercept
         super.preHandle(request);
 
         final RequestContext context = ThreadLocalRequestContext.getRequestContext();
-        RequestContextUtil.populateRequestContext(context, ((ServletWebRequest) request).getRequest());
+        final HttpServletRequest servletRequest = ((ServletWebRequest) request).getRequest();
+
+        // just to be safe - can apparently not always be guaranteed
+        // (despite our call to RequestContextUtil.initRequestContext in KeycloakAuthenticationFilter#doFilter)
+        // without this, UserFactory may fail to obtain Connector due to missing session (indirectly retrieved via request)
+        if (ServletUtil.getRequest() == null)
+        {
+            ServletUtil.setRequest(servletRequest);
+        }
+        RequestContextUtil.populateRequestContext(context, servletRequest);
     }
 }

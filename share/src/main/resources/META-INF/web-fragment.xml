@@ -37,8 +37,21 @@
         </init-param>
     </filter>
 
+    <!-- limited to any URLs in which access to user groups may be relevant for processing -->
     <filter-mapping>
         <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
-        <url-pattern>/*</url-pattern>
+        <url-pattern>/page/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <url-pattern>/p/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <url-pattern>/proxy/*</url-pattern>
+    </filter-mapping>
+    <filter-mapping>
+        <filter-name>${moduleId}.UserGroupsLoadFilter</filter-name>
+        <url-pattern>/service/*</url-pattern>
     </filter-mapping>
 </web-fragment>
