@@ -51,6 +51,8 @@
             </credentials>
             <!-- for some reason, this is not a sane default in Keycloak Adapter config -->
             <verify-token-audience>true</verify-token-audience>
+            <connectionTimeout>5000</connectionTimeout>
+            <socketTimeout>5000</socketTimeout>
         </keycloak-adapter-config>
     </config>
     
