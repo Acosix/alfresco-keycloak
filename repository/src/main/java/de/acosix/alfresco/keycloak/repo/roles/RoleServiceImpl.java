@@ -18,11 +18,16 @@ package de.acosix.alfresco.keycloak.repo.roles;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.function.BinaryOperator;
 import java.util.function.Consumer;
+import java.util.function.UnaryOperator;
 import java.util.regex.Pattern;
 
 import org.alfresco.service.cmr.security.AuthorityType;
@@ -36,7 +41,7 @@ import org.springframework.beans.factory.InitializingBean;
 
 import de.acosix.alfresco.keycloak.repo.client.IDMClient;
 
-public class RoleServiceImpl implements InitializingBean, RoleService
+public class RoleServiceImpl implements RoleService, InitializingBean
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RoleServiceImpl.class);
@@ -280,6 +285,134 @@ public class RoleServiceImpl implements InitializingBean, RoleService
         return this.doFindRoles(resourceName, shortNameFilter);
     }
 
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMappedFromKeycloak(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+
+        Optional<String> role = Optional.empty();
+
+        if (this.processRealmRoles)
+        {
+            role = this.realmRoleNameMapper.mapAuthorityName(authorityName);
+        }
+        if (this.processResourceRoles)
+        {
+            final Iterator<String> resourceIterator = this.resourceRoleNameMapper.keySet().iterator();
+            while (!role.isPresent() && resourceIterator.hasNext())
+            {
+                final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resourceIterator.next());
+                role = roleNameMapper.mapAuthorityName(authorityName);
+            }
+        }
+        return role.isPresent();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> getRoleName(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+
+        Optional<String> role = Optional.empty();
+
+        if (this.processRealmRoles)
+        {
+            final UnaryOperator<String> realmRoleResolver = rn -> {
+                final Set<String> matchingRoles = new HashSet<>();
+                this.idmClient.processRealmRoles(rn, 0, Integer.MAX_VALUE, roleResult -> {
+                    if (roleResult.getName().equalsIgnoreCase(rn))
+                    {
+                        matchingRoles.add(roleResult.getName());
+                    }
+                });
+
+                String matchingRole = null;
+                if (matchingRoles.size() == 1)
+                {
+                    matchingRole = matchingRoles.iterator().next();
+                }
+                else
+                {
+                    LOGGER.warn("Failed to match apparent Keycloak realm role {} to unique role via admin API", rn);
+                }
+                return matchingRole;
+            };
+            role = this.realmRoleNameMapper.mapAuthorityName(authorityName).map(realmRoleResolver);
+        }
+        if (this.processResourceRoles)
+        {
+            final BinaryOperator<String> clientRoleResolver = (client, rn) -> {
+                final Set<String> matchingRoles = new HashSet<>();
+                this.idmClient.processClientRoles(client, rn, 0, Integer.MAX_VALUE, roleResult -> {
+                    if (roleResult.getName().equalsIgnoreCase(rn))
+                    {
+                        matchingRoles.add(roleResult.getName());
+                    }
+                });
+
+                String matchingRole = null;
+                if (matchingRoles.size() == 1)
+                {
+                    matchingRole = matchingRoles.iterator().next();
+                }
+                else
+                {
+                    LOGGER.warn("Failed to match apparent Keycloak role {} from client {} to unique role via admin API", rn, client);
+                }
+                return matchingRole;
+            };
+            final Iterator<String> resourceIterator = this.resourceRoleNameMapper.keySet().iterator();
+            while (!role.isPresent() && resourceIterator.hasNext())
+            {
+                final String resource = resourceIterator.next();
+                final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resource);
+                role = roleNameMapper.mapAuthorityName(authorityName).map(rn -> clientRoleResolver.apply(resource, rn));
+            }
+        }
+        return role;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> getClientFromRole(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+        Optional<String> client = Optional.empty();
+        Optional<String> role = Optional.empty();
+
+        if (this.processRealmRoles)
+        {
+            role = this.realmRoleNameMapper.mapAuthorityName(authorityName);
+        }
+        if (!role.isPresent() && this.processResourceRoles)
+        {
+            final Iterator<String> resourceIterator = this.resourceRoleNameMapper.keySet().iterator();
+            while (!role.isPresent() && resourceIterator.hasNext())
+            {
+                final String resource = resourceIterator.next();
+                final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resource);
+                role = roleNameMapper.mapAuthorityName(authorityName);
+                if (role.isPresent())
+                {
+                    client = Optional.of(resource);
+                }
+            }
+        }
+
+        return client;
+    }
+
     protected List<Role> doFindRoles(final String shortNameFilter, final boolean realmOnly)
     {
         final List<Role> roles;
@@ -480,11 +613,11 @@ public class RoleServiceImpl implements InitializingBean, RoleService
 
         if (clientId != null)
         {
-            this.idmClient.processRoles(clientId, 0, Integer.MAX_VALUE, processor);
+            this.idmClient.processClientRoles(clientId, 0, Integer.MAX_VALUE, processor);
         }
         else
         {
-            this.idmClient.processRoles(0, Integer.MAX_VALUE, processor);
+            this.idmClient.processRealmRoles(0, Integer.MAX_VALUE, processor);
         }
 
         return results;
@@ -508,7 +641,6 @@ public class RoleServiceImpl implements InitializingBean, RoleService
             {
                 LOGGER.debug("Excluding role {} as it maps to group authority name {}", role.getName(), r);
             }
-            ;
             return allowed;
         }).map(r -> new Role(r, role.getName(), role.getDescription()));
 

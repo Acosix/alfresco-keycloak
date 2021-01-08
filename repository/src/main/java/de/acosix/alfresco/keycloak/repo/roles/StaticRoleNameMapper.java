@@ -17,6 +17,7 @@ package de.acosix.alfresco.keycloak.repo.roles;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Optional;
 
 import org.alfresco.util.ParameterCheck;
@@ -82,4 +83,34 @@ public class StaticRoleNameMapper implements RoleNameMapper
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapAuthorityName(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+
+        Optional<String> result = Optional.empty();
+
+        if (this.nameMappings != null)
+        {
+            for (final Entry<String, String> entry : this.nameMappings.entrySet())
+            {
+                if (entry.getValue().equals(authorityName) || (this.upperCaseRoles && entry.getValue().equalsIgnoreCase(authorityName)))
+                {
+                    final String mappedName = entry.getKey();
+                    LOGGER.debug("Mapped authority name {} to {} using static mapping", authorityName, mappedName);
+                    result = Optional.of(mappedName);
+                    break;
+                }
+            }
+            if (!result.isPresent())
+            {
+                LOGGER.debug("No static mapping applies to authority name {}", authorityName);
+            }
+        }
+
+        return result;
+    }
 }

@@ -37,4 +37,14 @@ public interface RoleNameMapper
      *         operation
      */
     Optional<String> mapRoleName(String roleName);
+
+    /**
+     * Maps the name of an Alfresco authority to the name of a Keycloak role. This operation should act like the inverse of the
+     * {@link #mapRoleName(String) original inbound mapping}.
+     *
+     * @param authorityName
+     *            the Alfresco authority name
+     * @return the name of the Keycloak role
+     */
+    Optional<String> mapAuthorityName(String authorityName);
 }

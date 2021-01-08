@@ -16,6 +16,7 @@
 package de.acosix.alfresco.keycloak.repo.roles;
 
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Instances of this interface allow for lookup / retrieval of Keycloak roles.
@@ -88,4 +89,31 @@ public interface RoleService
      */
     List<Role> findRoles(String resourceName, String shortNameFilter);
 
+    /**
+     * Checks whether the specified authority name is a role mapped from Keycloak.
+     *
+     * @param authorityName
+     *            the Alfresco authority name to check
+     * @return {@code true} if the authority name matches any expected patterns of roles mapped from Keycloak, {@code false} otherwise
+     */
+    boolean isMappedFromKeycloak(String authorityName);
+
+    /**
+     * Retrieves the name of the original Keycloak role from which the specified authority name was mapped from within Keycloak.
+     *
+     * @param authorityName
+     *            the Alfresco authority name to process
+     * @return the name of the Keycloak role from which the authority name was mapped unless the role was not mapped from Keycloak
+     */
+    Optional<String> getRoleName(String authorityName);
+
+    /**
+     * Retrieves the name of the client the specified authority name was mapped from within Keycloak.
+     *
+     * @param authorityName
+     *            the Alfresco authority name to process
+     * @return the name of the client which defines the role unless the role is either not mapped from Keycloak or mapped from the realm
+     *         scope
+     */
+    Optional<String> getClientFromRole(String authorityName);
 }

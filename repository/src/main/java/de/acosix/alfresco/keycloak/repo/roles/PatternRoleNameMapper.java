@@ -18,6 +18,7 @@ package de.acosix.alfresco.keycloak.repo.roles;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.regex.Pattern;
 
 import org.alfresco.util.ParameterCheck;
 import org.slf4j.Logger;
@@ -35,6 +36,8 @@ public class PatternRoleNameMapper implements RoleNameMapper
 
     protected Map<String, String> patternMappings;
 
+    protected Map<String, String> patternInverseMappings;
+
     protected boolean upperCaseRoles;
 
     /**
@@ -44,6 +47,15 @@ public class PatternRoleNameMapper implements RoleNameMapper
     public void setPatternMappings(final Map<String, String> patternMappings)
     {
         this.patternMappings = patternMappings;
+    }
+
+    /**
+     * @param patternInverseMappings
+     *            the patternInverseMappings to set
+     */
+    public void setPatternInverseMappings(final Map<String, String> patternInverseMappings)
+    {
+        this.patternInverseMappings = patternInverseMappings;
     }
 
     /**
@@ -75,7 +87,6 @@ public class PatternRoleNameMapper implements RoleNameMapper
                 LOGGER.debug("Mapped role {} to {}", roleName, mappedName);
                 return mappedName;
             }).map(name -> this.upperCaseRoles ? name.toUpperCase(Locale.ENGLISH) : name);
-            ;
 
             if (!result.isPresent())
             {
@@ -86,4 +97,32 @@ public class PatternRoleNameMapper implements RoleNameMapper
         return result;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapAuthorityName(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+
+        Optional<String> result = Optional.empty();
+
+        if (this.patternInverseMappings != null)
+        {
+            final Optional<String> matchingPattern = this.patternMappings.keySet().stream().filter(pattern -> Pattern
+                    .compile(pattern, this.upperCaseRoles ? Pattern.CASE_INSENSITIVE : 0).matcher(authorityName).matches()).findFirst();
+
+            result = matchingPattern.map(pattern -> {
+                final String replacement = this.patternMappings.get(pattern);
+                LOGGER.debug("Authority name {} matches inverse mapping pattern {} - applying replacement pattern {}", authorityName,
+                        pattern, replacement);
+                final String mappedName = Pattern.compile(pattern, this.upperCaseRoles ? Pattern.CASE_INSENSITIVE : 0)
+                        .matcher(authorityName).replaceAll(replacement);
+                LOGGER.debug("Mapped authority name {} to {}", authorityName, mappedName);
+                return mappedName;
+            }).map(name -> this.upperCaseRoles ? name.toLowerCase(Locale.ENGLISH) : name);
+        }
+
+        return result;
+    }
 }

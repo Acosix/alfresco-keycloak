@@ -130,7 +130,22 @@ public interface IDMClient
      *            the processor handling the loaded roles
      * @return the number of processed roles
      */
-    int processRoles(int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
+    int processRealmRoles(int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
+
+    /**
+     * Loads and processes a batch of realm roles from Keycloak using an externally specified processor.
+     *
+     * @param search
+     *            a search term to filter roles
+     * @param offset
+     *            the index of the first role to retrieve
+     * @param roleBatchSize
+     *            the number of roles to load in one batch
+     * @param roleProcessor
+     *            the processor handling the loaded roles
+     * @return the number of processed roles
+     */
+    int processRealmRoles(String search, int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
 
     /**
      * Loads and processes a batch of client roles from Keycloak using an externally specified processor.
@@ -145,5 +160,22 @@ public interface IDMClient
      *            the processor handling the loaded roles
      * @return the number of processed roles
      */
-    int processRoles(String clientId, int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
+    int processClientRoles(String clientId, int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
+
+    /**
+     * Loads and processes a batch of client roles from Keycloak using an externally specified processor.
+     *
+     * @param clientId
+     *            the {@link ClientRepresentation#getId() (technical) ID} of a client from which to process defined roles
+     * @param search
+     *            a search term to filter roles
+     * @param offset
+     *            the index of the first role to retrieve
+     * @param roleBatchSize
+     *            the number of roles to load in one batch
+     * @param roleProcessor
+     *            the processor handling the loaded roles
+     * @return the number of processed roles
+     */
+    int processClientRoles(String clientId, String search, int offset, int roleBatchSize, Consumer<RoleRepresentation> roleProcessor);
 }

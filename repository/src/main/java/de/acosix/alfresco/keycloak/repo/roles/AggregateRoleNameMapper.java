@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 
+import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,6 +74,7 @@ public class AggregateRoleNameMapper implements InitializingBean, RoleNameMapper
     @Override
     public Optional<String> mapRoleName(final String roleName)
     {
+        ParameterCheck.mandatoryString("roleName", roleName);
         LOGGER.debug("Mapping role {} using granular mappers {}", roleName, this.granularMappers);
         Optional<String> mappedName = Optional.empty();
         for (final RoleNameMapper mapper : this.granularMappers)
@@ -87,4 +89,24 @@ public class AggregateRoleNameMapper implements InitializingBean, RoleNameMapper
         return mappedName;
     }
 
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapAuthorityName(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+        LOGGER.debug("Mapping authority name {} using granular mappers {}", authorityName, this.granularMappers);
+        Optional<String> mappedName = Optional.empty();
+        for (final RoleNameMapper mapper : this.granularMappers)
+        {
+            mappedName = mapper.mapAuthorityName(authorityName).map(name -> this.upperCaseRoles ? name.toLowerCase(Locale.ENGLISH) : name);
+            if (mappedName.isPresent())
+            {
+                LOGGER.debug("Mapped authority name {} to {} using granular mapper {}", authorityName, mappedName, mapper);
+                break;
+            }
+        }
+        return mappedName;
+    }
 }

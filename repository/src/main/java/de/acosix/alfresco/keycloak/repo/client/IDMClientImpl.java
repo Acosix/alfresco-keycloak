@@ -310,7 +310,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * {@inheritDoc}
      */
     @Override
-    public int processRoles(final int offset, final int userBatchSize, final Consumer<RoleRepresentation> roleProcessor)
+    public int processRealmRoles(final int offset, final int userBatchSize, final Consumer<RoleRepresentation> roleProcessor)
     {
         ParameterCheck.mandatory("roleProcessor", roleProcessor);
 
@@ -335,7 +335,35 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * {@inheritDoc}
      */
     @Override
-    public int processRoles(final String clientId, final int offset, final int userBatchSize,
+    public int processRealmRoles(final String search, final int offset, final int userBatchSize,
+            final Consumer<RoleRepresentation> roleProcessor)
+    {
+        ParameterCheck.mandatory("roleProcessor", roleProcessor);
+        ParameterCheck.mandatoryString("search", search);
+
+        if (offset < 0)
+        {
+            throw new IllegalArgumentException("offset must be a non-negative integer");
+        }
+        if (userBatchSize <= 0)
+        {
+            throw new IllegalArgumentException("userBatchSize must be a positive integer");
+        }
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl()).path("/admin/realms/{realm}/roles")
+                .queryParam("first", offset).queryParam("max", userBatchSize).queryParam("search", search)
+                .build(this.deployment.getRealm());
+
+        final int processedRoles = this.processEntityBatch(uri, roleProcessor, RoleRepresentation.class);
+        return processedRoles;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int processClientRoles(final String clientId, final int offset, final int userBatchSize,
             final Consumer<RoleRepresentation> roleProcessor)
     {
         ParameterCheck.mandatoryString("clientId", clientId);
@@ -353,6 +381,35 @@ public class IDMClientImpl implements InitializingBean, IDMClient
         final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
                 .path("/admin/realms/{realm}/clients/{clientId}/roles").queryParam("first", offset).queryParam("max", userBatchSize)
                 .build(this.deployment.getRealm(), clientId);
+
+        final int processedRoles = this.processEntityBatch(uri, roleProcessor, RoleRepresentation.class);
+        return processedRoles;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int processClientRoles(final String clientId, final String search, final int offset, final int userBatchSize,
+            final Consumer<RoleRepresentation> roleProcessor)
+    {
+        ParameterCheck.mandatoryString("clientId", clientId);
+        ParameterCheck.mandatoryString("search", search);
+        ParameterCheck.mandatory("roleProcessor", roleProcessor);
+
+        if (offset < 0)
+        {
+            throw new IllegalArgumentException("offset must be a non-negative integer");
+        }
+        if (userBatchSize <= 0)
+        {
+            throw new IllegalArgumentException("userBatchSize must be a positive integer");
+        }
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
+                .path("/admin/realms/{realm}/clients/{clientId}/roles").queryParam("first", offset).queryParam("max", userBatchSize)
+                .queryParam("search", search).build(this.deployment.getRealm(), clientId);
 
         final int processedRoles = this.processEntityBatch(uri, roleProcessor, RoleRepresentation.class);
         return processedRoles;

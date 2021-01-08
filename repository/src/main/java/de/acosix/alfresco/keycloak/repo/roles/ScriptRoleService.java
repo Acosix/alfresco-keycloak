@@ -145,6 +145,31 @@ public class ScriptRoleService extends BaseScopableProcessorExtension implements
         return roleArray;
     }
 
+    /**
+     * Checks whether the specified authority name is a role mapped from Keycloak.
+     *
+     * @param authorityName
+     *            the Alfresco authority name to check
+     * @return {@code true} if the authority name matches any expected patterns of roles mapped from Keycloak, {@code false} otherwise
+     */
+    public boolean isMappedFromKeycloak(final String authorityName)
+    {
+        return this.roleService.isMappedFromKeycloak(authorityName);
+    }
+
+    /**
+     * Retrieves the name of the client the specified authority name was mapped from within Keycloak.
+     *
+     * @param authorityName
+     *            the Alfresco authority name to process
+     * @return the name of the client which defines the role unless the role is either not mapped from Keycloak or mapped from the realm
+     *         scope
+     */
+    public String getClientFromRole(final String authorityName)
+    {
+        return this.roleService.getClientFromRole(authorityName).orElse(null);
+    }
+
     protected Scriptable makeRoleArray(final List<Role> roles)
     {
         final Scriptable sitesArray = Context.getCurrentContext().newArray(this.getScope(), roles.toArray(new Object[0]));

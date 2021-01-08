@@ -70,10 +70,30 @@ public class PrefixAttachingRoleNameMapper implements RoleNameMapper
             final String mappedName = this.prefix + roleName;
             LOGGER.debug("Mapped role {} to {} using prefix attachment", roleName, mappedName);
             result = Optional.of(mappedName).map(name -> this.upperCaseRoles ? name.toUpperCase(Locale.ENGLISH) : name);
-            ;
         }
 
         return result;
     }
 
+    @Override
+    public Optional<String> mapAuthorityName(final String authorityName)
+    {
+        ParameterCheck.mandatoryString("authorityName", authorityName);
+
+        Optional<String> result = Optional.empty();
+
+        if (this.prefix != null)
+        {
+            final String ciAuthorityName = authorityName.toLowerCase(Locale.ENGLISH);
+            final String ciPrefix = this.prefix.toLowerCase(Locale.ENGLISH);
+            if (ciAuthorityName.startsWith(ciPrefix))
+            {
+                final String mappedName = authorityName.substring(this.prefix.length());
+                LOGGER.debug("Mapped authority name {} to {} using prefix removal", authorityName, mappedName);
+                result = Optional.of(mappedName);
+            }
+        }
+
+        return result;
+    }
 }

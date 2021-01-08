@@ -17,6 +17,7 @@ package de.acosix.alfresco.keycloak.repo.roles;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * This no-op implementation class of a role service may be used as a default implemenation in a subsystem proxy to avoid failing if no
@@ -87,4 +88,33 @@ public class NoOpRoleServiceImpl implements RoleService
         return Collections.emptyList();
     }
 
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public boolean isMappedFromKeycloak(final String authorityName)
+    {
+        return false;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> getRoleName(final String authorityName)
+    {
+        return Optional.empty();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> getClientFromRole(final String authorityName)
+    {
+        return Optional.empty();
+    }
 }
