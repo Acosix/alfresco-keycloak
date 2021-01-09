@@ -21,10 +21,7 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 import org.alfresco.error.AlfrescoRuntimeException;
@@ -33,24 +30,11 @@ import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
-import org.keycloak.OAuth2Constants;
 import org.keycloak.adapters.KeycloakDeployment;
-import org.keycloak.adapters.ServerRequest;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
-import org.keycloak.adapters.rotation.AdapterTokenVerifier;
-import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.KeycloakUriBuilder;
-import org.keycloak.common.util.Time;
-import org.keycloak.constants.ServiceUrlConstants;
-import org.keycloak.representations.AccessToken;
-import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
@@ -60,7 +44,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
-import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
+import de.acosix.alfresco.keycloak.repo.token.AccessTokenHolder;
+import de.acosix.alfresco.keycloak.repo.token.AccessTokenService;
 
 /**
  * Implements the API for a client to the Keycloak admin ReST API specific to IDM structures.
@@ -72,15 +57,15 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     private static final Logger LOGGER = LoggerFactory.getLogger(IDMClientImpl.class);
 
-    protected final ReentrantReadWriteLock tokenLock = new ReentrantReadWriteLock(true);
-
     protected KeycloakDeployment deployment;
+
+    protected AccessTokenService accessTokenService;
 
     protected String userName;
 
     protected String password;
 
-    protected RefreshableAccessTokenHolder token;
+    protected AccessTokenHolder accessToken;
 
     /**
      * {@inheritDoc}
@@ -89,6 +74,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
     public void afterPropertiesSet()
     {
         PropertyCheck.mandatory(this, "keycloakDeployment", this.deployment);
+        PropertyCheck.mandatory(this, "accessTokenService", this.accessTokenService);
     }
 
     /**
@@ -98,6 +84,15 @@ public class IDMClientImpl implements InitializingBean, IDMClient
     public void setDeployment(final KeycloakDeployment deployment)
     {
         this.deployment = deployment;
+    }
+
+    /**
+     * @param accessTokenService
+     *            the accessTokenService to set
+     */
+    public void setAccessTokenService(final AccessTokenService accessTokenService)
+    {
+        this.accessTokenService = accessTokenService;
     }
 
     /**
@@ -607,214 +602,24 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      */
     protected String getValidAccessTokenForRequest()
     {
-        String validToken = null;
-
-        this.tokenLock.readLock().lock();
-        try
+        if (this.accessToken == null)
         {
-            if (this.token != null && this.token.isActive()
-                    && (!this.token.canRefresh() || !this.token.shouldRefresh(this.deployment.getTokenMinimumTimeToLive())))
+            synchronized (this)
             {
-                validToken = this.token.getToken();
-            }
-        }
-        finally
-        {
-            this.tokenLock.readLock().unlock();
-        }
-
-        if (validToken == null)
-        {
-            this.tokenLock.writeLock().lock();
-            try
-            {
-                if (this.token != null && this.token.isActive()
-                        && (!this.token.canRefresh() || !this.token.shouldRefresh(this.deployment.getTokenMinimumTimeToLive())))
+                if (this.accessToken == null)
                 {
-                    validToken = this.token.getToken();
-                }
-
-                if (validToken == null)
-                {
-                    this.obtainOrRefreshAccessToken();
-
-                    validToken = this.token.getToken();
+                    if (this.userName != null && !this.userName.isEmpty())
+                    {
+                        this.accessToken = this.accessTokenService.obtainAccessToken(this.userName, this.password);
+                    }
+                    else
+                    {
+                        this.accessToken = this.accessTokenService.obtainAccessToken();
+                    }
                 }
             }
-            finally
-            {
-                this.tokenLock.writeLock().unlock();
-            }
         }
 
-        return validToken;
-    }
-
-    /**
-     * Retrieves or refreshes an access token, depending on the presence of valid refresh token for a previous access token.
-     */
-    protected void obtainOrRefreshAccessToken()
-    {
-        AccessTokenResponse response;
-
-        try
-        {
-            if (this.token != null && this.token.canRefresh())
-            {
-                response = ServerRequest.invokeRefresh(this.deployment, this.token.getRefreshToken());
-            }
-            else
-            {
-                response = this.userName != null && !this.userName.isEmpty() ? this.getAccessToken(this.userName, this.password)
-                        : this.getAccessToken();
-            }
-        }
-        catch (final IOException ioex)
-        {
-            LOGGER.error("Error retrieving / refreshing access token", ioex);
-            throw new AlfrescoRuntimeException("Error retrieving / refreshing access token", ioex);
-        }
-        catch (final ServerRequest.HttpFailure httpFailure)
-        {
-            LOGGER.error("Refreshing access token failed: {} {}", httpFailure.getStatus(), httpFailure.getError());
-            throw new AlfrescoRuntimeException("Failed to refresh access token: " + httpFailure.getStatus() + " " + httpFailure.getError());
-        }
-
-        final String tokenString = response.getToken();
-
-        final AdapterTokenVerifier.VerifiedTokens tokens;
-        try
-        {
-            tokens = AdapterTokenVerifier.verifyTokens(tokenString, response.getIdToken(), this.deployment);
-        }
-        catch (final VerificationException vex)
-        {
-            LOGGER.error("Token verification failed", vex);
-            throw new AlfrescoRuntimeException("Failed to verify token", vex);
-        }
-
-        final AccessToken accessToken = tokens.getAccessToken();
-
-        if ((accessToken.getExp() - this.deployment.getTokenMinimumTimeToLive()) <= Time.currentTime())
-        {
-            throw new AlfrescoRuntimeException("Failed to retrieve / refresh the access token with a longer time-to-live than the minimum");
-        }
-
-        this.tokenLock.writeLock().lock();
-        try
-        {
-            this.token = new RefreshableAccessTokenHolder(response, tokens);
-        }
-        finally
-        {
-            this.tokenLock.writeLock().unlock();
-        }
-
-        if (response.getNotBeforePolicy() > this.deployment.getNotBefore())
-        {
-            this.deployment.updateNotBefore(response.getNotBeforePolicy());
-        }
-    }
-
-    /**
-     * Retrieves an access token using client credentials.
-     *
-     * @return the access token
-     * @throws IOException
-     *             when errors occur in the HTTP interaction
-     */
-    protected AccessTokenResponse getAccessToken() throws IOException
-    {
-        LOGGER.debug("Retrieving access token with client credentrials");
-        final AccessTokenResponse tokenResponse = this.getAccessTokenImpl(formParams -> {
-            formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.CLIENT_CREDENTIALS));
-        });
-
-        return tokenResponse;
-    }
-
-    /**
-     * Retrieves an access token for a specified synchronisation user.
-     *
-     * @param userName
-     *            the user to use for synchronisation access
-     * @param password
-     *            the password of the user
-     * @return the access token
-     * @throws IOException
-     *             when errors occur in the HTTP interaction
-     */
-    protected AccessTokenResponse getAccessToken(final String userName, final String password) throws IOException
-    {
-        LOGGER.debug("Retrieving access token for user {}", userName);
-        final AccessTokenResponse tokenResponse = this.getAccessTokenImpl(formParams -> {
-            formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.PASSWORD));
-            formParams.add(new BasicNameValuePair("username", userName));
-            formParams.add(new BasicNameValuePair("password", password));
-        });
-
-        return tokenResponse;
-    }
-
-    /**
-     * Retrieves an OIDC access token with the specific token request parameter up to the caller to define via the provided consumer.
-     *
-     * @param postParamProvider
-     *            a provider of HTTP POST parameters for the access token request
-     * @return the access token
-     * @throws IOException
-     *             when errors occur in the HTTP interaction
-     */
-    // implementing this method locally avoids having the dependency on Keycloak authz-client
-    // authz-client does not support refresh, so would be of limited value anyway
-    protected AccessTokenResponse getAccessTokenImpl(final Consumer<List<NameValuePair>> postParamProvider) throws IOException
-    {
-        AccessTokenResponse tokenResponse = null;
-        final HttpClient client = this.deployment.getClient();
-
-        final HttpPost post = new HttpPost(KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
-                .path(ServiceUrlConstants.TOKEN_PATH).build(this.deployment.getRealm()));
-        final List<NameValuePair> formParams = new ArrayList<>();
-
-        postParamProvider.accept(formParams);
-
-        ClientCredentialsProviderUtils.setClientCredentials(this.deployment, post, formParams);
-
-        final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
-        post.setEntity(form);
-
-        final HttpResponse response = client.execute(post);
-        final int status = response.getStatusLine().getStatusCode();
-        final HttpEntity entity = response.getEntity();
-        if (status != 200)
-        {
-            final String statusReason = response.getStatusLine().getReasonPhrase();
-            LOGGER.debug("Failed to retrieve access token due to HTTP {}: {}", status, statusReason);
-            EntityUtils.consumeQuietly(entity);
-            throw new AlfrescoRuntimeException("Failed to retrieve access token due to HTTP error " + status + ": " + statusReason);
-        }
-        if (entity == null)
-        {
-            throw new AlfrescoRuntimeException("Response to access token request did not contain a response body");
-        }
-
-        final InputStream is = entity.getContent();
-        try
-        {
-            tokenResponse = JsonSerialization.readValue(is, AccessTokenResponse.class);
-        }
-        finally
-        {
-            try
-            {
-                is.close();
-            }
-            catch (final IOException e)
-            {
-                LOGGER.trace("Error closing entity stream", e);
-            }
-        }
-
-        return tokenResponse;
+        return this.accessToken.getAccessToken();
     }
 }

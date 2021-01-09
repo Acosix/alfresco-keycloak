@@ -159,6 +159,7 @@
 
     <bean id="idmClient" class="${project.artifactId}.client.IDMClientImpl">
         <property name="deployment" ref="keycloakDeployment" />
+        <property name="accessTokenService" ref="accessTokenService.impl" />
         <property name="userName" value="${keycloak.synchronization.user}" />
         <property name="password" value="${keycloak.synchronization.password}" />
     </bean>
@@ -168,6 +169,10 @@
         <property name="idmClient" ref="idmClient" />
         <property name="personLoadBatchSize" value="${keycloak.synchronization.personLoadBatchSize}" />
         <property name="groupLoadBatchSize" value="${keycloak.synchronization.groupLoadBatchSize}" />
+    </bean>
+
+    <bean id="accessTokenService.impl" class="${project.artifactId}.token.AccessTokenServiceImpl">
+        <property name="deployment" ref="keycloakDeployment" />
     </bean>
 
     <bean id="roleService.impl" class="${project.artifactId}.roles.RoleServiceImpl">

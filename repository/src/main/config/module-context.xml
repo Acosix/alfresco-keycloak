@@ -55,6 +55,20 @@
         </property>
     </bean>
 
+    <bean id="${moduleId}.AccessTokenService" class="org.alfresco.repo.management.subsystems.ChainingSubsystemProxyFactory">
+        <property name="applicationContextManager">
+            <ref bean="Authentication" />
+        </property>
+        <property name="interfaces">
+            <list>
+                <value>${project.artifactId}.token.AccessTokenService</value>
+            </list>
+        </property>
+        <property name="defaultTarget">
+            <bean class="${project.artifactId}.token.NoOpAccessTokenServiceImpl" />
+        </property>
+    </bean>
+
     <bean id="${moduleId}.authenticationListener" class="org.alfresco.repo.management.subsystems.ChainingSubsystemProxyFactory">
         <property name="applicationContextManager">
             <ref bean="Authentication" />

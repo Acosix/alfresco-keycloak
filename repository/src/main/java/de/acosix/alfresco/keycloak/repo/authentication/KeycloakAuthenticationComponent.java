@@ -15,8 +15,6 @@
  */
 package de.acosix.alfresco.keycloak.repo.authentication;
 
-import java.io.IOException;
-import java.io.InputStream;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -38,33 +36,18 @@ import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.PropertyCheck;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
-import org.keycloak.OAuth2Constants;
 import org.keycloak.adapters.KeycloakDeployment;
-import org.keycloak.adapters.ServerRequest;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
-import org.keycloak.adapters.rotation.AdapterTokenVerifier;
-import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
-import org.keycloak.common.VerificationException;
-import org.keycloak.common.util.KeycloakUriBuilder;
-import org.keycloak.constants.ServiceUrlConstants;
 import org.keycloak.representations.AccessToken;
-import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.representations.IDToken;
-import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
+import de.acosix.alfresco.keycloak.repo.token.AccessTokenClient;
+import de.acosix.alfresco.keycloak.repo.token.AccessTokenException;
+import de.acosix.alfresco.keycloak.repo.token.AccessTokenRefreshException;
 import de.acosix.alfresco.keycloak.repo.util.AlfrescoCompatibilityUtil;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
 import net.sf.acegisecurity.Authentication;
@@ -73,6 +56,8 @@ import net.sf.acegisecurity.GrantedAuthorityImpl;
 import net.sf.acegisecurity.providers.UsernamePasswordAuthenticationToken;
 
 /**
+ * This component provides Keycloak-integrated user/password authentication support to an Alfresco instance.
+ *
  * @author Axel Faust
  */
 public class KeycloakAuthenticationComponent extends AbstractAuthenticationComponent
@@ -101,6 +86,8 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     protected KeycloakDeployment deployment;
 
+    protected AccessTokenClient accessTokenClient;
+
     protected Collection<AuthorityExtractor> authorityExtractors;
 
     protected Collection<UserProcessor> userProcessors;
@@ -115,6 +102,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         PropertyCheck.mandatory(this, "applicationContext", this.applicationContext);
         PropertyCheck.mandatory(this, "keycloakDeployment", this.deployment);
 
+        this.accessTokenClient = new AccessTokenClient(this.deployment);
         this.authorityExtractors = Collections
                 .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(AuthorityExtractor.class, false, true).values()));
         this.userProcessors = Collections
@@ -261,27 +249,12 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         {
             try
             {
-                final AccessTokenResponse response = ServerRequest.invokeRefresh(this.deployment, ticketToken.getRefreshToken());
-                final VerifiedTokens tokens = AdapterTokenVerifier.verifyTokens(response.getToken(), response.getIdToken(),
-                        this.deployment);
-
-                result = new RefreshableAccessTokenHolder(response, tokens);
+                result = this.accessTokenClient.refreshAccessToken(ticketToken.getRefreshToken());
             }
-            catch (final ServerRequest.HttpFailure httpFailure)
+            catch (final AccessTokenRefreshException atrex)
             {
-                LOGGER.error("Error refreshing Keycloak authentication - {} {}", httpFailure.getStatus(), httpFailure.getError());
-                throw new AuthenticationException(
-                        "Failed to refresh Keycloak authentication: " + httpFailure.getStatus() + " " + httpFailure.getError());
-            }
-            catch (final VerificationException vex)
-            {
-                LOGGER.error("Error refreshing Keycloak authentication - access token verification failed", vex);
-                throw new AuthenticationException("Failed to refresh Keycloak authentication", vex);
-            }
-            catch (final IOException ioex)
-            {
-                LOGGER.error("Error refreshing Keycloak authentication - unexpected IO exception", ioex);
-                throw new AuthenticationException("Failed to refresh Keycloak authentication", ioex);
+                LOGGER.error("Error refreshing Keycloak authentication", atrex);
+                throw new AuthenticationException("Failed to refresh Keycloak authentication", atrex);
             }
         }
         else if (this.failExpiredTicketTokens && !ticketToken.isActive())
@@ -311,38 +284,30 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
             throw new AuthenticationException("Simple login via user name + password is not allowed");
         }
 
-        final AccessTokenResponse response;
-        final VerifiedTokens tokens;
+        final RefreshableAccessTokenHolder accessTokenHolder;
         String realUserName = userName;
         try
         {
-            response = this.getAccessTokenImpl(userName, new String(password));
-            tokens = AdapterTokenVerifier.verifyTokens(response.getToken(), response.getIdToken(), this.deployment);
-
-            realUserName = tokens.getAccessToken().getPreferredUsername();
+            accessTokenHolder = this.accessTokenClient.obtainAccessToken(userName, new String(password));
+            realUserName = accessTokenHolder.getAccessToken().getPreferredUsername();
 
             // for potential one-off authentication, we do not care particularly about the token TTL - so no validation here
 
             if (Boolean.TRUE.equals(this.lastTokenResponseStoreEnabled.get()))
             {
-                this.lastTokenResponse.set(new RefreshableAccessTokenHolder(response, tokens));
+                this.lastTokenResponse.set(accessTokenHolder);
             }
         }
-        catch (final VerificationException vex)
+        catch (final AccessTokenException atex)
         {
-            LOGGER.error("Error authenticating against Keycloak - access token verification failed", vex);
-            throw new AuthenticationException("Failed to authenticate against Keycloak", vex);
-        }
-        catch (final IOException ioex)
-        {
-            LOGGER.error("Error authenticating against Keycloak - unexpected IO exception", ioex);
-            throw new AuthenticationException("Failed to authenticate against Keycloak", ioex);
+            LOGGER.error("Error authenticating against Keycloak", atex);
+            throw new AuthenticationException("Failed to authenticate against Keycloak", atex);
         }
 
-        // TODO Override setCurrentUser to perform user existence validation and role retrieval for non-Keycloak logins (e.g. via public API
-        // setCurrentUser)
+        // TODO Override setCurrentUser to perform user existence validation and role retrieval for non-Keycloak logins
+        // (e.g. via public API setCurrentUser)
         this.setCurrentUser(realUserName);
-        this.handleUserTokens(tokens.getAccessToken(), tokens.getIdToken(), true);
+        this.handleUserTokens(accessTokenHolder.getAccessToken(), accessTokenHolder.getIdToken(), true);
     }
 
     /**
@@ -452,76 +417,5 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected boolean implementationAllowsGuestLogin()
     {
         return this.allowGuestLogin;
-    }
-
-    /**
-     * Retrieves an OIDC access token with the specific token request parameter up to the caller to define via the provided consumer.
-     *
-     * @param userName
-     *            the user to use for synchronisation access
-     * @param password
-     *            the password of the user
-     * @return the access token
-     * @throws IOException
-     *             when errors occur in the HTTP interaction
-     */
-    // implementing this method locally avoids having the dependency on Keycloak authz-client
-    // authz-client does not support refresh, so would be of limited value anyway
-    protected AccessTokenResponse getAccessTokenImpl(final String userName, final String password) throws IOException
-    {
-        AccessTokenResponse tokenResponse = null;
-        final HttpClient client = this.deployment.getClient();
-
-        final HttpPost post = new HttpPost(KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
-                .path(ServiceUrlConstants.TOKEN_PATH).build(this.deployment.getRealm()));
-        final List<NameValuePair> formParams = new ArrayList<>();
-
-        formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.PASSWORD));
-        formParams.add(new BasicNameValuePair("username", userName));
-        formParams.add(new BasicNameValuePair("password", password));
-
-        ClientCredentialsProviderUtils.setClientCredentials(this.deployment, post, formParams);
-
-        final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
-        post.setEntity(form);
-
-        final HttpResponse response = client.execute(post);
-        final int status = response.getStatusLine().getStatusCode();
-        final HttpEntity entity = response.getEntity();
-
-        if (status != 200)
-        {
-            final String statusReason = response.getStatusLine().getReasonPhrase();
-            LOGGER.debug("Failed to retrieve access token due to HTTP {}: {}", status, statusReason);
-            EntityUtils.consumeQuietly(entity);
-
-            LOGGER.debug("Failed to authenticate user against Keycloak. Status: {} Reason: {}", status, statusReason);
-            throw new AuthenticationException("Failed to authenticate against Keycloak - Status: " + status + ", Reason: " + statusReason);
-        }
-
-        if (entity == null)
-        {
-            LOGGER.debug("Failed to authenticate against Keycloak - Response did not contain a message body");
-            throw new AuthenticationException("Failed to authenticate against Keycloak - Response did not contain a message body");
-        }
-
-        final InputStream is = entity.getContent();
-        try
-        {
-            tokenResponse = JsonSerialization.readValue(is, AccessTokenResponse.class);
-        }
-        finally
-        {
-            try
-            {
-                is.close();
-            }
-            catch (final IOException e)
-            {
-                LOGGER.trace("Error closing entity stream", e);
-            }
-        }
-
-        return tokenResponse;
     }
 }
