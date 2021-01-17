@@ -23,7 +23,15 @@
                 <name>Alfresco Connector</name>
                 <description>Connects to an Alfresco instance using cookie-based authentication and awareness of Keycloak access tokens</description>
                 <class>de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfrescoConnector</class>
+                <authenticator-id>acosix-kc-authenticator</authenticator-id>
             </connector>
+            
+            <authenticator>
+                <id>acosix-kc-authenticator</id>
+                <name>Acosix Keycloak Authenticator</name>
+                <description>Authenticator with flexible support for ticket, cookie, remote user, and access token</description>
+                <class>de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareAlfrescoAuthenticator</class>
+            </authenticator>
 
             <endpoint>
                 <id>alfresco</id>
