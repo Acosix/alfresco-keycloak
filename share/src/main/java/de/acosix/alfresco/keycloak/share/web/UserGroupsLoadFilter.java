@@ -27,6 +27,7 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpSession;
 
 import org.alfresco.util.PropertyCheck;
+import org.alfresco.web.site.SlingshotUserFactory;
 import org.alfresco.web.site.servlet.SlingshotLoginController;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
@@ -37,6 +38,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.extensions.config.ConfigElement;
 import org.springframework.extensions.config.ConfigService;
+import org.springframework.extensions.surf.UserFactory;
 import org.springframework.extensions.surf.exception.ConnectorServiceException;
 import org.springframework.extensions.surf.site.AuthenticationUtil;
 import org.springframework.extensions.surf.support.AlfrescoUserFactory;
@@ -47,6 +49,7 @@ import org.springframework.extensions.webscripts.connector.ConnectorContext;
 import org.springframework.extensions.webscripts.connector.ConnectorService;
 import org.springframework.extensions.webscripts.connector.HttpMethod;
 import org.springframework.extensions.webscripts.connector.Response;
+import org.springframework.extensions.webscripts.connector.User;
 import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilter;
 
 /**
@@ -116,6 +119,7 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
             {
                 final String userId = AuthenticationUtil.getUserId((HttpServletRequest) request);
                 final String userGroupsCSVList = (String) session.getAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS);
+                final User user = (User) session.getAttribute(UserFactory.SESSION_ATTRIBUTE_KEY_USER_OBJECT);
 
                 final Date lastLoaded = (Date) session.getAttribute(SESSION_ATTRIBUTE_KEY_USER_GROUPS_LAST_LOADED);
                 long cachedUserGroupsTimeout = DEFAULT_CACHED_USER_GROUPS_TIMEOUT;
@@ -139,11 +143,24 @@ public class UserGroupsLoadFilter implements DependencyInjectedFilter, Initializ
                         if (reloadedUserGroupsCSVList != null)
                         {
                             session.setAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS, reloadedUserGroupsCSVList);
+                            if (user != null)
+                            {
+                                user.setProperty(SlingshotUserFactory.ALF_USER_GROUPS, reloadedUserGroupsCSVList);
+                            }
                         }
                         else
                         {
                             LOGGER.debug(
                                     "User groups session attribute cannot be updated after failure to load - will retry after next cache timeout");
+                            // some scripts (*cough* faceted-search) can fail if attribute is not set
+                            if (session.getAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS) == null)
+                            {
+                                session.setAttribute(SlingshotLoginController.SESSION_ATTRIBUTE_KEY_USER_GROUPS, "");
+                            }
+                            if (user != null && user.getProperty(SlingshotUserFactory.ALF_USER_GROUPS) == null)
+                            {
+                                user.setProperty(SlingshotUserFactory.ALF_USER_GROUPS, "");
+                            }
                         }
                         session.setAttribute(SESSION_ATTRIBUTE_KEY_USER_GROUPS_LAST_LOADED, new Date());
                     }
