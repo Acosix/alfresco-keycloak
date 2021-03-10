@@ -26,7 +26,7 @@
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
     <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-    <version>1.1.0-rc6-SNAPSHOT</version>
+    <version>1.1.0-rc6</version>
     <packaging>pom</packaging>
 
     <name>Acosix Alfresco Keycloak - Parent</name>
@@ -79,7 +79,7 @@
         <apache.httpclient.version>4.5.1</apache.httpclient.version>
         <apache.httpcore.version>4.4.3</apache.httpcore.version>
 
-        <acosix.utility.version>1.2.5-SNAPSHOT</acosix.utility.version>
+        <acosix.utility.version>1.2.5</acosix.utility.version>
         <ootbee.support-tools.version>1.1.0.0</ootbee.support-tools.version>
     </properties>
 
