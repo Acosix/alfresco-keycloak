@@ -107,7 +107,7 @@ The following core configuration properties can be set (more extensive list in t
 
 ## Alfresco Share
 
-The Keycloak support in Alfresco Share is configured via the standard `share-config-custom.xml` file. Just by isntalling the module into Share and its packaged module default file, support for Keycloak authentication is pre-enabled. By configuring an additional `Keycloak` configuration section in the `share-config-custom.xml`, the default configuration can be complemented / modified. Its configuration is split into two sub-elements - the `keycloak-auth-config`, which handles configuration specific to features implemented as part of this addon, and `keycloak-adapter-config`, which handles configuration relating to the Keycloak adapter library used to integrate with the Keycloak server. The latter section shares / supports identical configuration properties as the `keycloak.adapter.???` properties in the Repository subsystem.
+By installing the addon on the Repository tier and allowing user + password logins to be supported, Alfresco Share will automatically and transparently authenticate users against Keycloak when a login occurs via the default login form. Installing the addon on the Share tier enables extended support for single sign-on (SSO) authentication directly on the Share tier. When installed, support for Keycloak SSO authentication is pre-enabled by the default configuration bundled with the addon, and only requires the enablement of `external-auth` on the `alfresco` remote connector to be effectively activated. Adding an additional `Keycloak` configuration section in the `share-config-custom.xml` file allows to complement / modify the default configuration. The section is split into two primary sub-elements - the `keycloak-auth-config`, which handles configuration specific to features implemented as part of this addon, and `keycloak-adapter-config`, which handles configuration relating to the Keycloak adapter library used to integrate with the Keycloak server. The latter section uses identical configuration properties as the Repository subsystem (all properties with the `keycloak.adapter.` key prefix).
 The following showcases an example configuration block:
 
 ```xml
@@ -140,7 +140,7 @@ The following showcases an example configuration block:
 
 **Note**: When the `enable-sso-filter` is set to `true`, the Keycloak authentication subsystem must be enabled on the Alfresco Repository for correct operation.
 
-Similar to Alfresco's out-of-the-box SSO mechanisms for Share, the use of Keycloak for SSO requires that the Remote endpoint configuration be changed to use the `/alfresco/wcs` endpoint instead of the default `/alfresco/s` endpoint. Additionally, a special connector must be used to properly use the access token to authenticate against the Alfresco Repository. This can all be done by adding a section like the following:
+Similar to Alfresco's out-of-the-box SSO mechanisms for Share, the use of Keycloak for SSO requires that the Remote endpoint configuration be changed to use the `/alfresco/wcs` endpoint instead of the default `/alfresco/s` endpoint. Additionally, a special connector must be used to properly use the access token to authenticate against the Alfresco Repository, and the `external-auth` flag set to `true`. This can all be done by adding a section like the following:
 
 ```xml
     <config evaluator="string-compare" condition="Remote">

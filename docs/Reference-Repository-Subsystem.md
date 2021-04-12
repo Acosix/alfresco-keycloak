@@ -1,4 +1,4 @@
-# Keycloak Repository Subsystem
+# Repository Subsystem Reference
 
 The Keycloak authentication subsystem is enabled by putting a single instance of it in the authentication chain property, e.g. by specifying
 
@@ -152,3 +152,14 @@ The following technical role mapping configuration properties are supported by t
 | --- | ---: | --- |
 | `hiddenMappedRoles.list.csv` | (too long) | Comma-separated list of Alfresco authority names which should not be exposed even if the names have been mapped from Keycloak roles |
 
+### Technical - Session Caches
+
+In order to support Keycloak back-channel logout / session invalidation, the Repository subsystem uses custom Alfresco caches to map HTTP and SSO session IDs. Additionally, a custom cache is used to map Keycloak access tokens for authentication tickets that have been established by simple user + password authentication in order to refresh them when necessary / possible, and map the relevant roles from the token into the users authorisation context on each subsequent request. The caches added by the addon can be configured just like any other cache in Alfresco. The names / configuration key prefixes for these caches are:
+
+- `cache.acosix-keycloak.ssoToSessionCache`
+- `cache.acosix-keycloak.sessionToSsoCache`
+- `cache.acosix-keycloak.principalToSessionCache`
+- `cache.acosix-keycloak.sessionToPrincipalCache`
+- `cache.acosix-keycloak.ticketTokenCache`
+
+By default, all caches have been configured to use a `maxItems` value of `10000`, and are set to be distributed in case either Alfresco Enterprise or the aldica addon is used to enable distributed caching.
