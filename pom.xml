@@ -21,7 +21,7 @@
     <parent>
         <groupId>de.acosix.alfresco.maven</groupId>
         <artifactId>de.acosix.alfresco.maven.project.parent-6.0.7</artifactId>
-        <version>1.3.4</version>
+        <version>1.4.0-SNAPSHOT</version>
     </parent>
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
