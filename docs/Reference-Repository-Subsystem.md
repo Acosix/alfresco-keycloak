@@ -71,7 +71,7 @@ The following synchronisation configuration properties are supported by the subs
 
 ### Technical - Filtering
 
-The following technical synchronisation configuration properties are supported by the subsystem to control the filtering of users / groups. All properties in the table use the key pattern `keycloak.synchronization.&lt;filterCategory&gt;.&lt;filterType&gt;.property.&lt;property&gt;`.
+The following technical synchronisation configuration properties are supported by the subsystem to control the filtering of users / groups. All properties in the table use the key pattern `keycloak.synchronization.<filterCategory>.<filterType>.property.<property>`.
 
 | Category | Type | Property | Default Value | Description |
 | --- | --- | --- | ---: | --- |
@@ -87,7 +87,7 @@ The following technical synchronisation configuration properties are supported b
 
 ### Technical - Mapping
 
-The following technical synchronisation configuration properties are supported by the subsystem to control the mapping of user / group attributes. Properties in the table use the key patterns `keycloak.synchronization.&lt;mapperCategory&gt;.&lt;mapperType&gt;.property.&lt;property&gt;` or `keycloak.synchronization.&lt;mapperCategory&gt;.&lt;mapperType&gt;.property.&lt;property&gt;.map.&lt;subKey&gt;`.
+The following technical synchronisation configuration properties are supported by the subsystem to control the mapping of user / group attributes. Properties in the table use the key patterns `keycloak.synchronization.<mapperCategory>.<mapperType>.property.<property>` or `keycloak.synchronization.<mapperCategory>.<mapperType>.property.<property>.map.<subKey>`.
 
 | Category | Type | Property | Sub-Key | Default Value | Description |
 | --- | --- | --- | --- | ---: | --- |
@@ -130,7 +130,7 @@ The following role mapping configuration properties are supported by the subsyst
 
 ### Technical - Role Name Filters / Mappers
 
-The following technical role mapping configuration properties are supported by the subsystem to control which names should be mapped and to which Alfresco authority names. Properties in the table use the key patterns `keycloak.roles.&lt;category&gt;.&lt;type&gt;.property.&lt;property&gt;` or `keycloak.roles.&lt;category&gt;.&lt;type&gt;.property.&lt;property&gt;.map.&lt;subKey&gt;`.
+The following technical role mapping configuration properties are supported by the subsystem to control which names should be mapped and to which Alfresco authority names. Properties in the table use the key patterns `keycloak.roles.<category>.<type>.property.<property>` or `keycloak.roles.<category>.<type>.property.<property>.map.<subKey>`.
 
 | Category | Type | Property | Sub-Key | Default Value | Description |
 | --- | --- | --- | --- | ---: | --- |
