@@ -47,6 +47,7 @@
         <property name="nodeService" ref="nodeService" />
         <property name="personService" ref="personService" />
         <property name="transactionService" ref="transactionService" />
+        <property name="authorityService" ref="authorityService" />
         <property name="active" value="${keycloak.authentication.enabled}" />
         <property name="defaultAdministratorUserNameList" value="${keycloak.authentication.defaultAdministratorUserNames}" />
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
@@ -54,6 +55,7 @@
         <property name="failExpiredTicketTokens" value="${keycloak.authentication.failExpiredTicketTokens}" />
         <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
         <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
+        <property name="syncAuthorityMembershipOnLogin" value="${keycloak.authentication.syncAuthorityMembershipOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
     </bean>
     
