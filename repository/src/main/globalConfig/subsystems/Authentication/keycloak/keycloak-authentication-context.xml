@@ -55,6 +55,7 @@
         <property name="failExpiredTicketTokens" value="${keycloak.authentication.failExpiredTicketTokens}" />
         <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
         <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
+        <property name="syncAuthoritiesOnLogin" value="${keycloak.authentication.syncAuthoritiesOnLogin}" />
         <property name="syncAuthorityMembershipOnLogin" value="${keycloak.authentication.syncAuthorityMembershipOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
     </bean>

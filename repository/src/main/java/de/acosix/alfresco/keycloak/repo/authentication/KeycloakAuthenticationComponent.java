@@ -88,6 +88,8 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     protected boolean mapPersonPropertiesOnLogin;
     
+    protected boolean syncAuthoritiesOnLogin;
+    
     protected boolean syncAuthorityMembershipOnLogin;
 
     protected KeycloakDeployment deployment;
@@ -199,6 +201,14 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     {
         this.mapPersonPropertiesOnLogin = mapPersonPropertiesOnLogin;
     }
+
+    /**
+     * @param syncAuthoritiesOnLogin
+     *            the syncAuthoritiesOnLogin to set
+     */
+    public void setSyncAuthoritiesOnLogin(boolean syncAuthoritiesOnLogin) {
+		this.syncAuthoritiesOnLogin = syncAuthoritiesOnLogin;
+	}
 
     /**
      * @param syncAuthorityMembershipOnLogin
@@ -387,21 +397,31 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         {
         	if (this.mapPersonPropertiesOnLogin)
         	{
-	            final boolean requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
+	            boolean requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
 	            this.getTransactionService().getRetryingTransactionHelper().doInTransaction(() -> {
 	                this.updatePerson(accessToken, idToken);
 	                return null;
 	            }, false, requiresNew);
         	}
 
-        	if (this.syncAuthorityMembershipOnLogin)
+        	if (this.syncAuthoritiesOnLogin)
         	{
-	            final boolean requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
+	            boolean requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
 	            this.getTransactionService().getRetryingTransactionHelper().doInTransaction(() -> {
 	        		GrantedAuthority[] authorities = this.getCurrentAuthentication().getAuthorities();
-	        		this.syncAuthorityMemberships(Arrays.asList(authorities), accessToken, idToken);
+	        		this.syncAuthorities(Arrays.asList(authorities), accessToken, idToken);
 	                return null;
 	            }, false, requiresNew);
+
+	        	if (this.syncAuthorityMembershipOnLogin)
+	        	{
+		            requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
+		            this.getTransactionService().getRetryingTransactionHelper().doInTransaction(() -> {
+		        		GrantedAuthority[] authorities = this.getCurrentAuthentication().getAuthorities();
+		        		this.syncAuthorityMemberships(Arrays.asList(authorities), accessToken, idToken);
+		                return null;
+		            }, false, requiresNew);
+	        	}
         	}
         }
     }
@@ -449,6 +469,49 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     }
     
     /**
+     * Synchronizes the groups of the current user, but not the membership, as Alfresco user groups.
+     * @param authorities
+     *            the Alfresco authorities to persist as user groups
+     * @param accessToken
+     *            the access token
+     * @param idToken
+     *            the ID token
+     */
+    protected void syncAuthorities(final Collection<GrantedAuthority> authorities, final AccessToken accessToken, final IDToken idToken)
+    {
+        LOGGER.debug("Synchronizing user groups {}", authorities);
+
+		AuthenticationUtil.runAsSystem(new RunAsWork<Void>() {
+			@Override
+			public Void doWork() {
+		        for (GrantedAuthority authority : authorities)
+		        {
+		        	String authorityId = authority.getAuthority();
+		
+		        	if (AuthorityType.GROUP.equals(AuthorityType.getAuthorityType(authorityId)))
+		        	{
+		        		// we only persist groups (not roles) in Alfresco
+		            	
+	            		// if it didn't exist, then we need to associate the user to the group
+	            		if (!authorityService.authorityExists(authorityId))
+	            		{
+	                		// group does not yet exist; create one
+	            			
+	                		if (LOGGER.isDebugEnabled())
+	                			LOGGER.debug("Creating group {}", authorityId);
+	
+	                		String authorityShortName = authorityId.substring(AuthorityType.GROUP.getPrefixString().length()).replace("-", "_");
+	                        authorityService.createAuthority(AuthorityType.GROUP, authorityShortName);
+	            		}
+		        	}
+		        }
+		        
+		        return null;
+			}
+		});
+    }
+    
+    /**
      * Synchronizes the membership of the current user with the authority, as an Alfresco user group.
      * @param authorities
      *            the Alfresco authorities to persist as user groups
@@ -480,31 +543,13 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 		        		// we only persist groups in Alfresco
 		
 		            	// remove if it exists; any remaining GROUP authorities will be unlinked from user later in this method
-		            	if (!persistedAuthorityIds.remove(authorityId))
-		            	{
-		            		// if it didn't exist, then we need to associate the user to the group
-		            		
-		            		if (!authorityService.authorityExists(authorityId))
-		            		{
-		                		// group does not yet exist; create one
-		            			
-		                		if (LOGGER.isDebugEnabled())
-		                			LOGGER.debug("Creating group {}", authorityId);
-		
-		                		String authorityShortName = authorityId.substring(AuthorityType.GROUP.getPrefixString().length()).replace("-", "_");
-		                        authorityService.createAuthority(AuthorityType.GROUP, authorityShortName);
-		            		}
-		            		
-		            		if (LOGGER.isDebugEnabled())
-		            			LOGGER.debug("Adding user {} to group {}", AlfrescoCompatibilityUtil.maskUsername(userName), authorityId);
-		            		
-		            		// add the user to the existing group
-		                    authorityService.addAuthority(authorityId, userAuthorityId);
-		            	}
-		            	else
-		            	{
-		            		// user already in group; leave alone
-		            	}
+		            	persistedAuthorityIds.remove(authorityId);
+	            		
+	            		if (LOGGER.isDebugEnabled())
+	            			LOGGER.debug("Adding user {} to group {}", AlfrescoCompatibilityUtil.maskUsername(userName), authorityId);
+	            		
+	            		// add the user to the existing group
+	                    authorityService.addAuthority(authorityId, userAuthorityId);
 		        	}
 		        }
 		        
