@@ -989,7 +989,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             if (sessionUser == null)
             {
                 LOGGER.debug("Propagating through the user identity: {}", AlfrescoCompatibilityUtil.maskUsername(userId));
-                this.authenticationComponent.setCurrentUser(userId);
+                this.keycloakAuthenticationComponent.setCurrentUser(userId);
                 session = httpServletRequest.getSession();
 
                 try
