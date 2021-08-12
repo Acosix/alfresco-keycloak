@@ -32,8 +32,11 @@ import org.alfresco.repo.security.authentication.AbstractAuthenticationComponent
 import org.alfresco.repo.security.authentication.AuthenticationException;
 import org.alfresco.repo.security.authentication.AuthenticationUtil;
 import org.alfresco.repo.security.authentication.AuthenticationUtil.RunAsWork;
+import org.alfresco.repo.security.permissions.AccessDeniedException;
 import org.alfresco.repo.transaction.AlfrescoTransactionSupport;
 import org.alfresco.repo.transaction.AlfrescoTransactionSupport.TxnReadState;
+import org.alfresco.repo.transaction.RetryingTransactionHelper;
+import org.alfresco.repo.transaction.RetryingTransactionHelper.RetryingTransactionCallback;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.cmr.security.AuthorityService;
@@ -101,6 +104,8 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected Collection<UserProcessor> userProcessors;
     
     protected AuthorityService authorityService;
+    
+    private RetryingTransactionHelper rthelper;
 
     /**
      *
@@ -117,6 +122,15 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
                 .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(AuthorityExtractor.class, false, true).values()));
         this.userProcessors = Collections
                 .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(UserProcessor.class, false, true).values()));
+        
+        this.rthelper = new RetryingTransactionHelper();
+        this.rthelper.setMaxRetries(3);
+        this.rthelper.setMinRetryWaitMs(2000);
+        this.rthelper.setTransactionService(this.getTransactionService());
+        this.rthelper.setExtraExceptions(Arrays.asList(
+        		AccessDeniedException.class // likely caused by a race condition, where multiple threads are authenticating at the same time
+        									// this is due to modern web apps and threading
+        		));
     }
 
     /**
@@ -343,6 +357,16 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         // (e.g. via public API setCurrentUser)
         this.setCurrentUser(realUserName);
         this.handleUserTokens(accessTokenHolder.getAccessToken(), accessTokenHolder.getIdToken(), true);
+    }
+    
+    public Authentication setCurrentUser(final String realUserName) throws AuthenticationException {
+        RetryingTransactionCallback<Authentication> rtcallback = new RetryingTransactionCallback<Authentication>() {
+        	@Override
+        	public Authentication execute() throws RuntimeException {
+            	return KeycloakAuthenticationComponent.super.setCurrentUser(realUserName);
+        	}
+        };
+        return this.rthelper.doInTransaction(rtcallback, this.getTransactionService().isReadOnly(), true);
     }
 
     /**
