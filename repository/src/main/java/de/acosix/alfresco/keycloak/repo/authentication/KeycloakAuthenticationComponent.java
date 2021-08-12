@@ -37,6 +37,7 @@ import org.alfresco.repo.transaction.AlfrescoTransactionSupport;
 import org.alfresco.repo.transaction.AlfrescoTransactionSupport.TxnReadState;
 import org.alfresco.repo.transaction.RetryingTransactionHelper;
 import org.alfresco.repo.transaction.RetryingTransactionHelper.RetryingTransactionCallback;
+import org.alfresco.service.cmr.repository.DuplicateChildNodeNameException;
 import org.alfresco.service.cmr.repository.NodeRef;
 import org.alfresco.service.cmr.repository.NodeService;
 import org.alfresco.service.cmr.security.AuthorityService;
@@ -439,7 +440,6 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
 	        	if (this.syncAuthorityMembershipOnLogin)
 	        	{
-		            requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
 		            this.getTransactionService().getRetryingTransactionHelper().doInTransaction(() -> {
 		        		GrantedAuthority[] authorities = this.getCurrentAuthentication().getAuthorities();
 		        		this.syncAuthorityMemberships(Arrays.asList(authorities), accessToken, idToken);
@@ -505,9 +505,9 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     {
         LOGGER.debug("Synchronizing user groups {}", authorities);
 
-		AuthenticationUtil.runAsSystem(new RunAsWork<Void>() {
+		AuthenticationUtil.runAsSystem(new RunAsLoggableWork<Void>() {
 			@Override
-			public Void doWork() {
+			public Void doLoggedWork() {
 		        for (GrantedAuthority authority : authorities)
 		        {
 		        	String authorityId = authority.getAuthority();
@@ -522,10 +522,19 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 	                		// group does not yet exist; create one
 	            			
 	                		if (LOGGER.isDebugEnabled())
-	                			LOGGER.debug("Creating group {}", authorityId);
-	
-	                		String authorityShortName = authorityId.substring(AuthorityType.GROUP.getPrefixString().length()).replace("-", "_");
-	                        authorityService.createAuthority(AuthorityType.GROUP, authorityShortName);
+	                			LOGGER.debug("Creating authority {}", authorityId);
+
+	                		String authorityShortName = authorityService.getShortName(authorityId);
+	                		authorityShortName = normalizeAuthority(authorityShortName);
+
+	                		if (LOGGER.isDebugEnabled())
+	                			LOGGER.debug("Creating group {}", authorityShortName);
+	                		
+	                		try {
+	                			authorityService.createAuthority(AuthorityType.GROUP, authorityShortName);
+	                		} catch (DuplicateChildNodeNameException dcnne) {
+	                			LOGGER.debug("Group {} already created; race condition?", authorityShortName);
+	                		}
 	            		}
 		        	}
 		        }
@@ -548,19 +557,22 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     {
         final String userName = this.getCurrentUserName();
 
-        LOGGER.debug("Synchronizing user group membership for user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
+		if (LOGGER.isDebugEnabled())
+			LOGGER.debug("Synchronizing user group membership for user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
 
 		String userAuthorityId = this.authorityService.getName(AuthorityType.USER, userName);
         Set<String> persistedAuthorityIds = new HashSet<String>(this.authorityService.getAuthoritiesForUser(userName));
 
-       	LOGGER.debug("Current authorities for user {}: {}", AlfrescoCompatibilityUtil.maskUsername(userName), persistedAuthorityIds);
+		if (LOGGER.isDebugEnabled())
+			LOGGER.debug("Current authorities for user {}: {}", AlfrescoCompatibilityUtil.maskUsername(userName), persistedAuthorityIds);
 
-		AuthenticationUtil.runAsSystem(new RunAsWork<Void>() {
+		AuthenticationUtil.runAsSystem(new RunAsLoggableWork<Void>() {
 			@Override
-			public Void doWork() {
+			public Void doLoggedWork() throws Exception {
 		        for (GrantedAuthority authority : authorities)
 		        {
 		        	String authorityId = authority.getAuthority();
+            		LOGGER.trace("Inspecting authority '{}' to grant membership", authorityId);
 		
 		        	if (AuthorityType.GROUP.equals(AuthorityType.getAuthorityType(authorityId)))
 		        	{
@@ -568,21 +580,35 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 		
 		            	// remove if it exists; any remaining GROUP authorities will be unlinked from user later in this method
 		            	persistedAuthorityIds.remove(authorityId);
+		            	// we cannot assume persistedAuthorityIds has only registered groups; it includes authorities from keycloak
+		            	
+		            	authorityId = normalizeAuthority(authorityId);
 	            		
 	            		if (LOGGER.isDebugEnabled())
 	            			LOGGER.debug("Adding user {} to group {}", AlfrescoCompatibilityUtil.maskUsername(userName), authorityId);
 	            		
-	            		// add the user to the existing group
-	                    authorityService.addAuthority(authorityId, userAuthorityId);
+	            		try {
+		            		// add the user to the existing group
+		                    authorityService.addAuthority(authorityId, userAuthorityId);
+	            		} catch (DuplicateChildNodeNameException dcnne) {
+	            			if (LOGGER.isTraceEnabled())
+	            				LOGGER.trace("User {} is already a member of group {}", AlfrescoCompatibilityUtil.maskUsername(userName), authorityId);
+	            		}
 		        	}
 		        }
+
+		        if (LOGGER.isDebugEnabled())
+		        	LOGGER.debug("Removing user {} from authorities: {}", AlfrescoCompatibilityUtil.maskUsername(userName), persistedAuthorityIds);
 		        
 		        // revoke user from groups
 		        for (String persistedAuthorityId : persistedAuthorityIds)
 		        {
+            		LOGGER.trace("Inspecting authority '{}' to revoke membership", persistedAuthorityId);
+            		
 		        	if (AuthorityType.GROUP.equals(AuthorityType.getAuthorityType(persistedAuthorityId)))
 		        	{
 		        		// disassociate persisted groups only
+		        		persistedAuthorityId = normalizeAuthority(persistedAuthorityId);
 		        		
 		        		if (LOGGER.isDebugEnabled())
 		        			LOGGER.debug("Removing user {} from group {}", AlfrescoCompatibilityUtil.maskUsername(userName), persistedAuthorityId);
@@ -595,6 +621,11 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 			}
 		});
     }
+    
+    private String normalizeAuthority(String authorityIdOrShortName) {
+    	// in case we need to filter out special characters
+    	return authorityIdOrShortName;
+    }
 
     /**
      * {@inheritDoc}
@@ -603,5 +634,33 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected boolean implementationAllowsGuestLogin()
     {
         return this.allowGuestLogin;
+    }
+    
+    
+    
+    private interface RunAsLoggableWork<T> extends RunAsWork<T> {
+    	
+    	default T doWork() throws Exception {
+    		long time = System.currentTimeMillis();
+			LOGGER.trace("doWork()");
+			
+			T result;
+    		try {
+    			result = this.doLoggedWork();
+    		} catch (Exception e) {
+    			LOGGER.error("An unhandled exception occurred", e);
+    			throw e;
+    		} catch (Throwable t) {
+    			LOGGER.error("An unhandled error occurred", t);
+    			throw t;
+    		}
+
+			LOGGER.trace("doWork(): completed in {} ms", System.currentTimeMillis() - time);
+			
+			return result;
+    	}
+    	
+    	T doLoggedWork() throws Exception;
+    	
     }
 }
