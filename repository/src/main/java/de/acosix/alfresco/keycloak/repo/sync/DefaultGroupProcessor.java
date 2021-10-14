@@ -33,7 +33,7 @@ public class DefaultGroupProcessor implements GroupProcessor
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
@@ -52,7 +52,7 @@ public class DefaultGroupProcessor implements GroupProcessor
             final PropertyMap properties = groupNode.getProperties();
 
             properties.put(ContentModel.PROP_AUTHORITY_NAME, AuthorityType.GROUP.getPrefixString() + group.getId());
-            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getPath());
+            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
         }
     }
 }
