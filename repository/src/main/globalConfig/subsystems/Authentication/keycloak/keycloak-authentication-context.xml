@@ -208,6 +208,10 @@
 
     <bean id="groupMapper.default" class="${project.artifactId}.sync.DefaultGroupProcessor" />
 
+    <bean id="groupMapper.attribute" class="${project.artifactId}.sync.AttributeGroupProcessor">
+    	<property name="attributeName" value="${keycloak.attributeGroupProcessor.attributeName}" />
+    </bean>
+
     <bean id="roleFilterAggregateBase" abstract="true" class="${project.artifactId}.roles.AggregateRoleNameFilter" />
 
     <bean id="roleMapperAggregateBase" abstract="true" class="${project.artifactId}.roles.AggregateRoleNameMapper">

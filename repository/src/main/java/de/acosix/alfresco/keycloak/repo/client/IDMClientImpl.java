@@ -256,8 +256,9 @@ public class IDMClientImpl implements InitializingBean, IDMClient
     {
         ParameterCheck.mandatory("groupProcessor", groupProcessor);
 
+        boolean brief = false; // TODO false only if AttributeGroupProcessor
         final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl()).path("/admin/realms/{realm}/groups")
-                .queryParam("first", offset).queryParam("max", groupBatchSize).build(this.deployment.getRealm());
+                .queryParam("first", offset).queryParam("max", groupBatchSize).queryParam("briefRepresentation", brief).build(this.deployment.getRealm());
 
         if (offset < 0)
         {

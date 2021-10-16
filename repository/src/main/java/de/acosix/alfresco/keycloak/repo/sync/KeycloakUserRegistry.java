@@ -266,13 +266,10 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         final NodeDescription groupD = new NodeDescription(group.getId());
         final PropertyMap groupProperties = groupD.getProperties();
 
-        final String groupName = AuthorityType.GROUP.getPrefixString() + group.getId();
-        LOGGER.debug("Mapping group {}", groupName);
+        final String groupId = AuthorityType.GROUP.getPrefixString() + group.getId();
+        LOGGER.debug("Mapping group {}", groupId);
 
         this.groupProcessors.forEach(processor -> processor.mapGroup(group, groupD));
-
-        // always wins against user-defined mappings for cm:authorityName
-        groupProperties.put(ContentModel.PROP_AUTHORITY_NAME, groupName);
 
         final Set<String> childAssociations = groupD.getChildAssociations();
         group.getSubGroups().stream()
@@ -293,7 +290,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
             offset += processedMembers;
         }
 
-        LOGGER.debug("Mapped members of group {}: {}", groupName, childAssociations);
+        LOGGER.debug("Mapped members of group {}: {}", groupId, childAssociations);
 
         return groupD;
     }
