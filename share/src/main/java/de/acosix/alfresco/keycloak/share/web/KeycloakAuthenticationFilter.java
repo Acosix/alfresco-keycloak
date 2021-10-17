@@ -20,6 +20,8 @@ import static org.alfresco.web.site.SlingshotPageView.REDIRECT_URI;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +29,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -177,6 +180,37 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     private static final ThreadLocal<String> LOGIN_REDIRECT_URL = new ThreadLocal<>();
 
+    private static final BiFunction<HttpServletRequest, HttpServletResponse, ServletRequestAttributes> SERVLET_REQUEST_ATTRIBUTES_FACTORY;
+
+    static
+    {
+        BiFunction<HttpServletRequest, HttpServletResponse, ServletRequestAttributes> factory;
+
+        try
+        {
+            // try and use the overloaded constructor available in newer versions
+            final Constructor<ServletRequestAttributes> ctor = ServletRequestAttributes.class.getConstructor(HttpServletRequest.class,
+                    HttpServletResponse.class);
+            factory = (req, res) -> {
+                try
+                {
+                    return ctor.newInstance(req, res);
+                }
+                catch (final InstantiationException | IllegalAccessException | InvocationTargetException e)
+                {
+                    throw new AlfrescoRuntimeException("Failed to construct servlet request attributes", e);
+                }
+            };
+        }
+        catch (final NoSuchMethodException nsme)
+        {
+            // fallback to constructor that's available in all Share versions
+            factory = (req, res) -> new ServletRequestAttributes(req);
+        }
+
+        SERVLET_REQUEST_ATTRIBUTES_FACTORY = factory;
+    }
+
     protected ApplicationContext applicationContext;
 
     protected DependencyInjectedFilter defaultSsoFilter;
@@ -265,28 +299,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final RemoteConfigElement remoteConfig = (RemoteConfigElement) this.configService.getConfig("Remote").getConfigElement("remote");
         if (remoteConfig != null)
         {
-            final EndpointDescriptor endpoint = remoteConfig.getEndpointDescriptor(this.primaryEndpoint);
-            if (endpoint != null)
-            {
-                this.externalAuthEnabled = endpoint.getExternalAuth();
-            }
-            else
-            {
-                LOGGER.error("Endpoint {} has not been defined in the application configuration", this.primaryEndpoint);
-            }
-
-            if (this.secondaryEndpoints != null)
-            {
-                this.secondaryEndpoints = this.secondaryEndpoints.stream().filter(secondaryEndpoint -> {
-                    final boolean endpointExists = remoteConfig.getEndpointDescriptor(secondaryEndpoint) != null;
-                    if (!endpointExists)
-                    {
-                        LOGGER.info("Excluding configured secondary endpoint {} which is not defined in the application configuration",
-                                secondaryEndpoint);
-                    }
-                    return endpointExists;
-                }).collect(Collectors.toList());
-            }
+            this.initFromRemoteEndpointConfig(remoteConfig);
         }
         else
         {
@@ -297,37 +310,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 .getConfig(KeycloakConfigConstants.KEYCLOAK_CONFIG_SECTION_NAME).getConfigElement(KeycloakAdapterConfigElement.NAME);
         if (keycloakAdapterConfig != null)
         {
-            final AdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
-
-            // disable any CORS handling (if CORS is relevant, it should be handled by Share / Surf)
-            adapterConfiguration.setCors(false);
-            // BASIC authentication should never be used
-            adapterConfiguration.setEnableBasicAuth(false);
-
-            this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
-
-            // even in newer version than used by ACS 6.x does Keycloak lib not allow timeout configuration
-            if (this.keycloakDeployment.getClient() != null)
-            {
-                final Long connectionTimeout = keycloakAdapterConfig.getConnectionTimeout();
-                final Long socketTimeout = keycloakAdapterConfig.getSocketTimeout();
-
-                HttpClientBuilder httpClientBuilder = new HttpClientBuilder();
-                if (connectionTimeout != null && connectionTimeout.longValue() >= 0)
-                {
-                    httpClientBuilder = httpClientBuilder.establishConnectionTimeout(connectionTimeout.longValue(), TimeUnit.MILLISECONDS);
-                }
-                if (socketTimeout != null && socketTimeout.longValue() >= 0)
-                {
-                    httpClientBuilder = httpClientBuilder.socketTimeout(socketTimeout.longValue(), TimeUnit.MILLISECONDS);
-                }
-
-                final HttpClient client = httpClientBuilder.build(adapterConfiguration);
-                this.configureForcedRouteIfNecessary(keycloakAdapterConfig, client);
-                this.keycloakDeployment.setClient(client);
-            }
-
-            this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
+            this.initFromAdapterConfig(keycloakAdapterConfig);
         }
         else
         {
@@ -356,7 +339,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param defaultSsoFilter
-     *            the defaultSsoFilter to set
+     *     the defaultSsoFilter to set
      */
     public void setDefaultSsoFilter(final DependencyInjectedFilter defaultSsoFilter)
     {
@@ -365,7 +348,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param configService
-     *            the configService to set
+     *     the configService to set
      */
     public void setConfigService(final ConfigService configService)
     {
@@ -374,7 +357,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param connectorService
-     *            the connectorService to set
+     *     the connectorService to set
      */
     public void setConnectorService(final ConnectorService connectorService)
     {
@@ -383,7 +366,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param pageViewResolver
-     *            the pageViewResolver to set
+     *     the pageViewResolver to set
      */
     public void setPageViewResolver(final PageViewResolver pageViewResolver)
     {
@@ -392,7 +375,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param sessionIdMapper
-     *            the sessionIdMapper to set
+     *     the sessionIdMapper to set
      */
     public void setSessionIdMapper(final SessionIdMapper sessionIdMapper)
     {
@@ -401,7 +384,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param primaryEndpoint
-     *            the primaryEndpoint to set
+     *     the primaryEndpoint to set
      */
     public void setPrimaryEndpoint(final String primaryEndpoint)
     {
@@ -410,7 +393,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     /**
      * @param secondaryEndpoints
-     *            the secondaryEndpoints to set
+     *     the secondaryEndpoints to set
      */
     public void setSecondaryEndpoints(final List<String> secondaryEndpoints)
     {
@@ -439,8 +422,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                         this.keycloakDeployment.getAuthServerBaseUrl());
             }
 
-            // TODO Figure out how to support Enteprise 6.2 / 7.x or 6.3+, which overload the constructor
-            RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(req));
+            RequestContextHolder.setRequestAttributes(SERVLET_REQUEST_ATTRIBUTES_FACTORY.apply(req, res));
             // Alfresco handling of RequestContext / ServletUtil / any other context holder is so immensely broken, it isn't even funny
             // this request context is for any handling that needs it until it gets nuked / bulldozed by RequestContextInterceptor
             // ...after which we will have to enhance that class' partially initialised context
@@ -501,6 +483,67 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         }
     }
 
+    protected void initFromRemoteEndpointConfig(final RemoteConfigElement remoteConfig)
+    {
+        final EndpointDescriptor endpoint = remoteConfig.getEndpointDescriptor(this.primaryEndpoint);
+        if (endpoint != null)
+        {
+            this.externalAuthEnabled = endpoint.getExternalAuth();
+        }
+        else
+        {
+            LOGGER.error("Endpoint {} has not been defined in the application configuration", this.primaryEndpoint);
+        }
+
+        if (this.secondaryEndpoints != null)
+        {
+            this.secondaryEndpoints = this.secondaryEndpoints.stream().filter(secondaryEndpoint -> {
+                final boolean endpointExists = remoteConfig.getEndpointDescriptor(secondaryEndpoint) != null;
+                if (!endpointExists)
+                {
+                    LOGGER.info("Excluding configured secondary endpoint {} which is not defined in the application configuration",
+                            secondaryEndpoint);
+                }
+                return endpointExists;
+            }).collect(Collectors.toList());
+        }
+    }
+
+    protected void initFromAdapterConfig(final KeycloakAdapterConfigElement keycloakAdapterConfig)
+    {
+        final AdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
+
+        // disable any CORS handling (if CORS is relevant, it should be handled by Share / Surf)
+        adapterConfiguration.setCors(false);
+        // BASIC authentication should never be used
+        adapterConfiguration.setEnableBasicAuth(false);
+
+        this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
+
+        // even in newer version than used by ACS 6.x does Keycloak lib not allow timeout configuration
+        if (this.keycloakDeployment.getClient() != null)
+        {
+            final Long connectionTimeout = keycloakAdapterConfig.getConnectionTimeout();
+            final Long socketTimeout = keycloakAdapterConfig.getSocketTimeout();
+
+            HttpClientBuilder httpClientBuilder = new HttpClientBuilder();
+            if (connectionTimeout != null && connectionTimeout.longValue() >= 0)
+            {
+                httpClientBuilder = httpClientBuilder.establishConnectionTimeout(connectionTimeout.longValue(), TimeUnit.MILLISECONDS);
+            }
+            if (socketTimeout != null && socketTimeout.longValue() >= 0)
+            {
+                httpClientBuilder = httpClientBuilder.socketTimeout(socketTimeout.longValue(), TimeUnit.MILLISECONDS);
+            }
+
+            final HttpClient client = httpClientBuilder.build(adapterConfiguration);
+            this.configureForcedRouteIfNecessary(keycloakAdapterConfig, client);
+            this.keycloakDeployment.setClient(client);
+        }
+
+        this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
+    }
+
     protected void processLogout(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
             final FilterChain chain) throws IOException, ServletException
     {
@@ -544,17 +587,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * will be terminated. Otherwise processing may continue with the filter chain (if still applicable).
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void processKeycloakAuthenticationAndActions(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain) throws IOException, ServletException
@@ -622,21 +665,21 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Keycloak library access restrictions, in order to obtain the access token for validation and passing on to the Repository-tier.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @param performTokenExchange
-     *            whether Share has been configured to perform OAuth2 token exchange to authenticate against the Repository backend
+     *     whether Share has been configured to perform OAuth2 token exchange to authenticate against the Repository backend
      * @param facade
-     *            the Keycloak HTTP facade
+     *     the Keycloak HTTP facade
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void processBearerAuthentication(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
             final FilterChain chain, final Boolean performTokenExchange, final OIDCServletHttpFacade facade)
@@ -687,22 +730,22 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Processes the regular OIDC filter authentication on a request.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @param bodyBufferLimit
-     *            the configured size limit to apply to any HTTP POST/PUT body buffering that may need to be applied to process the
-     *            authentication via an intermediary redirect
+     *     the configured size limit to apply to any HTTP POST/PUT body buffering that may need to be applied to process the
+     *     authentication via an intermediary redirect
      * @param facade
-     *            the Keycloak HTTP facade
+     *     the Keycloak HTTP facade
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void processFilterAuthentication(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
             final FilterChain chain, final Integer bodyBufferLimit, final OIDCServletHttpFacade facade) throws IOException, ServletException
@@ -771,13 +814,13 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Sets up the necessary state to enhance the login form customisation to provide an action to perform a Keycloak login via a redirect.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the HTTP servlet request being processed
+     *     the HTTP servlet request being processed
      * @param res
-     *            the HTTP servlet response being processed
+     *     the HTTP servlet response being processed
      * @param authenticator
-     *            the authenticator holding the challenge for a login redirect
+     *     the authenticator holding the challenge for a login redirect
      */
     protected void prepareLoginFormEnhancement(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res,
             final FilterRequestAuthenticator authenticator)
@@ -807,11 +850,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Sets up the necessary state to enhance the login form customisation to provide an action to perform a Keycloak login via a redirect.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the HTTP servlet request being processed
+     *     the HTTP servlet request being processed
      * @param res
-     *            the HTTP servlet response being processed
+     *     the HTTP servlet response being processed
      */
     protected void prepareLoginFormEnhancement(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res)
     {
@@ -877,21 +920,21 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Processes a successful authentication via Keycloak.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @param facade
-     *            the Keycloak HTTP facade
+     *     the Keycloak HTTP facade
      * @param tokenStore
-     *            the Keycloak token store
+     *     the Keycloak token store
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void onKeycloakAuthenticationSuccess(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain, final OIDCServletHttpFacade facade,
@@ -943,21 +986,21 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Processes a successful authentication via Keycloak.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @param facade
-     *            the Keycloak HTTP facade
+     *     the Keycloak HTTP facade
      * @param tokenHolder
-     *            the holder for access token taken from the successful authentication
+     *     the holder for access token taken from the successful authentication
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void onKeycloakAuthenticationSuccess(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain, final OIDCServletHttpFacade facade,
@@ -1033,17 +1076,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Processes a failed authentication via Keycloak.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @throws IOException
-     *             if any error occurs during processing of the filter chain
+     *     if any error occurs during processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during processing of the filter chain
+     *     if any error occurs during processing of the filter chain
      */
     protected void onKeycloakAuthenticationFailure(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain) throws IOException, ServletException
@@ -1137,9 +1180,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Completes the request context in the current thread by populating missing data, foremost any user details for the authenticated user.
      *
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @throws ServletException
-     *             if an error occurs populating the request context
+     *     if an error occurs populating the request context
      */
     protected void completeRequestContext(final HttpServletRequest req) throws ServletException
     {
@@ -1158,17 +1201,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Continues processing the filter chain, either directly or by delegating to the facaded default SSO filter.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param request
-     *            the current request
+     *     the current request
      * @param response
-     *            the response to the current request
+     *     the response to the current request
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @throws IOException
-     *             if any exception is propagated by a filter in the chain or the actual request processing
+     *     if any exception is propagated by a filter in the chain or the actual request processing
      * @throws ServletException
-     *             if any exception is propagated by a filter in the chain or the actual request processing
+     *     if any exception is propagated by a filter in the chain or the actual request processing
      */
     protected void continueFilterChain(final ServletContext context, final ServletRequest request, final ServletResponse response,
             final FilterChain chain) throws IOException, ServletException
@@ -1191,13 +1234,13 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if processing of the filter must be skipped for the specified request.
      *
      * @param req
-     *            the servlet request to check for potential conditions to skip
+     *     the servlet request to check for potential conditions to skip
      * @param res
-     *            the servlet response on which potential updates of cookies / response headers need to be set
+     *     the servlet response on which potential updates of cookies / response headers need to be set
      * @return {@code true} if processing of the {@link #doFilter(ServletContext, ServletRequest, ServletResponse, FilterChain) filter
-     *         operation} must be skipped, {@code false} otherwise
+     * operation} must be skipped, {@code false} otherwise
      * @throws ServletException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      */
     protected boolean checkForSkipCondition(final HttpServletRequest req, final HttpServletResponse res) throws ServletException
     {
@@ -1337,15 +1380,15 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * necessary or configured.
      *
      * @param req
-     *            the HTTP servlet request
+     *     the HTTP servlet request
      * @param res
-     *            the HTTP servlet response
+     *     the HTTP servlet response
      * @param userId
-     *            the ID of the authenticated user
+     *     the ID of the authenticated user
      * @param keycloakAccount
-     *            the Keycloak account object
+     *     the Keycloak account object
      * @return {@code true} if processing of the {@link #doFilter(ServletContext, ServletRequest, ServletResponse, FilterChain) filter
-     *         operation} can be skipped as the account represents a valid and still active authentication, {@code false} otherwise
+     * operation} can be skipped as the account represents a valid and still active authentication, {@code false} otherwise
      */
     protected boolean validateAndRefreshKeycloakAuthentication(final HttpServletRequest req, final HttpServletResponse res,
             final String userId, final KeycloakAccount keycloakAccount)
@@ -1382,11 +1425,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if the requested page does not require user authentication.
      *
      * @param req
-     *            the servlet request for which to check the authentication requirement of the target page
+     *     the servlet request for which to check the authentication requirement of the target page
      * @return {@code true} if the requested page does not require user authentication,
-     *         {@code false} otherwise (incl. failure to resolve the request to a target page)
+     * {@code false} otherwise (incl. failure to resolve the request to a target page)
      * @throws ServletException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      */
     protected boolean isNoAuthPage(final HttpServletRequest req) throws ServletException
     {
@@ -1422,11 +1465,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if the requested page is a login page.
      *
      * @param req
-     *            the request for which to check the type of page
+     *     the request for which to check the type of page
      * @return {@code true} if the requested page is a login page,
-     *         {@code false} otherwise (incl. failure to resolve the request to a target page)
+     * {@code false} otherwise (incl. failure to resolve the request to a target page)
      * @throws ServletException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      */
     protected boolean isLoginPage(final HttpServletRequest req) throws ServletException
     {
@@ -1472,11 +1515,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if the requested URL indicates a logout request.
      *
      * @param req
-     *            the request to check
+     *     the request to check
      * @return {@code true} if the request is a request for logout,
-     *         {@code false} otherwise
+     * {@code false} otherwise
      * @throws ServletException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      */
     protected boolean isLogoutRequest(final HttpServletRequest req) throws ServletException
     {
@@ -1491,7 +1534,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Checks if the HTTP request has set the Keycloak state cookie.
      *
      * @param req
-     *            the HTTP request to check
+     *     the HTTP request to check
      * @return {@code true} if the state cookie is set, {@code false} otherwise
      */
     protected boolean hasStateCookie(final HttpServletRequest req)
@@ -1509,9 +1552,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * authenticated user.
      *
      * @param req
-     *            the request to check
+     *     the request to check
      * @param session
-     *            the active session managing any persistent access token state
+     *     the active session managing any persistent access token state
      * @return {@code true} if the backend requires HTTP Basic or Keycloak authentication, {@code false} otherwise
      */
     protected boolean isBackendRequiringBasicOrKeycloakAuthentication(final HttpServletRequest req, final HttpSession session)
@@ -1588,7 +1631,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * state / validity of any existing token.
      *
      * @param session
-     *            the active session managing any persistent access token state
+     *     the active session managing any persistent access token state
      */
     protected void handleAlfrescoResourceAccessToken(final HttpSession session)
     {
@@ -1685,12 +1728,12 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * that backend resource.
      *
      * @param alfrescoResourceName
-     *            the name of the Alfresco backend resource within the Keycloak realm
+     *     the name of the Alfresco backend resource within the Keycloak realm
      * @param session
-     *            the active session managing any persistent access token state
+     *     the active session managing any persistent access token state
      * @return the response to obtaining the access token for the Alfresco backend
      * @throws IOException
-     *             if any error occurs calling Keycloak to exchange the access token
+     *     if any error occurs calling Keycloak to exchange the access token
      */
     protected AccessTokenResponse getAccessToken(final String alfrescoResourceName, final HttpSession session) throws IOException
     {
@@ -1766,11 +1809,11 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * Resets any Keycloak-related state cookies present in the current request.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      */
     protected void resetStateCookies(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res)
     {
@@ -1794,7 +1837,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * technical default value in lieu of an explicitly configured value.
      *
      * @param req
-     *            the incoming request
+     *     the incoming request
      * @return the assumed SSL port to be used in redirects
      */
     protected int determineLikelySslPort(final HttpServletRequest req)
@@ -1827,9 +1870,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
      * directly, due to network isolation / addressing restrictions (e.g. in Docker-ized deployments).
      *
      * @param configElement
-     *            the adapter configuration
+     *     the adapter configuration
      * @param client
-     *            the client to configure
+     *     the client to configure
      */
     @SuppressWarnings("deprecation")
     protected void configureForcedRouteIfNecessary(final KeycloakAdapterConfigElement configElement, final HttpClient client)

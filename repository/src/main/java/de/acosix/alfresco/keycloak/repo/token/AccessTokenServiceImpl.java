@@ -15,6 +15,8 @@
  */
 package de.acosix.alfresco.keycloak.repo.token;
 
+import java.util.Collection;
+
 import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
 import org.keycloak.adapters.KeycloakDeployment;
@@ -47,7 +49,7 @@ public class AccessTokenServiceImpl implements AccessTokenService, InitializingB
 
     /**
      * @param deployment
-     *            the deployment to set
+     *     the deployment to set
      */
     public void setDeployment(final KeycloakDeployment deployment)
     {
@@ -59,15 +61,16 @@ public class AccessTokenServiceImpl implements AccessTokenService, InitializingB
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder obtainAccessToken()
+    public AccessTokenHolder obtainAccessToken(final Collection<String> scopes)
     {
-        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.obtainAccessToken();
+        ParameterCheck.mandatory("scopes", scopes);
+        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.obtainAccessToken(scopes);
 
         return new AccessTokenHolderImpl(refreshableToken, this.deployment.getTokenMinimumTimeToLive(),
                 this.accessTokenClient::refreshAccessToken, () -> {
                     try
                     {
-                        return this.accessTokenClient.obtainAccessToken();
+                        return this.accessTokenClient.obtainAccessToken(scopes);
                     }
                     catch (final AccessTokenException atex)
                     {
@@ -81,18 +84,18 @@ public class AccessTokenServiceImpl implements AccessTokenService, InitializingB
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder obtainAccessToken(final String user, final String password)
+    public AccessTokenHolder obtainAccessToken(final String user, final String password, final Collection<String> scopes)
     {
         ParameterCheck.mandatoryString("user", user);
         ParameterCheck.mandatoryString("password", password);
 
-        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.obtainAccessToken(user, password);
+        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.obtainAccessToken(user, password, scopes);
 
         return new AccessTokenHolderImpl(refreshableToken, this.deployment.getTokenMinimumTimeToLive(),
                 this.accessTokenClient::refreshAccessToken, () -> {
                     try
                     {
-                        return this.accessTokenClient.obtainAccessToken(user, password);
+                        return this.accessTokenClient.obtainAccessToken(user, password, scopes);
                     }
                     catch (final AccessTokenException atex)
                     {
@@ -105,18 +108,18 @@ public class AccessTokenServiceImpl implements AccessTokenService, InitializingB
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder exchangeToken(final String accessToken, final String client)
+    public AccessTokenHolder exchangeToken(final String accessToken, final String client, final Collection<String> scopes)
     {
         ParameterCheck.mandatoryString("accessToken", accessToken);
         ParameterCheck.mandatoryString("client", client);
 
-        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.exchangeToken(accessToken, client);
+        final RefreshableAccessTokenHolder refreshableToken = this.accessTokenClient.exchangeToken(accessToken, client, scopes);
 
         return new AccessTokenHolderImpl(refreshableToken, this.deployment.getTokenMinimumTimeToLive(), refreshToken -> {
             try
             {
                 final String newAccessToken = this.accessTokenClient.refreshAccessToken(refreshToken).getToken();
-                return this.accessTokenClient.exchangeToken(newAccessToken, client);
+                return this.accessTokenClient.exchangeToken(newAccessToken, client, scopes);
             }
             catch (final AccessTokenException atex)
             {

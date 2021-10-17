@@ -15,6 +15,9 @@
  */
 package de.acosix.alfresco.keycloak.repo.token;
 
+import java.util.Collection;
+import java.util.Collections;
+
 /**
  * Instances of this interface allow for the retrieval of access tokens in the Keycloak realm to which this Alfresco instance is connected.
  *
@@ -28,35 +31,85 @@ public interface AccessTokenService
      *
      * @return the holder for the access token
      * @throws IllegalStateException
-     *             if no access token for the client can be obtained, e.g. if no service account for it has been configured in Keycloak
+     *     if no access token for the client can be obtained, e.g. if no service account for it has been configured in Keycloak
      */
-    AccessTokenHolder obtainAccessToken();
+    default AccessTokenHolder obtainAccessToken()
+    {
+        return this.obtainAccessToken(Collections.emptySet());
+    }
+
+    /**
+     * Obtains a generic realm access token for the specific client of this Alfresco instance.
+     *
+     * @param scopes
+     *     the optional scopes to request for the access token
+     * @return the holder for the access token
+     * @throws IllegalStateException
+     *     if no access token for the client can be obtained, e.g. if no service account for it has been configured in Keycloak
+     */
+    AccessTokenHolder obtainAccessToken(Collection<String> scopes);
 
     /**
      * Obtains a generic realm access token for a specific user of the realm.
      *
      * @param user
-     *            the name of the user
+     *     the name of the user
      * @param password
-     *            the password of the user
+     *     the password of the user
      * @return the holder for the access token
      * @throws IllegalStateException
-     *             if no access token for the client can be obtained, e.g. if direct access grants have not been enabled for the specific
-     *             client of this Alfresco instance
+     *     if no access token for the user can be obtained
      */
-    AccessTokenHolder obtainAccessToken(String user, String password);
+    default AccessTokenHolder obtainAccessToken(final String user, final String password)
+    {
+        return this.obtainAccessToken(user, password, Collections.emptySet());
+    }
+
+    /**
+     * Obtains a generic realm access token for a specific user of the realm.
+     *
+     * @param user
+     *     the name of the user
+     * @param password
+     *     the password of the user
+     * @param scopes
+     *     the optional scopes to request for the access token
+     * @return the holder for the access token
+     * @throws IllegalStateException
+     *     if no access token for the user can be obtained
+     */
+    AccessTokenHolder obtainAccessToken(String user, String password, Collection<String> scopes);
 
     /**
      * Performs a token exchange operation to obtain an access token for a specific client, acting in the name / context of the user for
      * which the original access token was issued.
      *
      * @param accessToken
-     *            the access token to exchange for token to another client
+     *     the access token to exchange for token to another client
      * @param client
-     *            the client for which to obtain an access token
+     *     the client for which to obtain an access token
      * @return the holder for the access token
      * @throws IllegalStateException
-     *             if no access token for the client can be obtained, e.g. if no service account for it has been configured in Keycloak
+     *     if the access token cannot be exchanged for the client
      */
-    AccessTokenHolder exchangeToken(String accessToken, String client);
+    default AccessTokenHolder exchangeToken(final String accessToken, final String client)
+    {
+        return this.exchangeToken(accessToken, client, Collections.emptySet());
+    }
+
+    /**
+     * Performs a token exchange operation to obtain an access token for a specific client, acting in the name / context of the user for
+     * which the original access token was issued.
+     *
+     * @param accessToken
+     *     the access token to exchange for token to another client
+     * @param client
+     *     the client for which to obtain an access token
+     * @param scopes
+     *     the optional scopes to request for the access token
+     * @return the holder for the access token
+     * @throws IllegalStateException
+     *     if the access token cannot be exchanged for the client
+     */
+    AccessTokenHolder exchangeToken(String accessToken, String client, Collection<String> scopes);
 }

@@ -3,6 +3,7 @@ package de.acosix.alfresco.keycloak.repo.token;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.function.Consumer;
 
@@ -57,17 +58,21 @@ public class AccessTokenClient
      * Obtains an access token for the service account of the client used to integrate this Alfresco isntance with Keycloak. This requires
      * that a service account has been enabled / configured in Keycloak.
      *
+     * @param scopes
+     *     the optional scopes to request for the access token
      * @return the access token
      * @throws AccessTokenException
-     *             if the access token cannot be obtained
+     *     if the access token cannot be obtained
      */
-    public RefreshableAccessTokenHolder obtainAccessToken()
+    public RefreshableAccessTokenHolder obtainAccessToken(final Collection<String> scopes)
     {
-        LOGGER.debug("Obtaining client access token");
+        ParameterCheck.mandatory("scopes", scopes);
+        LOGGER.debug("Obtaining client access token with (optional) scopes {}", scopes);
         try
         {
             final AccessTokenResponse response = this.getAccessTokenImpl(formParams -> {
                 formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.CLIENT_CREDENTIALS));
+                this.processScopes(scopes, formParams);
             });
             final VerifiedTokens verifiedTokens = this.verifyAccessTokenResponse(response);
             final RefreshableAccessTokenHolder refreshableToken = new RefreshableAccessTokenHolder(response, verifiedTokens);
@@ -85,22 +90,29 @@ public class AccessTokenClient
      * Alfresco instance with Keycloak is configured to allow direct access grants.
      *
      * @param user
-     *            the name of the user
+     *     the name of the user
      * @param password
-     *            the password provided by / for the user
+     *     the password provided by / for the user
+     * @param scopes
+     *     the optional scopes to request for the access token
      * @return the access token
      * @throws AccessTokenException
-     *             if the access token cannot be obtained
+     *     if the access token cannot be obtained
      */
-    public RefreshableAccessTokenHolder obtainAccessToken(final String user, final String password)
+    public RefreshableAccessTokenHolder obtainAccessToken(final String user, final String password, final Collection<String> scopes)
     {
-        LOGGER.debug("Obtaining access token for user {}", user);
+        ParameterCheck.mandatoryString("user", user);
+        ParameterCheck.mandatoryString("password", password);
+        ParameterCheck.mandatory("scopes", scopes);
+
+        LOGGER.debug("Obtaining access token for user {} with (optional) scopes {}", user, scopes);
         try
         {
             final AccessTokenResponse response = this.getAccessTokenImpl(formParams -> {
                 formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.PASSWORD));
                 formParams.add(new BasicNameValuePair("username", user));
                 formParams.add(new BasicNameValuePair("password", password));
+                this.processScopes(scopes, formParams);
             });
             final VerifiedTokens verifiedTokens = this.verifyAccessTokenResponse(response);
             final RefreshableAccessTokenHolder refreshableToken = new RefreshableAccessTokenHolder(response, verifiedTokens);
@@ -118,22 +130,29 @@ public class AccessTokenClient
      * the original identity but enabling that client / service to know the access is being delegated through this Alfresco instance.
      *
      * @param accessToken
-     *            the access token to exchange
+     *     the access token to exchange
      * @param client
-     *            the client / service for which to obtain an access token
+     *     the client / service for which to obtain an access token
+     * @param scopes
+     *     the optional scopes to request for the access token
      * @return the access token to the requested client / service
      * @throws AccessTokenException
-     *             if the token cannot be exchanged
+     *     if the token cannot be exchanged
      */
-    public RefreshableAccessTokenHolder exchangeToken(final String accessToken, final String client)
+    public RefreshableAccessTokenHolder exchangeToken(final String accessToken, final String client, final Collection<String> scopes)
     {
-        LOGGER.debug("Exchanging {} for access token to client {}", accessToken, client);
+        ParameterCheck.mandatoryString("accessToken", accessToken);
+        ParameterCheck.mandatoryString("client", client);
+        ParameterCheck.mandatory("scopes", scopes);
+
+        LOGGER.debug("Exchanging {} for access token to client {} with (optional) scopes {}", accessToken, client, scopes);
         try
         {
             final AccessTokenResponse response = this.getAccessTokenImpl(formParams -> {
                 formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE));
                 formParams.add(new BasicNameValuePair(OAuth2Constants.AUDIENCE, client));
                 formParams.add(new BasicNameValuePair(OAuth2Constants.REQUESTED_TOKEN_TYPE, OAuth2Constants.REFRESH_TOKEN_TYPE));
+                this.processScopes(scopes, formParams);
             });
             final VerifiedTokens verifiedTokens = this.verifyAccessTokenResponse(response, client);
             final RefreshableAccessTokenHolder refreshableToken = new RefreshableAccessTokenHolder(response, verifiedTokens);
@@ -150,10 +169,10 @@ public class AccessTokenClient
      * Refreshes an access token via a previously obtained refresh token.
      *
      * @param refreshToken
-     *            the refresh token with which to retrieve a fresh access token
+     *     the refresh token with which to retrieve a fresh access token
      * @return the fresh access token
      * @throws AccessTokenRefreshException
-     *             if the refresh failed
+     *     if the refresh failed
      */
     public RefreshableAccessTokenHolder refreshAccessToken(final String refreshToken)
     {
@@ -175,6 +194,23 @@ public class AccessTokenClient
         {
             LOGGER.debug("Failed direct refresh due to {}", verex.getMessage());
             throw new AccessTokenRefreshException("Failed to refresh access token due to verification error", verex);
+        }
+    }
+
+    protected void processScopes(final Collection<String> scopes, final List<NameValuePair> formParams)
+    {
+        if (!scopes.isEmpty())
+        {
+            final StringBuilder sb = new StringBuilder(scopes.size() * 16);
+            for (final String scope : scopes)
+            {
+                if (sb.length() > 0)
+                {
+                    sb.append(' ');
+                }
+                sb.append(scope);
+            }
+            formParams.add(new BasicNameValuePair(OAuth2Constants.SCOPE, sb.toString()));
         }
     }
 
@@ -229,10 +265,10 @@ public class AccessTokenClient
      * Retrieves an OIDC access token with the specific token request parameter up to the caller to define via the provided consumer.
      *
      * @param postParamProvider
-     *            a provider of HTTP POST parameters for the access token request
+     *     a provider of HTTP POST parameters for the access token request
      * @return the access token
      * @throws IOException
-     *             when errors occur in the HTTP interaction
+     *     when errors occur in the HTTP interaction
      */
     // implementing this method locally avoids having the dependency on Keycloak authz-client
     // authz-client does not support refresh, so would be of limited value anyway

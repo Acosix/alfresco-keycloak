@@ -21,6 +21,9 @@ import com.fasterxml.jackson.databind.MappingIterator;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 
@@ -65,6 +68,8 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     protected String password;
 
+    protected final Collection<String> requiredClientScopes = new HashSet<>();
+
     protected AccessTokenHolder accessToken;
 
     /**
@@ -79,7 +84,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     /**
      * @param deployment
-     *            the deployment to set
+     *     the deployment to set
      */
     public void setDeployment(final KeycloakDeployment deployment)
     {
@@ -88,7 +93,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     /**
      * @param accessTokenService
-     *            the accessTokenService to set
+     *     the accessTokenService to set
      */
     public void setAccessTokenService(final AccessTokenService accessTokenService)
     {
@@ -97,7 +102,7 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     /**
      * @param userName
-     *            the userName to set
+     *     the userName to set
      */
     public void setUserName(final String userName)
     {
@@ -106,11 +111,24 @@ public class IDMClientImpl implements InitializingBean, IDMClient
 
     /**
      * @param password
-     *            the password to set
+     *     the password to set
      */
     public void setPassword(final String password)
     {
         this.password = password;
+    }
+
+    /**
+     * @param requiredClientScopes
+     *     the requiredClientScopes to set
+     */
+    public void setRequiredClientScopes(final String requiredClientScopes)
+    {
+        this.requiredClientScopes.clear();
+        if (requiredClientScopes != null && !requiredClientScopes.isEmpty())
+        {
+            this.requiredClientScopes.addAll(Arrays.asList(requiredClientScopes.trim().split(" ")));
+        }
     }
 
     /**
@@ -414,13 +432,13 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * Loads and processes a batch of generic entities from Keycloak.
      *
      * @param <T>
-     *            the type of the response entities
+     *     the type of the response entities
      * @param uri
-     *            the URI to call
+     *     the URI to call
      * @param entityProcessor
-     *            the processor handling the loaded entities
+     *     the processor handling the loaded entities
      * @param entityClass
-     *            the type of the expected response entities
+     *     the type of the expected response entities
      * @return the number of processed entities
      */
     protected <T> int processEntityBatch(final URI uri, final Consumer<T> entityProcessor, final Class<T> entityClass)
@@ -483,9 +501,9 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * Executes a generic HTTP GET operation yielding a JSON response.
      *
      * @param uri
-     *            the URI to call
+     *     the URI to call
      * @param responseProcessor
-     *            the processor handling the response JSON
+     *     the processor handling the response JSON
      */
     protected void processGenericGet(final URI uri, final Consumer<JsonNode> responseProcessor)
     {
@@ -539,11 +557,11 @@ public class IDMClientImpl implements InitializingBean, IDMClient
      * Executes a generic HTTP GET operation yielding a mapped response entity.
      *
      * @param <T>
-     *            the type of the response entity
+     *     the type of the response entity
      * @param uri
-     *            the URI to call
+     *     the URI to call
      * @param responseType
-     *            the class object for the type of the response entity
+     *     the class object for the type of the response entity
      * @return the response entity
      *
      */
@@ -610,11 +628,12 @@ public class IDMClientImpl implements InitializingBean, IDMClient
                 {
                     if (this.userName != null && !this.userName.isEmpty())
                     {
-                        this.accessToken = this.accessTokenService.obtainAccessToken(this.userName, this.password);
+                        this.accessToken = this.accessTokenService.obtainAccessToken(this.userName, this.password,
+                                this.requiredClientScopes);
                     }
                     else
                     {
-                        this.accessToken = this.accessTokenService.obtainAccessToken();
+                        this.accessToken = this.accessTokenService.obtainAccessToken(this.requiredClientScopes);
                     }
                 }
             }

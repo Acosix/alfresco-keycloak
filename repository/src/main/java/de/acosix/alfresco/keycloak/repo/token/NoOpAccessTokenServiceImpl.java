@@ -15,6 +15,8 @@
  */
 package de.acosix.alfresco.keycloak.repo.token;
 
+import java.util.Collection;
+
 /**
  * This no-op implementation class of an access token service may be used as a default implemenation in a subsystem proxy to avoid failing
  * if no Keycloak subsystem instance is active.
@@ -31,7 +33,7 @@ public class NoOpAccessTokenServiceImpl implements AccessTokenService
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder obtainAccessToken()
+    public AccessTokenHolder obtainAccessToken(final Collection<String> scopes)
     {
         throw new AccessTokenUnsupportedException(UNSUPPORTED_MESSAGE);
     }
@@ -41,7 +43,7 @@ public class NoOpAccessTokenServiceImpl implements AccessTokenService
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder obtainAccessToken(final String user, final String password)
+    public AccessTokenHolder obtainAccessToken(final String user, final String password, final Collection<String> scopes)
     {
         throw new AccessTokenUnsupportedException(UNSUPPORTED_MESSAGE);
     }
@@ -51,7 +53,7 @@ public class NoOpAccessTokenServiceImpl implements AccessTokenService
      * {@inheritDoc}
      */
     @Override
-    public AccessTokenHolder exchangeToken(final String accessToken, final String client)
+    public AccessTokenHolder exchangeToken(final String accessToken, final String client, final Collection<String> scopes)
     {
         throw new AccessTokenUnsupportedException(UNSUPPORTED_MESSAGE);
     }

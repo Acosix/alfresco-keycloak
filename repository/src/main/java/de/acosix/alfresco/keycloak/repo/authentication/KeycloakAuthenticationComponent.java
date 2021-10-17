@@ -120,7 +120,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param active
-     *            the active to set
+     *     the active to set
      */
     public void setActive(final boolean active)
     {
@@ -138,7 +138,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param allowUserNamePasswordLogin
-     *            the allowUserNamePasswordLogin to set
+     *     the allowUserNamePasswordLogin to set
      */
     public void setAllowUserNamePasswordLogin(final boolean allowUserNamePasswordLogin)
     {
@@ -147,7 +147,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param failExpiredTicketTokens
-     *            the failExpiredTicketTokens to set
+     *     the failExpiredTicketTokens to set
      */
     public void setFailExpiredTicketTokens(final boolean failExpiredTicketTokens)
     {
@@ -156,7 +156,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param allowGuestLogin
-     *            the allowGuestLogin to set
+     *     the allowGuestLogin to set
      */
     public void setAllowGuestLogin(final boolean allowGuestLogin)
     {
@@ -166,7 +166,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param allowGuestLogin
-     *            the allowGuestLogin to set
+     *     the allowGuestLogin to set
      */
     @Override
     public void setAllowGuestLogin(final Boolean allowGuestLogin)
@@ -176,7 +176,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param mapAuthorities
-     *            the mapAuthorities to set
+     *     the mapAuthorities to set
      */
     public void setMapAuthorities(final boolean mapAuthorities)
     {
@@ -185,7 +185,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param mapPersonPropertiesOnLogin
-     *            the mapPersonPropertiesOnLogin to set
+     *     the mapPersonPropertiesOnLogin to set
      */
     public void setMapPersonPropertiesOnLogin(final boolean mapPersonPropertiesOnLogin)
     {
@@ -194,7 +194,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     /**
      * @param deployment
-     *            the deployment to set
+     *     the deployment to set
      */
     public void setDeployment(final KeycloakDeployment deployment)
     {
@@ -237,9 +237,9 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
      * expired and the component has been configured to not accept expired tokens.
      *
      * @param ticketToken
-     *            the refreshable access token to refresh
+     *     the refreshable access token to refresh
      * @return the refreshed access token if a refresh was possible AND necessary, and a new access token has been retrieved from Keycloak -
-     *         will be {@code null} if no refresh has taken place
+     * will be {@code null} if no refresh has taken place
      */
     public RefreshableAccessTokenHolder checkAndRefreshTicketToken(final RefreshableAccessTokenHolder ticketToken)
             throws AuthenticationException
@@ -288,7 +288,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         String realUserName = userName;
         try
         {
-            accessTokenHolder = this.accessTokenClient.obtainAccessToken(userName, new String(password));
+            accessTokenHolder = this.accessTokenClient.obtainAccessToken(userName, new String(password), Collections.emptySet());
             realUserName = accessTokenHolder.getAccessToken().getPreferredUsername();
 
             // for potential one-off authentication, we do not care particularly about the token TTL - so no validation here
@@ -315,13 +315,13 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
      * instance.
      *
      * @param accessToken
-     *            the access token
+     *     the access token
      * @param idToken
-     *            the ID token
+     *     the ID token
      * @param freshLogin
-     *            {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise -
-     *            Alfresco person node properties will only be mapped for fresh tokens, while granted authorities processors will always be
-     *            handled if enabled
+     *     {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise -
+     *     Alfresco person node properties will only be mapped for fresh tokens, while granted authorities processors will always be
+     *     handled if enabled
      */
     public void handleUserTokens(final AccessToken accessToken, final IDToken idToken, final boolean freshLogin)
     {
@@ -372,9 +372,9 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
      * Updates the person for the current user with data mapped from the Keycloak tokens.
      *
      * @param accessToken
-     *            the access token
+     *     the access token
      * @param idToken
-     *            the ID token
+     *     the ID token
      */
     protected void updatePerson(final AccessToken accessToken, final IDToken idToken)
     {

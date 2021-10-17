@@ -162,6 +162,7 @@
         <property name="accessTokenService" ref="accessTokenService.impl" />
         <property name="userName" value="${keycloak.synchronization.user}" />
         <property name="password" value="${keycloak.synchronization.password}" />
+        <property name="requiredClientScopes" value="${keycloak.synchronization.requiredClientScopes}" />
     </bean>
 
     <bean id="userRegistry" class="${project.artifactId}.sync.KeycloakUserRegistry">
