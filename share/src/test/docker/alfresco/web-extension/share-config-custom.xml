@@ -76,7 +76,7 @@
         </keycloak-auth-config>
         <keycloak-adapter-config>
             <directAuthHost>http://keycloak:8080</directAuthHost>
-            <auth-server-url>http://${docker.tests.host.name}:${docker.tests.keycloakPort}/auth</auth-server-url>
+            <auth-server-url>http://localhost:${docker.tests.keycloakPort}/auth</auth-server-url>
             <realm>test</realm>
             <resource>alfresco-share</resource>
             <ssl-required>none</ssl-required>

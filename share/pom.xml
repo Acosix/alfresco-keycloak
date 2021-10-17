@@ -188,6 +188,11 @@
             <artifactId>jcl-over-slf4j</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>org.apache.activemq</groupId>
+            <artifactId>activemq-broker</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

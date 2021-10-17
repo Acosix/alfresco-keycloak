@@ -1,12 +1,12 @@
 FROM ${docker.tests.repositoryBaseImage}
 COPY maven ${docker.tests.repositoryWebappPath}
 
+${docker.tests.repositoryImageBuilder.preRun}
+
 # merge additions to alfresco-global.properties
 RUN echo "" >> ${docker.tests.repositoryWebappPath}/../../shared/classes/alfresco-global.properties \
     && echo "#MergeGlobalProperties" >> ${docker.tests.repositoryWebappPath}/../../shared/classes/alfresco-global.properties \
     && sed -i '/#MergeGlobalProperties/r ${docker.tests.repositoryWebappPath}/WEB-INF/classes/alfresco/extension/alfresco-global.addition.properties' ${docker.tests.repositoryWebappPath}/../../shared/classes/alfresco-global.properties \
-    && sed -i 's/<secure>true<\/secure>/<secure>false<\/secure>/' $CATALINA_HOME/conf/web.xml \
-    && mv ${docker.tests.repositoryWebappPath}/WEB-INF/classes/alfresco/extension/entrypoint.sh $CATALINA_HOME/bin/ \
-    && chmod +x $CATALINA_HOME/bin/entrypoint.sh
+    && sed -i 's/<secure>true<\/secure>/<secure>false<\/secure>/' $CATALINA_HOME/conf/web.xml
     
-CMD ["entrypoint.sh", "catalina.sh run -security"]
+${docker.tests.repositoryImageBuilder.postRun}

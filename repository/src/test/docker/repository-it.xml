@@ -88,6 +88,7 @@
                 <include>org.orderofthebee.support-tools:*</include>
                 <include>com.cronutils:*</include>
                 <include>net.time4j:*</include>
+                <include>org.apache.activemq:activemq-broker</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz1:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz2:*</include>

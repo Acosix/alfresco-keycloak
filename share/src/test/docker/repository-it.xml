@@ -64,6 +64,7 @@
                 <!-- this cost me half a day to track down when the following three patterns were sorted last -->
                 <include>com.cronutils:*</include>
                 <include>net.time4j:*</include>
+                <include>org.apache.activemq:activemq-broker</include>
                 <include>org.orderofthebee.support-tools:support-tools-repo:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.common:*</include>
                 <include>de.acosix.alfresco.utility:de.acosix.alfresco.utility.core.repo.quartz1:*</include>
