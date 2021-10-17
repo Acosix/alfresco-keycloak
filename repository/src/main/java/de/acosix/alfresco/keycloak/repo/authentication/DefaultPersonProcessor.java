@@ -19,6 +19,7 @@ import java.io.Serializable;
 import java.util.Map;
 
 import org.alfresco.model.ContentModel;
+import org.alfresco.service.namespace.NamespaceService;
 import org.alfresco.service.namespace.QName;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.IDToken;
@@ -31,11 +32,16 @@ import org.keycloak.representations.IDToken;
 public class DefaultPersonProcessor implements UserProcessor
 {
 
+    // missing in ContentModel constants
+    private static final QName PROP_MIDDLE_NAME = QName.createQName(NamespaceService.CONTENT_MODEL_1_0_URI, "middleName");
+
     protected boolean enabled;
 
     protected boolean mapNull;
 
     protected boolean mapGivenName;
+
+    protected boolean mapMiddleName;
 
     protected boolean mapFamilyName;
 
@@ -47,7 +53,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
@@ -56,7 +62,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapNull
-     *            the mapNull to set
+     *     the mapNull to set
      */
     public void setMapNull(final boolean mapNull)
     {
@@ -65,7 +71,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapGivenName
-     *            the mapGivenName to set
+     *     the mapGivenName to set
      */
     public void setMapGivenName(final boolean mapGivenName)
     {
@@ -73,8 +79,17 @@ public class DefaultPersonProcessor implements UserProcessor
     }
 
     /**
+     * @param mapMiddleName
+     *     the mapMiddleName to set
+     */
+    public void setMapMiddleName(final boolean mapMiddleName)
+    {
+        this.mapMiddleName = mapMiddleName;
+    }
+
+    /**
      * @param mapFamilyName
-     *            the mapFamilyName to set
+     *     the mapFamilyName to set
      */
     public void setMapFamilyName(final boolean mapFamilyName)
     {
@@ -83,7 +98,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapEmail
-     *            the mapEmail to set
+     *     the mapEmail to set
      */
     public void setMapEmail(final boolean mapEmail)
     {
@@ -92,7 +107,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapPhoneNumber
-     *            the mapPhoneNumber to set
+     *     the mapPhoneNumber to set
      */
     public void setMapPhoneNumber(final boolean mapPhoneNumber)
     {
@@ -101,7 +116,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapPhoneNumberAsMobile
-     *            the mapPhoneNumberAsMobile to set
+     *     the mapPhoneNumberAsMobile to set
      */
     public void setMapPhoneNumberAsMobile(final boolean mapPhoneNumberAsMobile)
     {
@@ -120,6 +135,10 @@ public class DefaultPersonProcessor implements UserProcessor
             if ((this.mapNull || idToken.getGivenName() != null) && this.mapGivenName)
             {
                 personNodeProperties.put(ContentModel.PROP_FIRSTNAME, idToken.getGivenName());
+            }
+            if ((this.mapNull || idToken.getMiddleName() != null) && this.mapMiddleName)
+            {
+                personNodeProperties.put(PROP_MIDDLE_NAME, idToken.getMiddleName());
             }
             if ((this.mapNull || idToken.getFamilyName() != null) && this.mapFamilyName)
             {
