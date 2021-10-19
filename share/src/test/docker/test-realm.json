@@ -217,6 +217,45 @@
             ]
         },
         {
+            "name": "microprofile-jwt",
+            "description": "Microprofile - JWT built-in scope",
+            "protocol": "openid-connect",
+                "attributes": {
+                    "include.in.token.scope": "true",
+                    "display.on.consent.screen": "false"
+            },
+            "protocolMappers": [
+                {
+                    "name": "upn",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-property-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "user.attribute": "username",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "upn",
+                        "jsonType.label": "String"
+                    }
+                },
+                {
+                    "name": "groups",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-realm-role-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "multivalued": "true",
+                        "user.attribute": "foo",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "groups",
+                        "jsonType.label": "String"
+                    }
+                }
+            ]
+        },
+        {
             "name": "email",
             "description": "OpenID Connect built-in scope: email",
             "protocol": "openid-connect",
@@ -326,6 +365,28 @@
             ]
         },
         {
+            "name": "role_list",
+            "description": "SAML role list",
+            "protocol": "saml",
+            "attributes": {
+                "consent.screen.text": "${samlRoleListScopeConsentText}",
+                "display.on.consent.screen": "true"
+            },
+            "protocolMappers": [
+                {
+                    "name": "role list",
+                    "protocol": "saml",
+                    "protocolMapper": "saml-role-list-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "single": "false",
+                        "attribute.nameformat": "Basic",
+                        "attribute.name": "Role"
+                    }
+                }
+            ]
+        },
+        {
             "name": "roles",
             "description": "OpenID Connect scope for add user roles to the access token",
             "protocol": "openid-connect",
@@ -393,7 +454,7 @@
             ]
         },
         {
-            "name": "realm-management",
+            "name": "alfresco-authority-sync",
             "protocol": "openid-connect",
             "attributes": {
                 "include.in.token.scope": "false",
@@ -401,20 +462,26 @@
             },
             "protocolMappers": [
                 {
-                    "name": "Realm Management Client Roles",
+                    "name": "Realm Management Audience",
                     "protocol": "openid-connect",
-                    "protocolMapper": "oidc-usermodel-client-role-mapper",
+                    "protocolMapper": "oidc-audience-mapper",
                     "consentRequired": false,
                     "config": {
-                        "multivalued": "true",
-                        "userinfo.token.claim": "false",
+                        "included.client.audience": "realm-management",
                         "id.token.claim": "false",
-                        "access.token.claim": "true",
-                        "claim.name": "resource_access.realm-management.roles",
-                        "jsonType.label": "String",
-                        "usermodel.clientRoleMapping.clientId": "realm-management"
+                        "access.token.claim": "true"
                     }
-                },
+                }
+            ]
+        },
+        {
+            "name": "alfresco-role-service",
+            "protocol": "openid-connect",
+            "attributes": {
+                "include.in.token.scope": "false",
+                "display.on.consent.screen": "false"
+            },
+            "protocolMappers": [
                 {
                     "name": "Realm Management Audience",
                     "protocol": "openid-connect",
@@ -437,21 +504,6 @@
             },
             "protocolMappers": [
                 {
-                    "name": "Alfresco Client Roles",
-                    "protocol": "openid-connect",
-                    "protocolMapper": "oidc-usermodel-client-role-mapper",
-                    "consentRequired": false,
-                    "config": {
-                        "multivalued": "true",
-                        "userinfo.token.claim": "false",
-                        "id.token.claim": "false",
-                        "access.token.claim": "true",
-                        "claim.name": "resource_access.alfresco.roles",
-                        "jsonType.label": "String",
-                        "usermodel.clientRoleMapping.clientId": "alfresco"
-                    }
-                },
-                {
                     "name": "Alfresco Audience",
                     "protocol": "openid-connect",
                     "protocolMapper": "oidc-audience-mapper",
@@ -472,21 +524,6 @@
                 "display.on.consent.screen": "false"
             },
             "protocolMappers": [
-                {
-                    "name": "Alfresco Share Client Roles",
-                    "protocol": "openid-connect",
-                    "protocolMapper": "oidc-usermodel-client-role-mapper",
-                    "consentRequired": false,
-                    "config": {
-                        "multivalued": "true",
-                        "userinfo.token.claim": "false",
-                        "id.token.claim": "false",
-                        "access.token.claim": "true",
-                        "claim.name": "resource_access.alfresco-share.roles",
-                        "jsonType.label": "String",
-                        "usermodel.clientRoleMapping.clientId": "alfresco-share"
-                    }
-                },
                 {
                     "name": "Alfresco Share Audience",
                     "protocol": "openid-connect",
@@ -537,12 +574,62 @@
         "profile",
         "email",
         "roles",
+        "role_list",
         "web-origins"
     ],
     "defaultOptionalClientScopes": [
         "address",
+        "microprofile-jwt",
         "phone"
     ],
+    "scopeMappings": [
+        {
+            "clientScope": "offline_access",
+            "roles": [
+                "offline_access"
+            ]
+        },
+        {
+            "clientScope": "alfresco",
+            "roles": [
+                "user"
+            ]
+        }
+    ],
+    "clientScopeMappings": {
+        "realm-management": [
+            {
+                "clientScope": "alfresco-authority-sync",
+                "roles": [
+                    "view-users",
+                    "query-groups",
+                    "query-users"
+                ]
+            },
+            {
+                "clientScope": "alfresco-role-service",
+                "roles": [
+                    "view-clients"
+                ]
+            }
+        ],
+        "account": [
+            {
+                "client": "account-console",
+                "roles": [
+                    "manage-account"
+                ]
+            }
+        ],
+        "alfresco": [
+            {
+                "clientScope": "alfresco",
+                "roles": [
+                    "admin"
+                ]
+            }
+        ]
+    },
     "clients": [
         {
             "id": "alfresco",
@@ -564,16 +651,18 @@
             "serviceAccountsEnabled": true,
             "publicClient": false,
             "protocol": "openid-connect",
+            "fullScopeAllowed": false,
             "defaultClientScopes": [
                 "profile",
                 "email",
                 "address",
                 "phone",
-                "realm-roles",
+                "roles",
                 "alfresco"
             ],
             "optionalClientScopes": [
-                "realm-management"
+                "alfresco-authority-sync",
+                "alfresco-role-service"
             ]
         },
         {
@@ -594,8 +683,9 @@
             "secret": "a5b3e8bc-39cc-4ddd-8c8f-1c34e7a35975",
             "publicClient": false,
             "protocol": "openid-connect",
+            "fullScopeAllowed": false,
             "defaultClientScopes": [
-                "realm-roles",
+                "roles",
                 "alfresco-share"
             ]
         },
@@ -750,10 +840,318 @@
                     }
                 ]
             }
+        },
+        {
+            "clientId": "account",
+            "name": "${client_account}",
+            "rootUrl": "${authBaseUrl}",
+            "baseUrl": "/realms/test/account/",
+            "surrogateAuthRequired": false,
+            "enabled": true,
+            "alwaysDisplayInConsole": false,
+            "clientAuthenticatorType": "client-secret",
+            "redirectUris": [
+                "/realms/test/account/*"
+            ],
+            "webOrigins": [],
+            "notBefore": 0,
+            "bearerOnly": false,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "publicClient": true,
+            "frontchannelLogout": false,
+            "protocol": "openid-connect",
+            "fullScopeAllowed": false,
+            "nodeReRegistrationTimeout": 0,
+            "defaultClientScopes": [
+                "web-origins",
+                "roles",
+                "profile",
+                "email"
+            ],
+            "optionalClientScopes": [
+                "address",
+                "phone",
+                "offline_access",
+                "microprofile-jwt"
+            ]
+        },
+        {
+            "clientId": "account-console",
+            "name": "${client_account-console}",
+            "rootUrl": "${authBaseUrl}",
+            "baseUrl": "/realms/test/account/",
+            "surrogateAuthRequired": false,
+            "enabled": true,
+            "alwaysDisplayInConsole": false,
+            "clientAuthenticatorType": "client-secret",
+            "redirectUris": [
+                "/realms/test/account/*"
+            ],
+            "webOrigins": [],
+            "notBefore": 0,
+            "bearerOnly": false,
+            "consentRequired": false,
+            "standardFlowEnabled": true,
+            "implicitFlowEnabled": false,
+            "directAccessGrantsEnabled": false,
+            "serviceAccountsEnabled": false,
+            "publicClient": true,
+            "frontchannelLogout": false,
+            "protocol": "openid-connect",
+            "attributes": {
+                "pkce.code.challenge.method": "S256"
+            },
+            "authenticationFlowBindingOverrides": {},
+            "fullScopeAllowed": false,
+            "nodeReRegistrationTimeout": 0,
+            "protocolMappers": [
+                {
+                    "name": "audience resolve",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-resolve-mapper",
+                    "consentRequired": false
+                }
+            ],
+            "defaultClientScopes": [
+                "web-origins",
+                "roles",
+                "profile",
+                "email"
+            ],                    
+            "optionalClientScopes": [
+                "address",
+                "phone",
+                "offline_access",
+                "microprofile-jwt"
+            ]
         }
     ],
     "roles": {
+        "realm": [
+            {
+                "name": "uma_authorization",
+                "description": "${role_uma_authorization}"
+            },
+            {
+                "name": "default-roles-test",
+                "description": "${role_default-roles}",
+                "composite": true,
+                "composites": {
+                    "realm": [
+                        "offline_access",
+                        "uma_authorization",
+                        "user"
+                    ],
+                    "client": {
+                        "account": [
+                            "view-profile",
+                            "manage-account"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "offline_access",
+                "description": "${role_offline-access}"
+            }
+        ],
         "client": {
+            "realm-management": [
+                {
+                    "name": "view-identity-providers",
+                    "description": "${role_view-identity-providers}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-users",
+                    "description": "${role_manage-users}",
+                    "clientRole": true
+                },
+                {
+                    "name": "query-groups",
+                    "description": "${role_query-groups}",
+                    "clientRole": true
+                },
+                {
+                    "name": "query-users",
+                    "description": "${role_query-users}",
+                    "clientRole": true
+                },
+                {
+                    "name": "realm-admin",
+                    "description": "${role_realm-admin}",
+                    "composite": true,
+                    "composites": {
+                        "client": {
+                            "realm-management": [
+                                "view-identity-providers",
+                                "manage-users",
+                                "query-groups",
+                                "query-users",
+                                "view-realm",
+                                "impersonation",
+                                "manage-events",
+                                "manage-authorization",
+                                "manage-identity-providers",
+                                "manage-clients",
+                                "manage-realm",
+                                "view-users",
+                                "view-clients",
+                                "view-events",
+                                "query-realms",
+                                "create-client",
+                                "query-clients",
+                                "view-authorization"
+                            ]
+                        }
+                    },
+                    "clientRole": true
+                },
+                {
+                    "name": "view-realm",
+                    "description": "${role_view-realm}",
+                    "clientRole": true
+                },
+                {
+                    "name": "impersonation",
+                    "description": "${role_impersonation}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-events",
+                    "description": "${role_manage-events}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-authorization",
+                    "description": "${role_manage-authorization}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-identity-providers",
+                    "description": "${role_manage-identity-providers}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-clients",
+                    "description": "${role_manage-clients}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-realm",
+                    "description": "${role_manage-realm}",
+                    "clientRole": true
+                },
+                {
+                    "name": "view-clients",
+                    "description": "${role_view-clients}",
+                    "composite": true,
+                    "composites": {
+                        "client": {
+                            "realm-management": [
+                                "query-clients"
+                            ]
+                        }
+                    },
+                    "clientRole": true
+                },
+                {
+                    "name": "view-users",
+                    "description": "${role_view-users}",
+                    "composite": true,
+                    "composites": {
+                        "client": {
+                            "realm-management": [
+                                "query-groups",
+                                "query-users"
+                            ]
+                        }
+                    },
+                    "clientRole": true
+                },
+                {
+                    "name": "view-events",
+                    "description": "${role_view-events}",
+                    "clientRole": true
+                },
+                {
+                    "name": "query-realms",
+                    "description": "${role_query-realms}",
+                    "clientRole": true
+                },
+                {
+                    "name": "create-client",
+                    "description": "${role_create-client}",
+                    "clientRole": true
+                },
+                {
+                    "name": "query-clients",
+                    "description": "${role_query-clients}",
+                    "clientRole": true
+                },
+                {
+                    "name": "view-authorization",
+                    "description": "${role_view-authorization}",
+                    "clientRole": true
+                }
+            ],
+            "account": [
+                {
+                    "name": "view-applications",
+                    "description": "${role_view-applications}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-account-links",
+                    "description": "${role_manage-account-links}",
+                    "clientRole": true
+                },
+                {
+                    "name": "delete-account",
+                    "description": "${role_delete-account}",
+                    "clientRole": true
+                },
+                {
+                    "name": "view-consent",
+                    "description": "${role_view-consent}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-consent",
+                    "description": "${role_manage-consent}",
+                    "composite": true,
+                    "composites": {
+                        "client": {
+                            "account": [
+                                "view-consent"
+                            ]
+                        }
+                    },
+                    "clientRole": true
+                },
+                {
+                    "name": "view-profile",
+                    "description": "${role_view-profile}",
+                    "clientRole": true
+                },
+                {
+                    "name": "manage-account",
+                    "description": "${role_manage-account}",
+                    "composite": true,
+                    "composites": {
+                        "client": {
+                            "account": [
+                                "manage-account-links"
+                            ]
+                        }
+                    },
+                    "clientRole": true
+                }
+            ],
             "alfresco": [
                 {
                     "name": "admin",
@@ -821,14 +1219,8 @@
                 }
             ],
             "realmRoles": [
-                "user"
+                "default-roles-test"
             ],
-            "clientRoles": {
-                "account": [
-                    "view-profile",
-                    "manage-account"
-                ]
-            },
             "groups": [
                 "/Test A/Test AB",
                 "/Test B/Test BA"
@@ -848,14 +1240,8 @@
                 }
             ],
             "realmRoles": [
-                "user"
-            ],
-            "clientRoles": {
-                "account": [
-                    "view-profile",
-                    "manage-account"
-                ]
-            }
+                "default-roles-test"
+            ]
         },
         {
             "id": "ssuper",
@@ -871,13 +1257,9 @@
                 }
             ],
             "realmRoles": [
-                "user"
+                "default-roles-test"
             ],
             "clientRoles": {
-                "account": [
-                    "view-profile",
-                    "manage-account"
-                ],
                 "alfresco": [
                     "admin"
                 ]

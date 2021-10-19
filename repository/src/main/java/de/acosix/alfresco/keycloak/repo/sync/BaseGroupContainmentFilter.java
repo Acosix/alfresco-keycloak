@@ -24,7 +24,7 @@ import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
 import org.springframework.beans.factory.InitializingBean;
 
-import de.acosix.alfresco.keycloak.repo.client.IDMClient;
+import de.acosix.alfresco.keycloak.repo.client.IdentitiesClient;
 
 /**
  * This class provides common configuration and logic relevant for any filter based on authority group containments.
@@ -34,7 +34,7 @@ import de.acosix.alfresco.keycloak.repo.client.IDMClient;
 public abstract class BaseGroupContainmentFilter implements InitializingBean
 {
 
-    protected IDMClient idmClient;
+    protected IdentitiesClient identitiesClient;
 
     protected List<String> groupPaths;
 
@@ -55,22 +55,22 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
     @Override
     public void afterPropertiesSet()
     {
-        PropertyCheck.mandatory(this, "idmClient", this.idmClient);
+        PropertyCheck.mandatory(this, "identitiesClient", this.identitiesClient);
 
         if (this.groupIds != null && !this.groupIds.isEmpty())
         {
             this.idResolvedGroupPaths = new ArrayList<>();
-            this.groupIds.stream().map(id -> this.idmClient.getGroup(id).getPath()).forEach(this.idResolvedGroupPaths::add);
+            this.groupIds.stream().map(id -> this.identitiesClient.getGroup(id).getPath()).forEach(this.idResolvedGroupPaths::add);
         }
     }
 
     /**
-     * @param idmClient
-     *            the idmClient to set
+     * @param identitiesClient
+     *     the identitiesClient to set
      */
-    public void setIdmClient(final IDMClient idmClient)
+    public void setIdentitiesClient(final IdentitiesClient identitiesClient)
     {
-        this.idmClient = idmClient;
+        this.identitiesClient = identitiesClient;
     }
 
     /**

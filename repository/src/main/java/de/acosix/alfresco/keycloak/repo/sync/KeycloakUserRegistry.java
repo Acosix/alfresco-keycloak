@@ -25,8 +25,10 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.IntConsumer;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.management.subsystems.ActivateableBean;
@@ -44,8 +46,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
-import de.acosix.alfresco.keycloak.repo.client.IDMClient;
-import de.acosix.alfresco.keycloak.repo.client.IDMClientImpl;
+import de.acosix.alfresco.keycloak.repo.client.IdentitiesClient;
 
 /**
  * This class provides a Keycloak-based user registry to support synchronisation with Keycloak managed users and groups.
@@ -61,7 +62,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
     protected ApplicationContext applicationContext;
 
-    protected IDMClient idmClient;
+    protected IdentitiesClient identitiesClient;
 
     protected Collection<UserFilter> userFilters;
 
@@ -82,16 +83,16 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
     public void afterPropertiesSet()
     {
         PropertyCheck.mandatory(this, "applicationContext", this.applicationContext);
-        PropertyCheck.mandatory(this, "idmClient", this.idmClient);
+        PropertyCheck.mandatory(this, "identitiesClient", this.identitiesClient);
 
-        this.userFilters = Collections.unmodifiableList(
-                new ArrayList<>(this.applicationContext.getBeansOfType(UserFilter.class, false, true).values()));
-        this.groupFilters = Collections.unmodifiableList(
-                new ArrayList<>(this.applicationContext.getBeansOfType(GroupFilter.class, false, true).values()));
-        this.userProcessors = Collections.unmodifiableList(
-                new ArrayList<>(this.applicationContext.getBeansOfType(UserProcessor.class, false, true).values()));
-        this.groupProcessors = Collections.unmodifiableList(
-                new ArrayList<>(this.applicationContext.getBeansOfType(GroupProcessor.class, false, true).values()));
+        this.userFilters = Collections
+                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(UserFilter.class, false, true).values()));
+        this.groupFilters = Collections
+                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(GroupFilter.class, false, true).values()));
+        this.userProcessors = Collections
+                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(UserProcessor.class, false, true).values()));
+        this.groupProcessors = Collections
+                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(GroupProcessor.class, false, true).values()));
     }
 
     /**
@@ -105,7 +106,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
     /**
      * @param active
-     *            the active to set
+     *     the active to set
      */
     public void setActive(final boolean active)
     {
@@ -122,17 +123,17 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
     }
 
     /**
-     * @param idmClient
-     *            the idmClient to set
+     * @param identitiesClient
+     *     the identitiesClient to set
      */
-    public void setIdmClient(final IDMClientImpl idmClient)
+    public void setIdentitiesClient(final IdentitiesClient identitiesClient)
     {
-        this.idmClient = idmClient;
+        this.identitiesClient = identitiesClient;
     }
 
     /**
      * @param personLoadBatchSize
-     *            the personLoadBatchSize to set
+     *     the personLoadBatchSize to set
      */
     public void setPersonLoadBatchSize(final int personLoadBatchSize)
     {
@@ -141,7 +142,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
     /**
      * @param groupLoadBatchSize
-     *            the groupLoadBatchSize to set
+     *     the groupLoadBatchSize to set
      */
     public void setGroupLoadBatchSize(final int groupLoadBatchSize)
     {
@@ -160,7 +161,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
         if (this.active)
         {
-            people = new UserCollection<>(this.personLoadBatchSize, this.idmClient.countUsers(), this::mapUser);
+            people = new UserCollection<>(this.personLoadBatchSize, this.identitiesClient.countUsers(), this::mapUser);
         }
 
         return people;
@@ -178,7 +179,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
         if (this.active)
         {
-            groups = new GroupCollection<>(this.groupLoadBatchSize, this.idmClient.countGroups(), this::mapGroup);
+            groups = new GroupCollection<>(this.groupLoadBatchSize, this.identitiesClient.countGroups(), this::mapGroup);
         }
 
         return groups;
@@ -194,7 +195,8 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
         if (this.active)
         {
-            personNames = new UserCollection<>(this.personLoadBatchSize, this.idmClient.countUsers(), UserRepresentation::getUsername);
+            personNames = new UserCollection<>(this.personLoadBatchSize, this.identitiesClient.countUsers(),
+                    UserRepresentation::getUsername);
         }
 
         return personNames;
@@ -210,7 +212,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
         if (this.active)
         {
-            groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.idmClient.countGroups(),
+            groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.identitiesClient.countGroups(),
                     group -> AuthorityType.GROUP.getPrefixString() + group.getId());
         }
 
@@ -234,7 +236,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
      * Maps a single user from the Keycloak representation into an abstract description of a person node.
      *
      * @param user
-     *            the user to map
+     *     the user to map
      * @return the mapped person node description
      */
     protected NodeDescription mapUser(final UserRepresentation user)
@@ -256,7 +258,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
      * Maps a single group from the Keycloak representation into an abstract description of a group node.
      *
      * @param group
-     *            the group to map
+     *     the group to map
      * @return the mapped group node description
      */
     protected NodeDescription mapGroup(final GroupRepresentation group)
@@ -283,7 +285,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         int processedMembers = 1;
         while (processedMembers > 0)
         {
-            processedMembers = this.idmClient.processMembers(group.getId(), offset, this.personLoadBatchSize, user -> {
+            processedMembers = this.identitiesClient.processMembers(group.getId(), offset, this.personLoadBatchSize, user -> {
                 final boolean skipSync = this.userFilters.stream().anyMatch(filter -> !filter.shouldIncludeUser(user));
                 if (!skipSync)
                 {
@@ -317,12 +319,12 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * Constructs a new instance of this class.
          *
          * @param batchSize
-         *            the size of batches to use for incrementally loading data elements in the iterator
+         *     the size of batches to use for incrementally loading data elements in the iterator
          * @param totalUpperBound
-         *            the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
-         *            adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
+         *     the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
+         *     adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
          * @param mapper
-         *            the mapping handler to turn a low-level authority representation into the actual collection value representation
+         *     the mapping handler to turn a low-level authority representation into the actual collection value representation
          */
         protected KeycloakAuthorityCollection(final int batchSize, final int totalUpperBound, final Function<AR, T> mapper)
         {
@@ -353,22 +355,24 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * Loads the next batch of authority representations.
          *
          * @param offset
-         *            the index of the first low-level authority to load
+         *     the index of the first low-level authority to load
          * @param batchSize
-         *            the maximum number of low-level authorities to load from the backend
+         *     the maximum number of low-level authorities to load from the backend
+         * @param filteredCountHandler
+         *     a handler aggregating the count of entities filtered during loading
          * @param authorityProcessor
-         *            the processor to consume individual authority representations - the number of representations passed to this processor
-         *            may be different than the number of authorities loaded from the backend due to filtering and potential pre-processing
-         *            (e.g. splitting of groups and sub-groups)
+         *     the processor to consume individual authority representations - the number of representations passed to this processor
+         *     may be different than the number of authorities loaded from the backend due to filtering and potential pre-processing
+         *     (e.g. splitting of groups and sub-groups)
          * @return the number of low-level authorities loaded in this batch to properly adjust the offset for the next load operation
          */
-        protected abstract int loadNext(int offset, int batchSize, Consumer<AR> authorityProcessor);
+        protected abstract int loadNext(int offset, int batchSize, IntConsumer filteredCountHandler, Consumer<AR> authorityProcessor);
 
         /**
          * Converts an authority representation into the type of object to be exposed as values of the collection.
          *
          * @param authorityRepresentation
-         *            the authority representation to convert
+         *     the authority representation to convert
          * @return the converted value
          */
         protected T convert(final AR authorityRepresentation)
@@ -387,6 +391,8 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
             private boolean noMoreResults;
 
+            protected final AtomicInteger totalFiltered = new AtomicInteger(0);
+
             /**
              * {@inheritDoc}
              */
@@ -396,6 +402,13 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
                 this.checkAndFillBuffer();
 
                 final boolean hasNext = !this.buffer.isEmpty() && this.index < this.buffer.size();
+
+                if (!hasNext && this.totalFiltered.get() > 0)
+                {
+                    LOGGER.info("End of collection reached - {} from total count of {} not processed due to configured post-fetch filters",
+                            this.totalFiltered, KeycloakAuthorityCollection.this.totalUpperBound);
+                }
+
                 return hasNext;
             }
 
@@ -427,6 +440,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
                     this.index = 0;
                     this.offset += KeycloakAuthorityCollection.this.loadNext(this.offset, KeycloakAuthorityCollection.this.batchSize,
+                            i -> this.totalFiltered.addAndGet(i),
                             authority -> this.buffer.add(KeycloakAuthorityCollection.this.convert(authority)));
 
                     this.noMoreResults = this.buffer.isEmpty();
@@ -447,12 +461,12 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * Constructs a new instance of this class.
          *
          * @param batchSize
-         *            the size of batches to use for incrementally loading data elements in the iterator
+         *     the size of batches to use for incrementally loading data elements in the iterator
          * @param totalUpperBound
-         *            the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
-         *            adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
+         *     the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
+         *     adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
          * @param mapper
-         *            the mapping handler to turn a low-level authority representation into the actual collection value representation
+         *     the mapping handler to turn a low-level authority representation into the actual collection value representation
          */
         public UserCollection(final int batchSize, final int totalUpperBound, final Function<UserRepresentation, T> mapper)
         {
@@ -463,15 +477,20 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * {@inheritDoc}
          */
         @Override
-        protected int loadNext(final int offset, final int batchSize, final Consumer<UserRepresentation> authorityProcessor)
+        protected int loadNext(final int offset, final int batchSize, final IntConsumer filteredHandler,
+                final Consumer<UserRepresentation> authorityProcessor)
         {
             // TODO Evaluate other iteration approaches, e.g. crawling from a configured root group
             // How to count totals in advance though?
-            return KeycloakUserRegistry.this.idmClient.processUsers(offset, batchSize, user -> {
+            return KeycloakUserRegistry.this.identitiesClient.processUsers(offset, batchSize, user -> {
                 final boolean skipSync = KeycloakUserRegistry.this.userFilters.stream().anyMatch(filter -> !filter.shouldIncludeUser(user));
                 if (!skipSync)
                 {
                     authorityProcessor.accept(user);
+                }
+                else
+                {
+                    filteredHandler.accept(1);
                 }
             });
         }
@@ -490,12 +509,12 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * Constructs a new instance of this class.
          *
          * @param batchSize
-         *            the size of batches to use for incrementally loading data elements in the iterator
+         *     the size of batches to use for incrementally loading data elements in the iterator
          * @param totalUpperBound
-         *            the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
-         *            adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
+         *     the upper bound of the total number of elements to expect in this collection - this is just an estimation (without
+         *     adjusting for any potential filtering) and will be used as the {@link #size() collection's size}.
          * @param mapper
-         *            the mapping handler to turn a low-level authority representation into the actual collection value representation
+         *     the mapping handler to turn a low-level authority representation into the actual collection value representation
          */
         public GroupCollection(final int batchSize, final int totalUpperBound, final Function<GroupRepresentation, T> mapper)
         {
@@ -506,21 +525,27 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
          * {@inheritDoc}
          */
         @Override
-        protected int loadNext(final int offset, final int batchSize, final Consumer<GroupRepresentation> authorityProcessor)
+        protected int loadNext(final int offset, final int batchSize, final IntConsumer filteredHandler,
+                final Consumer<GroupRepresentation> authorityProcessor)
         {
             // TODO Evaluate other iteration approaches, e.g. crawling from a configured root group
             // How to count totals in advance though?
-            return KeycloakUserRegistry.this.idmClient.processGroups(offset, batchSize, group -> {
-                this.processGroupsRecursively(group, authorityProcessor);
+            return KeycloakUserRegistry.this.identitiesClient.processGroups(offset, batchSize, group -> {
+                this.processGroupsRecursively(group, filteredHandler, authorityProcessor);
             });
         }
 
-        protected void processGroupsRecursively(final GroupRepresentation group, final Consumer<GroupRepresentation> authorityProcessor)
+        protected void processGroupsRecursively(final GroupRepresentation group, final IntConsumer filteredHandler,
+                final Consumer<GroupRepresentation> authorityProcessor)
         {
             final boolean skipSync = KeycloakUserRegistry.this.groupFilters.stream().anyMatch(filter -> !filter.shouldIncludeGroup(group));
             if (!skipSync)
             {
                 authorityProcessor.accept(group);
+            }
+            else
+            {
+                filteredHandler.accept(1);
             }
 
             // any filtering applied above does not apply here as any sub-group will be individually checked for filtering by recursive

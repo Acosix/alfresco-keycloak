@@ -39,8 +39,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
 
-import de.acosix.alfresco.keycloak.repo.client.IDMClient;
+import de.acosix.alfresco.keycloak.repo.client.RolesClient;
 
+/**
+ *
+ * @author Axel Faust
+ */
 public class RoleServiceImpl implements RoleService, InitializingBean
 {
 
@@ -50,7 +54,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     protected AdapterConfig adapterConfig;
 
-    protected IDMClient idmClient;
+    protected RolesClient rolesClient;
 
     protected boolean enabled;
 
@@ -83,7 +87,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
     @Override
     public void afterPropertiesSet()
     {
-        PropertyCheck.mandatory(this, "idmClient", this.idmClient);
+        PropertyCheck.mandatory(this, "rolesClient", this.rolesClient);
 
         if (this.enabled && this.processRealmRoles)
         {
@@ -113,17 +117,17 @@ public class RoleServiceImpl implements RoleService, InitializingBean
     }
 
     /**
-     * @param idmClient
-     *            the idmClient to set
+     * @param rolesClient
+     *     the rolesClient to set
      */
-    public void setIdmClient(final IDMClient idmClient)
+    public void setRolesClient(final RolesClient rolesClient)
     {
-        this.idmClient = idmClient;
+        this.rolesClient = rolesClient;
     }
 
     /**
      * @param adapterConfig
-     *            the adapterConfig to set
+     *     the adapterConfig to set
      */
     public void setAdapterConfig(final AdapterConfig adapterConfig)
     {
@@ -132,7 +136,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
@@ -141,7 +145,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param processRealmRoles
-     *            the processRealmRoles to set
+     *     the processRealmRoles to set
      */
     public void setProcessRealmRoles(final boolean processRealmRoles)
     {
@@ -150,7 +154,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param processResourceRoles
-     *            the processResourceRoles to set
+     *     the processResourceRoles to set
      */
     public void setProcessResourceRoles(final boolean processResourceRoles)
     {
@@ -159,7 +163,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param realmRoleNameFilter
-     *            the realmRoleNameFilter to set
+     *     the realmRoleNameFilter to set
      */
     public void setRealmRoleNameFilter(final RoleNameFilter realmRoleNameFilter)
     {
@@ -168,7 +172,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param realmRoleNameMapper
-     *            the realmRoleNameMapper to set
+     *     the realmRoleNameMapper to set
      */
     public void setRealmRoleNameMapper(final RoleNameMapper realmRoleNameMapper)
     {
@@ -177,7 +181,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param defaultResourceRoleNameFilter
-     *            the defaultResourceRoleNameFilter to set
+     *     the defaultResourceRoleNameFilter to set
      */
     public void setDefaultResourceRoleNameFilter(final RoleNameFilter defaultResourceRoleNameFilter)
     {
@@ -186,7 +190,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param defaultResourceRoleNameMapper
-     *            the defaultResourceRoleNameMapper to set
+     *     the defaultResourceRoleNameMapper to set
      */
     public void setDefaultResourceRoleNameMapper(final RoleNameMapper defaultResourceRoleNameMapper)
     {
@@ -195,7 +199,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param resourceRoleNameFilter
-     *            the resourceRoleNameFilter to set
+     *     the resourceRoleNameFilter to set
      */
     public void setResourceRoleNameFilter(final Map<String, RoleNameFilter> resourceRoleNameFilter)
     {
@@ -204,7 +208,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param resourceRoleNameMapper
-     *            the resourceRoleNameMapper to set
+     *     the resourceRoleNameMapper to set
      */
     public void setResourceRoleNameMapper(final Map<String, RoleNameMapper> resourceRoleNameMapper)
     {
@@ -213,7 +217,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
     /**
      * @param hiddenMappedRoles
-     *            the hiddenMappedRoles to set
+     *     the hiddenMappedRoles to set
      */
     public void setHiddenMappedRoles(final List<String> hiddenMappedRoles)
     {
@@ -327,7 +331,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
         {
             final UnaryOperator<String> realmRoleResolver = rn -> {
                 final Set<String> matchingRoles = new HashSet<>();
-                this.idmClient.processRealmRoles(rn, 0, Integer.MAX_VALUE, roleResult -> {
+                this.rolesClient.processRealmRoles(rn, 0, Integer.MAX_VALUE, roleResult -> {
                     if (roleResult.getName().equalsIgnoreCase(rn))
                     {
                         matchingRoles.add(roleResult.getName());
@@ -351,7 +355,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
         {
             final BinaryOperator<String> clientRoleResolver = (client, rn) -> {
                 final Set<String> matchingRoles = new HashSet<>();
-                this.idmClient.processClientRoles(client, rn, 0, Integer.MAX_VALUE, roleResult -> {
+                this.rolesClient.processClientRoles(client, rn, 0, Integer.MAX_VALUE, roleResult -> {
                     if (roleResult.getName().equalsIgnoreCase(rn))
                     {
                         matchingRoles.add(roleResult.getName());
@@ -554,7 +558,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
         try
         {
             LOGGER.debug("Loading IDs for registered clients from Keycloak");
-            final int processedClients = this.idmClient.processClients(client -> {
+            final int processedClients = this.rolesClient.processClients(client -> {
                 // Keycloak terminology is not 100% consistent
                 // what the Keycloak adapter calls the resourceName is the client ID in IDM representation
                 // we use clientId in our API to refer to the technical identifier which can actually be used in the ReST API to access the
@@ -613,11 +617,11 @@ public class RoleServiceImpl implements RoleService, InitializingBean
 
         if (clientId != null)
         {
-            this.idmClient.processClientRoles(clientId, 0, Integer.MAX_VALUE, processor);
+            this.rolesClient.processClientRoles(clientId, 0, Integer.MAX_VALUE, processor);
         }
         else
         {
-            this.idmClient.processRealmRoles(0, Integer.MAX_VALUE, processor);
+            this.rolesClient.processRealmRoles(0, Integer.MAX_VALUE, processor);
         }
 
         return results;

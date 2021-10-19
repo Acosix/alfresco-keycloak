@@ -157,7 +157,7 @@
         <property name="keycloakTicketTokenCache" ref="${moduleId}-ticketTokenCache" />
     </bean>
 
-    <bean id="idmClient" class="${project.artifactId}.client.IDMClientImpl">
+    <bean id="identitiesClient" class="${project.artifactId}.client.IdentitiesClientImpl">
         <property name="deployment" ref="keycloakDeployment" />
         <property name="accessTokenService" ref="accessTokenService.impl" />
         <property name="userName" value="${keycloak.synchronization.user}" />
@@ -165,9 +165,17 @@
         <property name="requiredClientScopes" value="${keycloak.synchronization.requiredClientScopes}" />
     </bean>
 
+    <bean id="rolesClient" class="${project.artifactId}.client.RolesClientImpl">
+        <property name="deployment" ref="keycloakDeployment" />
+        <property name="accessTokenService" ref="accessTokenService.impl" />
+        <property name="userName" value="${keycloak.roles.user}" />
+        <property name="password" value="${keycloak.roles.password}" />
+        <property name="requiredClientScopes" value="${keycloak.roles.requiredClientScopes}" />
+    </bean>
+
     <bean id="userRegistry" class="${project.artifactId}.sync.KeycloakUserRegistry">
         <property name="active" value="${keycloak.synchronization.enabled}" />
-        <property name="idmClient" ref="idmClient" />
+        <property name="identitiesClient" ref="identitiesClient" />
         <property name="personLoadBatchSize" value="${keycloak.synchronization.personLoadBatchSize}" />
         <property name="groupLoadBatchSize" value="${keycloak.synchronization.groupLoadBatchSize}" />
     </bean>
@@ -178,7 +186,7 @@
 
     <bean id="roleService.impl" class="${project.artifactId}.roles.RoleServiceImpl">
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
-        <property name="idmClient" ref="idmClient" />
+        <property name="rolesClient" ref="rolesClient" />
         <property name="enabled" value="${keycloak.roles.mapRoles}" />
         <property name="processRealmRoles" value="${keycloak.roles.mapRealmRoles}" />
         <property name="processResourceRoles" value="${keycloak.roles.mapResourceRoles}" />
@@ -194,11 +202,11 @@
     <bean id="userToken.default" class="${project.artifactId}.authentication.DefaultPersonProcessor" />
 
     <bean id="userFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
-        <property name="idmClient" ref="idmClient" />
+        <property name="identitiesClient" ref="identitiesClient" />
     </bean>
 
     <bean id="groupFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
-        <property name="idmClient" ref="idmClient" />
+        <property name="identitiesClient" ref="identitiesClient" />
     </bean>
 
     <bean id="authorityMapper.simpleAttributes" abstract="true">

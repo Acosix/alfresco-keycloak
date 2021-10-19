@@ -56,7 +56,7 @@ public class GroupContainmentUserFilter extends BaseGroupContainmentFilter
             int processedGroups = 1;
             while (processedGroups > 0)
             {
-                processedGroups = this.idmClient.processUserGroups(user.getId(), offset, this.groupLoadBatchSize, group -> {
+                processedGroups = this.identitiesClient.processUserGroups(user.getId(), offset, this.groupLoadBatchSize, group -> {
                     parentGroupIds.add(group.getId());
                     parentGroupPaths.add(group.getPath());
                 });
