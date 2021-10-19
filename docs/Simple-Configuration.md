@@ -1,6 +1,6 @@
 # Getting Started (Simple Configuration)
 
-This section provides the most basic configuration required to use this addon in combination with a Keycloak server (Keycloak version 11.0.2 used as a reference).
+This section provides the most basic configuration required to use this addon in combination with a Keycloak server (Keycloak version 15.0.2 used as a reference).
 
 ## Keycloak
 
@@ -34,32 +34,31 @@ Two clients must be created for the Alfresco Repository and Share. The following
 - "Client Scopes" => "Setup" => "Default Client Scopes"
     - `email` and `profile` (on the client for Alfresco Repository, if mapping of person from access / identity tokens should be supported)
     - `roles` (on the client for Alfresco Repository, if mapping of authorities from Keycloak roles should be supported)
-- "Mappers" => "Add Builtin" `groups` (on the client for Alfresco Repository, if mapping of authorities from Keycloak gropus should be supported)
+- "Mappers" => "Add Builtin" `groups` (on the client for Alfresco Repository, if mapping of authorities from Keycloak groups should be supported)
 - "Service Account Roles" (on the client for Alfresco Repository, if active user / group synchronisation *or* the service/web script to expose roles for use e.g. in permission mangement should be supported)
     - Assign client roles `query-groups`, `query-users`, `view-users` and `view-clients` on the client `realm-management`
-    - Assign client roles `view-profile` and `manage-account` on the client `account`
     
 If the RFC 8693 OAuth 2.0 Token Exchange functionality is to be used for delegation of user authentication from Share to the Repository, an authorisation policy needs to be defined on the pre-existing client `realm-management`. The necessary elements can all be configured in the "Authorization" tab in the configuration of that client. The following elements must be created (if not pre-existing) and/or associated with one another.
 
 - "Authorization Scopes" `token-exchange`
-- "Resources" `client.resource.&lt;idOfRepositoryClient&gt;`
+- "Resources" `client.resource.<idOfRepositoryClient>`
     - "Type" `Client`
     - "Scopes" `view`, `map-roles-client-scope`, `configure`, `map-roles`, `manage`, `token-exchange`, `map-roles-composite` (`token-exchange` is required for the feature, the others are typically created by default when an optional Keycloak feature for simplified authorisation management is used - if these do not exist, they can be manually created in "Authorization Scopes")
 - "Permissions"
-    - `view.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `map-roles-client-scope.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `configure.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `map-roles.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `manage.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `token-exchange.permission.client.&lt;idOfRepositoryClient&gt;`
-    - `map-roles-composite.permission.client.&lt;idOfRepositoryClient&gt;`
-- "Policies" `&lt;idOfRepositoryClient&gt;-token-exchange`
+    - `view.permission.client.<idOfRepositoryClient>`
+    - `map-roles-client-scope.permission.client.<idOfRepositoryClient>`
+    - `configure.permission.client.<idOfRepositoryClient>`
+    - `map-roles.permission.client.<idOfRepositoryClient>`
+    - `manage.permission.client.<idOfRepositoryClient>`
+    - `token-exchange.permission.client.<idOfRepositoryClient>`
+    - `map-roles-composite.permission.client.<idOfRepositoryClient>`
+- "Policies" `<idOfRepositoryClient>-token-exchange`
     - "Logic" `Positive`
-    - "Clients" `&lt;idOfShareClient&gt;`
+    - "Clients" `<idOfShareClient>`
 
 ### Roles / Groups
 
-Unless disabled, the Repository module of this addon can synchronise users / groups, and map groups or roles from the access / identity token as authorities of the user. In the default configuration of the module, all users and groups are synchronised, all roles defined as realm-level roles will be mapped as `ROLE_KEYCLOAK_&lt;realm&gt;_&lt;role&gt;`, and all client roles of the Alfresco Repository client are mapped as `ROLE_KEYCLOAK_&lt;realm&gt;_&lt;idOfRepositoryClient&gt;_&lt;role&gt;. The following special cases are handled by default with regards to Alfresco Repository client roles (all of these roles do not exist by default and must be created if they are to be used):
+Unless disabled, the Repository module of this addon can synchronise users / groups, and map groups or roles from the access / identity token as authorities of the user. In the default configuration of the module, all users and groups are synchronised, all roles defined as realm-level roles will be mapped as `ROLE_KEYCLOAK_<realm>_<role>`, and all client roles of the Alfresco Repository client are mapped as `ROLE_KEYCLOAK_<realm>_<idOfRepositoryClient>_<role>`. The following special cases are handled by default with regards to Alfresco Repository client roles (all of these roles do not exist by default and must be created if they are to be used):
 
 - `admin` mapped as `ROLE_ADMINISTRATOR`
 - `guest` mapped as `ROLE_GUEST`
@@ -102,7 +101,7 @@ The following core configuration properties can be set (more extensive list in t
 | `...directAuthHost` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved by the Alfresco Repository host or round-trips via a public gateway / proxy should be avoided |
 | `...realm` | `alfresco` | Technical name of the Keycloak realm |
 | `...resource` | `alfresco` | Technical name of the client set up for the Alfresco Repository in the realm |
-| `...keycloak.adapter.credentials.secret` |  | Shared secret for validation of authorisation codes / access tokens |
+| `...credentials.secret` |  | Shared secret for validation of authorisation codes / access tokens |
 | `...verify-token-audience` | `true` | Flag enabling validation of the audience specified in an access token - must be disabled if Share or any other application which authenticates users via Keycloak is not delegating user authentication using RFC 8693 OAuth 2.0 Token Exchange |
 
 ## Alfresco Share

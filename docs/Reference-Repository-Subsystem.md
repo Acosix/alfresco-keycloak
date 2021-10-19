@@ -50,6 +50,7 @@ The following technical authentication configuration properties are supported by
 | `enabled` | `true` | Flag determining whether the default property mapping is enabled - mapping of properties for person nodes is technically extensible, and in some cases, the default handling may need to be disabled |
 | `mapNull` | `true` | Flag determining whether `null` values in specific fields of a token should still be mapped to the corresponding person property - if disabled, mapping of person properties will not remove previously mapped values from Alfresco person nodes if the value has been removed without replacement in Keycloak |
 | `mapGivenName` | `true` | Flag determining whether the `givenName` token attribute should be mapped as `cm:firstName` |
+| `mapMiddleName` | `true` | Flag determining whether the `middleName` token attribute should be mapped as `cm:middleName` |
 | `mapFamilyName` | `true` | Flag determining whether the `familyName` token attribute should be mapped as `cm:lastName` |
 | `mapEmail` | `true` | Flag determining whether the `email` token attribute should be mapped as `cm:email` |
 | `mapPhoneNumber` | `true` | Flag determining whether the `phoneNumber` token attribute should be mapped |
@@ -66,6 +67,7 @@ The following synchronisation configuration properties are supported by the subs
 | `enabled` | `true` | Flag determining whether general synchronisation functionality is enabled |
 | `user` |  | Name of a user account to be used to perform synchronisation-related calls to Keycloak - if not set, the subsystem will use the configured adapter client credentials to use the service account of the client (service account must have been enabled / set up in Keycloak) |
 | `password` |  | Password for the user account to be used to perform synchronisation-related calls to Keycloak|
+| `requiredClientScopes` |  | Comma-separated list of required client scopes to be requested for the Keycloak token used for authentication on Keycloak API - this may be necessary if an optional client scope has been configured to include/map the required `realm-management` client roles + audience used in Keycloak for access checking |
 | `personLoadBatchSize` | `50` | Number of users to retrieve from Keycloak in a single admin API call |
 | `groupLoadBatchSize` | `50` | Number of groups to retrieve from Keycloak in a single admin API call |
 
@@ -123,6 +125,9 @@ The following role mapping configuration properties are supported by the subsyst
 
 | Property | Default Value | Description |
 | --- | ---: | --- |
+| `user` |  | Name of a user account to be used to perform role-related calls to Keycloak - if not set, the subsystem will use the configured adapter client credentials to use the service account of the client (service account must have been enabled / set up in Keycloak) |
+| `password` |  | Password for the user account to be used to perform role-related calls to Keycloak|
+| `requiredClientScopes` |  | Comma-separated list of required client scopes to be requested for the Keycloak token used for authentication on Keycloak API - this may be necessary if an optional client scope has been configured to include/map the required `realm-management` client roles + audience used in Keycloak for access checking |
 | `mapRoles` | `true` | Flag determining whether role mapping is enabled |
 | `mapRealmRoles` | `true` | Flag determining whether roles in the context of the Keycloak realm should be mapped |
 | `mapResourceRoles` | `true` | Flag determining whether roles in the context of the configured Keycloak client should be mapped |
