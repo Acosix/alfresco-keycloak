@@ -550,7 +550,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
             // any filtering applied above does not apply here as any sub-group will be individually checked for filtering by recursive
             // processing
-            group.getSubGroups().forEach(subGroup -> this.processGroupsRecursively(subGroup, authorityProcessor));
+            group.getSubGroups().forEach(subGroup -> this.processGroupsRecursively(subGroup, filteredHandler, authorityProcessor));
         }
     }
 }
