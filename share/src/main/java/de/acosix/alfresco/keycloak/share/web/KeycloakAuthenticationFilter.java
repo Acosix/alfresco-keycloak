@@ -22,13 +22,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
-import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
-import java.util.concurrent.TimeUnit;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,17 +48,12 @@ import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SSOAuthenticationFilter;
 import org.apache.http.HttpEntity;
-import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.conn.params.ConnRoutePNames;
-import org.apache.http.conn.params.ConnRouteParams;
-import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.params.HttpParams;
 import org.apache.http.util.EntityUtils;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.OAuth2Constants;
@@ -68,7 +61,6 @@ import org.keycloak.TokenVerifier;
 import org.keycloak.adapters.AdapterDeploymentContext;
 import org.keycloak.adapters.AuthenticatedActionsHandler;
 import org.keycloak.adapters.BearerTokenRequestAuthenticator;
-import org.keycloak.adapters.HttpClientBuilder;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.KeycloakDeploymentBuilder;
 import org.keycloak.adapters.OAuthRequestAuthenticator;
@@ -512,35 +504,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     protected void initFromAdapterConfig(final KeycloakAdapterConfigElement keycloakAdapterConfig)
     {
         final AdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
-
-        // disable any CORS handling (if CORS is relevant, it should be handled by Share / Surf)
-        adapterConfiguration.setCors(false);
-        // BASIC authentication should never be used
-        adapterConfiguration.setEnableBasicAuth(false);
-
         this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
-
-        // even in newer version than used by ACS 6.x does Keycloak lib not allow timeout configuration
-        if (this.keycloakDeployment.getClient() != null)
-        {
-            final Long connectionTimeout = keycloakAdapterConfig.getConnectionTimeout();
-            final Long socketTimeout = keycloakAdapterConfig.getSocketTimeout();
-
-            HttpClientBuilder httpClientBuilder = new HttpClientBuilder();
-            if (connectionTimeout != null && connectionTimeout.longValue() >= 0)
-            {
-                httpClientBuilder = httpClientBuilder.establishConnectionTimeout(connectionTimeout.longValue(), TimeUnit.MILLISECONDS);
-            }
-            if (socketTimeout != null && socketTimeout.longValue() >= 0)
-            {
-                httpClientBuilder = httpClientBuilder.socketTimeout(socketTimeout.longValue(), TimeUnit.MILLISECONDS);
-            }
-
-            final HttpClient client = httpClientBuilder.build(adapterConfiguration);
-            this.configureForcedRouteIfNecessary(keycloakAdapterConfig, client);
-            this.keycloakDeployment.setClient(client);
-        }
-
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -1862,40 +1826,5 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             sslPort = 8443;
         }
         return sslPort;
-    }
-
-    /**
-     * Sets up a forced route for the Keycloak-library backing HTTP client if configured. This may be necessary to deal with situations
-     * where Share cannot use the public address of the authentication server (used in authentication redirects) to talk with the server
-     * directly, due to network isolation / addressing restrictions (e.g. in Docker-ized deployments).
-     *
-     * @param configElement
-     *     the adapter configuration
-     * @param client
-     *     the client to configure
-     */
-    @SuppressWarnings("deprecation")
-    protected void configureForcedRouteIfNecessary(final KeycloakAdapterConfigElement configElement, final HttpClient client)
-    {
-        final String directAuthHost = configElement.getDirectAuthHost();
-        if (directAuthHost != null && !directAuthHost.isEmpty())
-        {
-            final HttpHost host = HttpHost.create(directAuthHost);
-            final HttpParams params = client.getParams();
-            final InetAddress local = ConnRouteParams.getLocalAddress(params);
-            final HttpHost proxy = ConnRouteParams.getDefaultProxy(params);
-            final boolean secure = host.getSchemeName().equalsIgnoreCase("https");
-
-            HttpRoute route;
-            if (proxy == null)
-            {
-                route = new HttpRoute(host, local, secure);
-            }
-            else
-            {
-                route = new HttpRoute(host, local, proxy, secure);
-            }
-            params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
-        }
     }
 }

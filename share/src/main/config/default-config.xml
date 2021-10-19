@@ -38,7 +38,6 @@
             <alfresco-resource-name>alfresco</alfresco-resource-name>
         </keycloak-auth-config>
         <keycloak-adapter-config>
-            <!-- by default use the same client as alfresco (not really "clean") -->
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
             <resource>alfresco-share</resource>
@@ -51,8 +50,8 @@
             </credentials>
             <!-- for some reason, this is not a sane default in Keycloak Adapter config -->
             <verify-token-audience>true</verify-token-audience>
-            <connectionTimeout>5000</connectionTimeout>
-            <socketTimeout>5000</socketTimeout>
+            <socket-timeout-millis>5000</socket-timeout-millis>
+            <connection-timeout-millis>5000</connection-timeout-millis>
         </keycloak-adapter-config>
     </config>
     

@@ -677,23 +677,13 @@
                 ],
                 "policies": [
                     {
-                        "name": "alfresco-token-exchange",
-                        "type": "client",
-                        "logic": "POSITIVE",
-                        "decisionStrategy": "UNANIMOUS",
-                        "config": {
-                            "clients": "[\"alfresco-share\"]"
-                        }
-                    },
-                    {
                         "name": "token-exchange.permission.client.alfresco",
                         "type": "scope",
                         "logic": "POSITIVE",
                         "decisionStrategy": "UNANIMOUS",
                         "config": {
                             "resources": "[\"client.resource.alfresco\"]",
-                            "scopes": "[\"token-exchange\"]",
-                            "applyPolicies": "[\"alfresco-token-exchange\"]"
+                            "scopes": "[\"token-exchange\"]"
                         }
                     },
                     {
@@ -871,6 +861,24 @@
             ]
         }
     ],
+    "defaultRole": {
+        "name": "default-roles-test",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+            "realm": [
+                "offline_access",
+                "uma_authorization",
+                "user"
+            ],
+            "client": {
+                "account": [
+                    "view-profile",
+                    "manage-account"
+                ]
+            }
+        }
+    },
     "roles": {
         "realm": [
             {
@@ -878,26 +886,11 @@
                 "description": "${role_uma_authorization}"
             },
             {
-                "name": "default-roles-test",
-                "description": "${role_default-roles}",
-                "composite": true,
-                "composites": {
-                    "realm": [
-                        "offline_access",
-                        "uma_authorization",
-                        "user"
-                    ],
-                    "client": {
-                        "account": [
-                            "view-profile",
-                            "manage-account"
-                        ]
-                    }
-                }
-            },
-            {
                 "name": "offline_access",
                 "description": "${role_offline-access}"
+            },
+            {
+                "name": "user"
             }
         ],
         "client": {

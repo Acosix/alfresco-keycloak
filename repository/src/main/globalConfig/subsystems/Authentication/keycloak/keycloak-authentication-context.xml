@@ -30,9 +30,6 @@
 
     <bean id="keycloakDeployment" class="${project.artifactId}.spring.KeycloakDeploymentBeanFactory">
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
-        <property name="connectionTimeout" value="${keycloak.adapter.connectionTimeout}" />
-        <property name="socketTimeout" value="${keycloak.adapter.socketTimeout}" />
-        <property name="directAuthHost" value="${keycloak.adapter.directAuthHost}" />
     </bean>
 
     <bean id="sessionIdMapper" class="${project.artifactId}.authentication.SimpleCacheBackedSessionIdMapper">

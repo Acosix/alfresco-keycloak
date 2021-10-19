@@ -15,19 +15,9 @@
  */
 package de.acosix.alfresco.keycloak.repo.spring;
 
-import java.net.InetAddress;
-import java.util.concurrent.TimeUnit;
-
 import org.alfresco.httpclient.HttpClientFactory.NonBlockingHttpParamsFactory;
 import org.alfresco.util.PropertyCheck;
 import org.apache.commons.httpclient.params.DefaultHttpParams;
-import org.apache.http.HttpHost;
-import org.apache.http.client.HttpClient;
-import org.apache.http.conn.params.ConnRoutePNames;
-import org.apache.http.conn.params.ConnRouteParams;
-import org.apache.http.conn.routing.HttpRoute;
-import org.apache.http.params.HttpParams;
-import org.keycloak.adapters.HttpClientBuilder;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.KeycloakDeploymentBuilder;
 import org.keycloak.representations.adapters.config.AdapterConfig;
@@ -48,12 +38,6 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
 
     protected AdapterConfig adapterConfig;
 
-    protected String directAuthHost;
-
-    protected int connectionTimeout;
-
-    protected int socketTimeout;
-
     /**
      *
      * {@inheritDoc}
@@ -66,38 +50,11 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
 
     /**
      * @param adapterConfig
-     *            the adapterConfig to set
+     *     the adapterConfig to set
      */
     public void setAdapterConfig(final AdapterConfig adapterConfig)
     {
         this.adapterConfig = adapterConfig;
-    }
-
-    /**
-     * @param directAuthHost
-     *            the directAuthHost to set
-     */
-    public void setDirectAuthHost(final String directAuthHost)
-    {
-        this.directAuthHost = directAuthHost;
-    }
-
-    /**
-     * @param connectionTimeout
-     *            the connectionTimeout to set
-     */
-    public void setConnectionTimeout(final int connectionTimeout)
-    {
-        this.connectionTimeout = connectionTimeout;
-    }
-
-    /**
-     * @param socketTimeout
-     *            the socketTimeout to set
-     */
-    public void setSocketTimeout(final int socketTimeout)
-    {
-        this.socketTimeout = socketTimeout;
     }
 
     /**
@@ -106,23 +63,7 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     @Override
     public KeycloakDeployment getObject() throws Exception
     {
-        final KeycloakDeployment keycloakDeployment = KeycloakDeploymentBuilder.build(this.adapterConfig);
-
-        HttpClientBuilder httpClientBuilder = new HttpClientBuilder();
-        if (this.connectionTimeout > 0)
-        {
-            httpClientBuilder = httpClientBuilder.establishConnectionTimeout(this.connectionTimeout, TimeUnit.MILLISECONDS);
-        }
-        if (this.socketTimeout > 0)
-        {
-            httpClientBuilder = httpClientBuilder.socketTimeout(this.socketTimeout, TimeUnit.MILLISECONDS);
-        }
-
-        final HttpClient client = httpClientBuilder.build(this.adapterConfig);
-        this.configureForcedRouteIfNecessary(client);
-        keycloakDeployment.setClient(client);
-
-        return keycloakDeployment;
+        return KeycloakDeploymentBuilder.build(this.adapterConfig);
     }
 
     /**
@@ -144,29 +85,5 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     public Class<?> getObjectType()
     {
         return KeycloakDeployment.class;
-    }
-
-    @SuppressWarnings("deprecation")
-    protected void configureForcedRouteIfNecessary(final HttpClient client)
-    {
-        if (this.directAuthHost != null && !this.directAuthHost.isEmpty())
-        {
-            final HttpHost directAuthHost = HttpHost.create(this.directAuthHost);
-            final HttpParams params = client.getParams();
-            final InetAddress local = ConnRouteParams.getLocalAddress(params);
-            final HttpHost proxy = ConnRouteParams.getDefaultProxy(params);
-            final boolean secure = directAuthHost.getSchemeName().equalsIgnoreCase("https");
-
-            HttpRoute route;
-            if (proxy == null)
-            {
-                route = new HttpRoute(directAuthHost, local, secure);
-            }
-            else
-            {
-                route = new HttpRoute(directAuthHost, local, proxy, secure);
-            }
-            params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
-        }
     }
 }

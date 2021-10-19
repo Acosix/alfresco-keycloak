@@ -134,69 +134,12 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
 
     protected final Set<String> markedAsUnset = new HashSet<>();
 
-    protected final ConfigValueHolder<Long> connectionTimeout = new ConfigValueHolder<>();
-
-    protected final ConfigValueHolder<Long> socketTimeout = new ConfigValueHolder<>();
-
-    protected final ConfigValueHolder<String> directAuthHost = new ConfigValueHolder<>();
-
     /**
      * Creates a new instance of this class.
      */
     public KeycloakAdapterConfigElement()
     {
         super(NAME);
-    }
-
-    /**
-     * @return the connectionTimeout
-     */
-    public Long getConnectionTimeout()
-    {
-        return this.connectionTimeout.getValue();
-    }
-
-    /**
-     * @param connectionTimeout
-     *            the connectionTimeout to set
-     */
-    public void setConnectionTimeout(final Long connectionTimeout)
-    {
-        this.connectionTimeout.setValue(connectionTimeout);
-    }
-
-    /**
-     * @return the socketTimeout
-     */
-    public Long getSocketTimeout()
-    {
-        return this.socketTimeout.getValue();
-    }
-
-    /**
-     * @param socketTimeout
-     *            the socketTimeout to set
-     */
-    public void setSocketTimeout(final Long socketTimeout)
-    {
-        this.socketTimeout.setValue(socketTimeout);
-    }
-
-    /**
-     * @return the directAuthHost
-     */
-    public String getDirectAuthHost()
-    {
-        return this.directAuthHost.getValue();
-    }
-
-    /**
-     * @param directAuthHost
-     *            the directAuthHost to set
-     */
-    public void setDirectAuthHost(final String directAuthHost)
-    {
-        this.directAuthHost.setValue(directAuthHost);
     }
 
     /**
@@ -390,36 +333,6 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             }
         }
 
-        if (otherConfigElement.connectionTimeout.isUnset())
-        {
-            combined.connectionTimeout.unset();
-        }
-        else
-        {
-            combined.setConnectionTimeout(otherConfigElement.getConnectionTimeout() != null ? otherConfigElement.getConnectionTimeout()
-                    : this.getConnectionTimeout());
-        }
-
-        if (otherConfigElement.socketTimeout.isUnset())
-        {
-            combined.socketTimeout.unset();
-        }
-        else
-        {
-            combined.setSocketTimeout(
-                    otherConfigElement.getSocketTimeout() != null ? otherConfigElement.getSocketTimeout() : this.getSocketTimeout());
-        }
-
-        if (otherConfigElement.directAuthHost.isUnset())
-        {
-            combined.directAuthHost.unset();
-        }
-        else
-        {
-            combined.setDirectAuthHost(
-                    otherConfigElement.getDirectAuthHost() != null ? otherConfigElement.getDirectAuthHost() : this.getDirectAuthHost());
-        }
-
         return combined;
     }
 
@@ -435,12 +348,6 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         builder.append(this.configValueByField);
         builder.append(",markedAsUnset=");
         builder.append(this.markedAsUnset);
-        builder.append(",connectionTimeout=");
-        builder.append(this.connectionTimeout);
-        builder.append(",socketTimeout=");
-        builder.append(this.socketTimeout);
-        builder.append(",directAuthHost=");
-        builder.append(this.directAuthHost);
         builder.append("]");
         return builder.toString();
     }
@@ -461,10 +368,6 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             final int valueHash = value == null ? (this.markedAsUnset.contains(configName) ? -1 : 0) : value.hashCode();
             result = prime * result + valueHash;
         }
-
-        result = prime * result + this.connectionTimeout.hashCode();
-        result = prime * result + this.socketTimeout.hashCode();
-        result = prime * result + this.directAuthHost.hashCode();
 
         return result;
     }
@@ -493,14 +396,6 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             return false;
         }
         if (!EqualsHelper.nullSafeEquals(this.markedAsUnset, other.markedAsUnset))
-        {
-            return false;
-        }
-        if (!EqualsHelper.nullSafeEquals(this.connectionTimeout, other.connectionTimeout))
-        {
-            return false;
-        }
-        if (!EqualsHelper.nullSafeEquals(this.socketTimeout, other.socketTimeout))
         {
             return false;
         }

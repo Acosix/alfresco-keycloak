@@ -683,6 +683,7 @@
             "secret": "a5b3e8bc-39cc-4ddd-8c8f-1c34e7a35975",
             "publicClient": false,
             "protocol": "openid-connect",
+            "alwaysDisplayInConsole": true,
             "fullScopeAllowed": false,
             "defaultClientScopes": [
                 "roles",
@@ -930,6 +931,24 @@
             ]
         }
     ],
+    "defaultRole": {
+        "name": "default-roles-test",
+        "description": "${role_default-roles}",
+        "composite": true,
+        "composites": {
+            "realm": [
+                "offline_access",
+                "uma_authorization",
+                "user"
+            ],
+            "client": {
+                "account": [
+                    "view-profile",
+                    "manage-account"
+                ]
+            }
+        }
+    },
     "roles": {
         "realm": [
             {
@@ -937,26 +956,11 @@
                 "description": "${role_uma_authorization}"
             },
             {
-                "name": "default-roles-test",
-                "description": "${role_default-roles}",
-                "composite": true,
-                "composites": {
-                    "realm": [
-                        "offline_access",
-                        "uma_authorization",
-                        "user"
-                    ],
-                    "client": {
-                        "account": [
-                            "view-profile",
-                            "manage-account"
-                        ]
-                    }
-                }
-            },
-            {
                 "name": "offline_access",
                 "description": "${role_offline-access}"
+            },
+            {
+                "name": "user"
             }
         ],
         "client": {

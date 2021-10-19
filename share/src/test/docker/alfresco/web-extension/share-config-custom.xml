@@ -75,7 +75,7 @@
             <perform-token-exchange>true</perform-token-exchange>
         </keycloak-auth-config>
         <keycloak-adapter-config>
-            <directAuthHost>http://keycloak:8080</directAuthHost>
+            <proxy-url>http://keycloak:8080</proxy-url>
             <auth-server-url>http://localhost:${docker.tests.keycloakPort}/auth</auth-server-url>
             <realm>test</realm>
             <resource>alfresco-share</resource>

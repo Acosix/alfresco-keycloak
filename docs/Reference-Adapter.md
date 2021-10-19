@@ -11,7 +11,7 @@ Configuration of adapter properties in the Share-tier `share-config-custom.xml` 
 ```xml
     <config evaluator="string-compare" condition="Keycloak">
         <keycloak-adapter-config>
-            <directAuthHost></directAuthHost>
+            <proxy-url></proxy-url>
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
             <resource>alfresco-share</resource>
@@ -30,7 +30,7 @@ Note: This listing does not include the common property key prefix `keycloak.ada
 | Property | Default Value | Description |
 | --- | ---: | --- |
 | `auth-server-url` | `http://localhost:8180/auth` | Publically resolvable base URL to the Keycloak server to be used in redirect URLs and remote calls |
-| `directAuthHost` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved or round-trips via a public gateway / proxy should be avoided |
+| `proxy-url` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved or round-trips via a public gateway / proxy should be avoided |
 | `realm` | `alfresco` | Technical name of the Keycloak realm |
 | `realm-public-key` |  | Fixed public key of the realm (PEM string) - if not set, the public key(s) will be dynamically loaded and automatically refreshed after a configurable amount of times between JSON Web Key Store requests |
 | `resource` | `alfresco` / `alfresco-share` | Technical name of the client set up in the realm |
@@ -66,15 +66,9 @@ Note: This listing does not include the common property key prefix `keycloak.ada
 | `public-key-cache-ttl` | `86400` | Time-to-live in seconds for public key cache entries |
 | `ignore-oauth-query-parameter` | `false` | Flag determining whether OAuth `access_token` in an URL query is to be ignored |
 | `verify-token-audience` | `true` / `false` | Flag enabling validation of the audience specified in an access token, enabled by default on the Repository-tier - must be disabled if Share or any other application which authenticates users via Keycloak is not delegating user authentication using RFC 8693 OAuth 2.0 Token Exchange |
-
-## Non-Standard Adapter Properties
-
-The following properties are not supported by the Keycloak adapter library, but have been added by the addon for customisation of the adapter's behaviour.
-
-| Property | Default Value | Description |
-| --- | ---: | --- |
-| `connectionTimeout` | `-1` | Connect timeout for the Apache HTTP client used in calls to Keycloak |
-| `socketTimeout` | `-1` | General socket timeout for the Apache HTTP client used in calls to Keycloak |
+| `socket-timeout-millis` | `5000` | General socket timeout for the Apache HTTP client used in calls to Keycloak |
+| `connection-timeout-millis` | `5000` | Connect timeout for the Apache HTTP client used in calls to Keycloak |
+| `connection-ttl-millis` | `-1` | The time-to-live of connections for the Apache HTTP client used in calls to Keycloak |
 
 ## Unsupported Adapter Properties
 
@@ -94,4 +88,4 @@ This listing details configuration properties from the Keycloak adapter library 
 | `token-store` | `session` | Mode for how the Keycloak adapter stores user account information - related to clustering like previous two settings and not relevant for the integration as provided by the addon |
 | `turn-off-change-session-id-on-login` |  | Completely unused flag in the Keycloak adapter library |
 | `policy-enforcer` |  | Complex configuration object determining fine-grained access policies to the Repository / Share application. - This is currently not supported for configuration by the addon due to use of complex object structures |
-| `enable-pkce` | `false` | RFC 7636 - Flag enabling the use of the Proof Key for Code Exchange for OAuth public clients. - This has not yet implemented by the Keycloak adapter library. |
+| `enable-pkce` | `false` | RFC 7636 - Flag enabling the use of the Proof Key for Code Exchange for OAuth public clients. - This has not yet been implemented by the Keycloak adapter library. |

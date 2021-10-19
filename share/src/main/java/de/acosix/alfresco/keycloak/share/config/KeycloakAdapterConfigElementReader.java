@@ -116,26 +116,7 @@ public class KeycloakAdapterConfigElementReader implements ConfigElementReader
             }
             else
             {
-                switch (subElementName)
-                {
-                    // use -1 as dummy value for empty value to signify that empty value has explicitly been set (relevant for merge/combine
-                    // of config)
-                    case "connectionTimeout":
-                        final String prospectiveConnectionTimeout = subElement.getTextTrim();
-                        configElement.setConnectionTimeout(
-                                prospectiveConnectionTimeout.isEmpty() ? null : Long.valueOf(prospectiveConnectionTimeout));
-                        break;
-                    case "socketTimeout":
-                        final String prospectiveSocketTimeout = subElement.getTextTrim();
-                        configElement.setSocketTimeout(prospectiveSocketTimeout.isEmpty() ? null : Long.valueOf(prospectiveSocketTimeout));
-                        break;
-                    case "directAuthHost":
-                        final String prospectiveDirectAuthHost = subElement.getTextTrim();
-                        configElement.setDirectAuthHost(prospectiveDirectAuthHost.isEmpty() ? null : prospectiveDirectAuthHost);
-                        break;
-                    default:
-                        LOGGER.warn("Encountered unsupported Keycloak Adapter config element {}", subElementName);
-                }
+                LOGGER.warn("Encountered unsupported Keycloak Adapter config element {}", subElementName);
             }
         }
         LOGGER.debug("Read configuration element {} from XML section", configElement);

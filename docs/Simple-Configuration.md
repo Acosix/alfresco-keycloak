@@ -98,7 +98,7 @@ The following core configuration properties can be set (more extensive list in t
 | `...groupFilter.containedInGroup.property.groupPaths` |  | Comma-separated list of group paths (e.g. `/Group A/Group B,/Group A/Group C`) to use in filtering which groups are synchronised to Alfresco (by default - configured separately - any match qualifies, and transitive containment is considered) |
 | `...groupFilter.containedInGroup.property.groupIds` |  | Comma-separated list of group IDs to use in filtering which groups are synchronised to Alfresco (by default - configured separately - any match qualifies, and transitive containment is considered) |
 | `keycloak.adapter.auth-server-url` | `http://localhost:8180/auth` | Publically resolvable base URL to the Keycloak server to be used in redirect URLs and remote calls |
-| `...directAuthHost` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved by the Alfresco Repository host or round-trips via a public gateway / proxy should be avoided |
+| `...proxy-url` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved by the Alfresco Repository host or round-trips via a public gateway / proxy should be avoided |
 | `...realm` | `alfresco` | Technical name of the Keycloak realm |
 | `...resource` | `alfresco` | Technical name of the client set up for the Alfresco Repository in the realm |
 | `...credentials.secret` |  | Shared secret for validation of authorisation codes / access tokens |
@@ -118,7 +118,7 @@ The following showcases an example configuration block:
             <perform-token-exchange>true</perform-token-exchange>
         </keycloak-auth-config>
         <keycloak-adapter-config>
-            <directAuthHost></directAuthHost>
+            <proxy-url></proxy-url>
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
             <resource>alfresco-share</resource>
