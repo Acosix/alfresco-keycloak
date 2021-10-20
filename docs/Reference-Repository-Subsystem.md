@@ -60,7 +60,7 @@ The following technical authentication configuration properties are supported by
 
 ### High-Level
 
-The following synchronisation configuration properties are supported by the subsystem. All property keys in the table are listed without the common `keycloak.synchronisation.` key prefix.
+The following synchronisation configuration properties are supported by the subsystem. All property keys in the table are listed without the common `keycloak.synchronization.` key prefix. Note: The configuration properties use the spelling of `synchronization` instead of `synchronisation` as that is the spelling used by Alfresco in the out-of-the-box authentication subsystems.
 
 | Property | Default Value | Description |
 | --- | ---: | --- |
