@@ -169,6 +169,8 @@
         <property name="idmClient" ref="idmClient" />
         <property name="personLoadBatchSize" value="${keycloak.synchronization.personLoadBatchSize}" />
         <property name="groupLoadBatchSize" value="${keycloak.synchronization.groupLoadBatchSize}" />
+        <property name="attributeName" value="${keycloak.attributeGroupProcessor.attributeName}" />
+        <property name="attributeGroupProcessorEnabled" value="${keycloak.synchronization.groupMapper.attribute.property.enabled}" />
     </bean>
 
     <bean id="accessTokenService.impl" class="${project.artifactId}.token.AccessTokenServiceImpl">

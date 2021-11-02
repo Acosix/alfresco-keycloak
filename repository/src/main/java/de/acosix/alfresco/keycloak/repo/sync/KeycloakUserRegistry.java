@@ -23,6 +23,7 @@ import java.util.Date;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.function.Consumer;
@@ -75,6 +76,10 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
     protected int groupLoadBatchSize = 50;
 
+    protected String attributeName;
+    
+    protected boolean attributeGroupProcessorEnabled;
+    
     /**
      * {@inheritDoc}
      */
@@ -148,6 +153,16 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         this.groupLoadBatchSize = groupLoadBatchSize;
     }
 
+    public void setAttributeName(String attributeName) 
+    {
+		this.attributeName = attributeName;
+	}
+    
+	public void setAttributeGroupProcessorEnabled(boolean attributeGroupProcessorEnabled) 
+	{
+		this.attributeGroupProcessorEnabled = attributeGroupProcessorEnabled;
+	}
+    
     /**
      * {@inheritDoc}
      */
@@ -210,8 +225,29 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
 
         if (this.active)
         {
-            groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.idmClient.countGroups(),
-                    group -> AuthorityType.GROUP.getPrefixString() + group.getId());
+        	// custom logic for the AttributeGroupProcess 
+        	// note: AttributeGroupProcess changes group ID so getGroupNames() must respect that
+        	if(this.attributeGroupProcessorEnabled) {
+        		groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.idmClient.countGroups(),
+                        group -> {
+                            if(attributeName != null && !attributeName.isEmpty()) 
+                            {
+                            	Map<String, List<String>> groupAttributes =  group.getAttributes();
+                            	if(groupAttributes != null && groupAttributes.containsKey(attributeName)) 
+                            	{
+                        			String attributeNameVal = groupAttributes.get(attributeName).get(0);
+                        			if(attributeNameVal != null && !attributeNameVal.isEmpty()) 
+                        				return AuthorityType.GROUP.getPrefixString() + attributeNameVal;
+                            	}
+                            }
+                        	return AuthorityType.GROUP.getPrefixString() + group.getId();
+                        });
+        	} 
+        	else 
+        	{
+                groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.idmClient.countGroups(),
+                        group -> AuthorityType.GROUP.getPrefixString() + group.getId());
+        	}
         }
 
         return groupNames;
