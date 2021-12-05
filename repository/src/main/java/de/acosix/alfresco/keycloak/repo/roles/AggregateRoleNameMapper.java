@@ -52,7 +52,7 @@ public class AggregateRoleNameMapper implements InitializingBean, RoleNameMapper
 
     /**
      * @param granularMappers
-     *            the granularMappers to set
+     *     the granularMappers to set
      */
     public void setGranularMappers(final List<RoleNameMapper> granularMappers)
     {
@@ -61,7 +61,7 @@ public class AggregateRoleNameMapper implements InitializingBean, RoleNameMapper
 
     /**
      * @param upperCaseRoles
-     *            the upperCaseRoles to set
+     *     the upperCaseRoles to set
      */
     public void setUpperCaseRoles(final boolean upperCaseRoles)
     {
@@ -109,4 +109,25 @@ public class AggregateRoleNameMapper implements InitializingBean, RoleNameMapper
         }
         return mappedName;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("AggregateRoleNameMapper [");
+        if (this.granularMappers != null)
+        {
+            builder.append("granularMappers=");
+            builder.append(this.granularMappers);
+            builder.append(", ");
+        }
+        builder.append("upperCaseRoles=");
+        builder.append(this.upperCaseRoles);
+        builder.append("]");
+        return builder.toString();
+    }
+
 }

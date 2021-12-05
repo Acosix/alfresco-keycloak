@@ -34,7 +34,6 @@ import org.apache.commons.logging.LogFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.extensions.surf.util.URLDecoder;
 import org.springframework.extensions.webscripts.Description.RequiredAuthentication;
 import org.springframework.extensions.webscripts.Match;
 import org.springframework.extensions.webscripts.RuntimeContainer;
@@ -116,7 +115,7 @@ public class KeycloakWebScriptSSOAuthenticationFilter extends BaseAuthentication
 
         LOGGER.debug("Processing request: {} SID: {}", pathInfo, req.getSession(false) != null ? req.getSession().getId() : null);
 
-        final Match match = this.container.getRegistry().findWebScript(req.getMethod(), URLDecoder.decode(pathInfo));
+        final Match match = this.container.getRegistry().findWebScript(req.getMethod(), pathInfo);
         if (match != null && match.getWebScript() != null)
         {
             final RequiredAuthentication reqAuth = match.getWebScript().getDescription().getRequiredAuthentication();

@@ -15,6 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.roles;
 
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
@@ -34,33 +35,41 @@ public class PatternRoleNameMapper implements RoleNameMapper
 
     private static final Logger LOGGER = LoggerFactory.getLogger(PatternRoleNameMapper.class);
 
-    protected Map<String, String> patternMappings;
+    protected final Map<String, String> patternMappings = new HashMap<>();
 
-    protected Map<String, String> patternInverseMappings;
+    protected final Map<String, String> patternInverseMappings = new HashMap<>();
 
     protected boolean upperCaseRoles;
 
     /**
      * @param patternMappings
-     *            the patternMappings to set
+     *     the patternMappings to set
      */
     public void setPatternMappings(final Map<String, String> patternMappings)
     {
-        this.patternMappings = patternMappings;
+        this.patternMappings.clear();
+        if (patternMappings != null)
+        {
+            this.patternMappings.putAll(patternMappings);
+        }
     }
 
     /**
      * @param patternInverseMappings
-     *            the patternInverseMappings to set
+     *     the patternInverseMappings to set
      */
     public void setPatternInverseMappings(final Map<String, String> patternInverseMappings)
     {
-        this.patternInverseMappings = patternInverseMappings;
+        this.patternInverseMappings.clear();
+        if (patternInverseMappings != null)
+        {
+            this.patternInverseMappings.putAll(patternInverseMappings);
+        }
     }
 
     /**
      * @param upperCaseRoles
-     *            the upperCaseRoles to set
+     *     the upperCaseRoles to set
      */
     public void setUpperCaseRoles(final boolean upperCaseRoles)
     {
@@ -75,23 +84,18 @@ public class PatternRoleNameMapper implements RoleNameMapper
     {
         ParameterCheck.mandatoryString("roleName", roleName);
 
-        Optional<String> result = Optional.empty();
+        final Optional<String> matchingPattern = this.patternMappings.keySet().stream().filter(roleName::matches).findFirst();
+        final Optional<String> result = matchingPattern.map(pattern -> {
+            final String replacement = this.patternMappings.get(pattern);
+            LOGGER.debug("Role {} matches mapping pattern {} - applying replacement pattern {}", roleName, pattern, replacement);
+            final String mappedName = roleName.replaceAll(pattern, replacement);
+            LOGGER.debug("Mapped role {} to {}", roleName, mappedName);
+            return mappedName;
+        }).map(name -> this.upperCaseRoles ? name.toUpperCase(Locale.ENGLISH) : name);
 
-        if (this.patternMappings != null)
+        if (!result.isPresent())
         {
-            final Optional<String> matchingPattern = this.patternMappings.keySet().stream().filter(roleName::matches).findFirst();
-            result = matchingPattern.map(pattern -> {
-                final String replacement = this.patternMappings.get(pattern);
-                LOGGER.debug("Role {} matches mapping pattern {} - applying replacement pattern {}", roleName, pattern, replacement);
-                final String mappedName = roleName.replaceAll(pattern, replacement);
-                LOGGER.debug("Mapped role {} to {}", roleName, mappedName);
-                return mappedName;
-            }).map(name -> this.upperCaseRoles ? name.toUpperCase(Locale.ENGLISH) : name);
-
-            if (!result.isPresent())
-            {
-                LOGGER.debug("No matching pattern applies to role {}", roleName);
-            }
+            LOGGER.debug("No matching pattern applies to role {}", roleName);
         }
 
         return result;
@@ -125,4 +129,31 @@ public class PatternRoleNameMapper implements RoleNameMapper
 
         return result;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("PatternRoleNameMapper [");
+        if (this.patternMappings != null)
+        {
+            builder.append("patternMappings=");
+            builder.append(this.patternMappings);
+            builder.append(", ");
+        }
+        if (this.patternInverseMappings != null)
+        {
+            builder.append("patternInverseMappings=");
+            builder.append(this.patternInverseMappings);
+            builder.append(", ");
+        }
+        builder.append("upperCaseRoles=");
+        builder.append(this.upperCaseRoles);
+        builder.append("]");
+        return builder.toString();
+    }
+
 }

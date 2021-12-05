@@ -15,6 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.roles;
 
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -34,22 +35,26 @@ public class StaticRoleNameMapper implements RoleNameMapper
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StaticRoleNameMapper.class);
 
-    protected Map<String, String> nameMappings;
+    protected final Map<String, String> nameMappings = new HashMap<>();
 
     protected boolean upperCaseRoles;
 
     /**
      * @param nameMappings
-     *            the nameMappings to set
+     *     the nameMappings to set
      */
     public void setNameMappings(final Map<String, String> nameMappings)
     {
-        this.nameMappings = nameMappings;
+        this.nameMappings.clear();
+        if (nameMappings != null)
+        {
+            this.nameMappings.putAll(nameMappings);
+        }
     }
 
     /**
      * @param upperCaseRoles
-     *            the upperCaseRoles to set
+     *     the upperCaseRoles to set
      */
     public void setUpperCaseRoles(final boolean upperCaseRoles)
     {
@@ -93,24 +98,39 @@ public class StaticRoleNameMapper implements RoleNameMapper
 
         Optional<String> result = Optional.empty();
 
-        if (this.nameMappings != null)
+        for (final Entry<String, String> entry : this.nameMappings.entrySet())
         {
-            for (final Entry<String, String> entry : this.nameMappings.entrySet())
+            if (entry.getValue().equals(authorityName) || (this.upperCaseRoles && entry.getValue().equalsIgnoreCase(authorityName)))
             {
-                if (entry.getValue().equals(authorityName) || (this.upperCaseRoles && entry.getValue().equalsIgnoreCase(authorityName)))
-                {
-                    final String mappedName = entry.getKey();
-                    LOGGER.debug("Mapped authority name {} to {} using static mapping", authorityName, mappedName);
-                    result = Optional.of(mappedName);
-                    break;
-                }
-            }
-            if (!result.isPresent())
-            {
-                LOGGER.debug("No static mapping applies to authority name {}", authorityName);
+                final String mappedName = entry.getKey();
+                LOGGER.debug("Mapped authority name {} to {} using static mapping", authorityName, mappedName);
+                result = Optional.of(mappedName);
+                break;
             }
         }
 
+        if (!result.isPresent())
+        {
+            LOGGER.debug("No static mapping applies to authority name {}", authorityName);
+        }
+
         return result;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("StaticRoleNameMapper [");
+        builder.append("nameMappings=");
+        builder.append(this.nameMappings);
+        builder.append(", ");
+        builder.append("upperCaseRoles=");
+        builder.append(this.upperCaseRoles);
+        builder.append("]");
+        return builder.toString();
     }
 }

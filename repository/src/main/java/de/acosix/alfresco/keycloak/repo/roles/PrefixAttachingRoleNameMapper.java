@@ -39,7 +39,7 @@ public class PrefixAttachingRoleNameMapper implements RoleNameMapper
 
     /**
      * @param prefix
-     *            the prefix to set
+     *     the prefix to set
      */
     public void setPrefix(final String prefix)
     {
@@ -48,7 +48,7 @@ public class PrefixAttachingRoleNameMapper implements RoleNameMapper
 
     /**
      * @param upperCaseRoles
-     *            the upperCaseRoles to set
+     *     the upperCaseRoles to set
      */
     public void setUpperCaseRoles(final boolean upperCaseRoles)
     {
@@ -96,4 +96,25 @@ public class PrefixAttachingRoleNameMapper implements RoleNameMapper
 
         return result;
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("PrefixAttachingRoleNameMapper [");
+        if (this.prefix != null)
+        {
+            builder.append("prefix=");
+            builder.append(this.prefix);
+            builder.append(", ");
+        }
+        builder.append("upperCaseRoles=");
+        builder.append(this.upperCaseRoles);
+        builder.append("]");
+        return builder.toString();
+    }
+
 }

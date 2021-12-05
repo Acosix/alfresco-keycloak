@@ -574,7 +574,8 @@
             {
                 "clientScope": "alfresco-role-service",
                 "roles": [
-                    "view-clients"
+                    "view-clients",
+                    "view-realm"
                 ]
             }
         ],
@@ -1135,7 +1136,8 @@
                     "query-groups",
                     "query-users",
                     "view-users",
-                    "view-clients"
+                    "view-clients",
+                    "view-realm"
                 ]
             }
         },

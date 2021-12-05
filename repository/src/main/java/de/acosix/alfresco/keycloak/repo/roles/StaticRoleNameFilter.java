@@ -15,6 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.roles;
 
+import java.util.HashSet;
 import java.util.Set;
 
 import org.alfresco.util.ParameterCheck;
@@ -31,15 +32,19 @@ public class StaticRoleNameFilter implements RoleNameFilter
 
     private static final Logger LOGGER = LoggerFactory.getLogger(StaticRoleNameFilter.class);
 
-    protected Set<String> allowedRoles;
+    protected final Set<String> allowedRoles = new HashSet<>();
 
     /**
      * @param allowedRoles
-     *            the allowedRoles to set
+     *     the allowedRoles to set
      */
     public void setAllowedRoles(final Set<String> allowedRoles)
     {
-        this.allowedRoles = allowedRoles;
+        this.allowedRoles.clear();
+        if (allowedRoles != null)
+        {
+            this.allowedRoles.addAll(allowedRoles);
+        }
     }
 
     /**
@@ -50,15 +55,24 @@ public class StaticRoleNameFilter implements RoleNameFilter
     {
         ParameterCheck.mandatoryString("roleName", roleName);
 
-        boolean exposed = false;
-
-        if (this.allowedRoles != null)
-        {
-            exposed = this.allowedRoles.contains(roleName);
-            LOGGER.debug("Determined exposure flag of {} for role {} using a static match set", exposed, roleName);
-        }
+        final boolean exposed = this.allowedRoles.contains(roleName);
+        LOGGER.debug("Determined exposure flag of {} for role {} using a static match set", exposed, roleName);
 
         return exposed;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString()
+    {
+        final StringBuilder builder = new StringBuilder();
+        builder.append("StaticRoleNameFilter [");
+        builder.append("allowedRoles=");
+        builder.append(this.allowedRoles);
+        builder.append("]");
+        return builder.toString();
     }
 
 }

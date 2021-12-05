@@ -121,9 +121,6 @@ public class KeycloakRemoteUserMapper implements RemoteUserMapper, ActivateableB
             final BearerTokenRequestAuthenticator authenticator = new BearerTokenRequestAuthenticator(this.keycloakDeployment);
             final AuthOutcome authOutcome = authenticator.authenticate(httpFacade);
 
-            // TODO Check on how to enable / add client/audience validation
-            // currently, Share token seems to be valid here, which it shouldn't be
-            // also, Share token may not contain Alfresco client roles (e.g. admin)
             if (authOutcome == AuthOutcome.AUTHENTICATED)
             {
                 final AccessToken token = authenticator.getToken();

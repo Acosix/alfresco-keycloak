@@ -176,7 +176,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param active
-     *            the active to set
+     *     the active to set
      */
     public void setActive(final boolean active)
     {
@@ -185,7 +185,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param allowTicketLogon
-     *            the allowTicketLogon to set
+     *     the allowTicketLogon to set
      */
     public void setAllowTicketLogon(final boolean allowTicketLogon)
     {
@@ -194,7 +194,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param allowHttpBasicLogon
-     *            the allowHttpBasicLogon to set
+     *     the allowHttpBasicLogon to set
      */
     public void setAllowHttpBasicLogon(final boolean allowHttpBasicLogon)
     {
@@ -203,7 +203,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param handlePublicApi
-     *            the handlePublicApi to set
+     *     the handlePublicApi to set
      */
     public void setHandlePublicApi(final boolean handlePublicApi)
     {
@@ -212,7 +212,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param loginPageUrl
-     *            the loginPageUrl to set
+     *     the loginPageUrl to set
      */
     public void setLoginPageUrl(final String loginPageUrl)
     {
@@ -221,7 +221,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param originalRequestUrlHeaderName
-     *            the originalRequestUrlHeaderName to set
+     *     the originalRequestUrlHeaderName to set
      */
     public void setOriginalRequestUrlHeaderName(final String originalRequestUrlHeaderName)
     {
@@ -230,7 +230,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param noKeycloakHandlingHeaderName
-     *            the noKeycloakHandlingHeaderName to set
+     *     the noKeycloakHandlingHeaderName to set
      */
     public void setNoKeycloakHandlingHeaderName(final String noKeycloakHandlingHeaderName)
     {
@@ -239,7 +239,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param bodyBufferLimit
-     *            the bodyBufferLimit to set
+     *     the bodyBufferLimit to set
      */
     public void setBodyBufferLimit(final int bodyBufferLimit)
     {
@@ -248,7 +248,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param keycloakDeployment
-     *            the keycloakDeployment to set
+     *     the keycloakDeployment to set
      */
     public void setKeycloakDeployment(final KeycloakDeployment keycloakDeployment)
     {
@@ -257,7 +257,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param sessionIdMapper
-     *            the sessionIdMapper to set
+     *     the sessionIdMapper to set
      */
     public void setSessionIdMapper(final SessionIdMapper sessionIdMapper)
     {
@@ -266,7 +266,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param keycloakAuthenticationComponent
-     *            the keycloakAuthenticationComponent to set
+     *     the keycloakAuthenticationComponent to set
      */
     public void setKeycloakAuthenticationComponent(final KeycloakAuthenticationComponent keycloakAuthenticationComponent)
     {
@@ -275,7 +275,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param keycloakTicketTokenCache
-     *            the keycloakTicketTokenCache to set
+     *     the keycloakTicketTokenCache to set
      */
     public void setKeycloakTicketTokenCache(final SimpleCache<String, RefreshableAccessTokenHolder> keycloakTicketTokenCache)
     {
@@ -284,7 +284,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
     /**
      * @param publicApiRuntimeContainer
-     *            the publicApiRuntimeContainer to set
+     *     the publicApiRuntimeContainer to set
      */
     public void setPublicApiRuntimeContainer(final RuntimeContainer publicApiRuntimeContainer)
     {
@@ -333,12 +333,12 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Checks and processes any HTTP Basic authentication if allowed.
      *
      * @param req
-     *            the servlet request
+     *     the servlet request
      *
      * @throws IOException
-     *             if any error occurs during processing of HTTP Basic authentication
+     *     if any error occurs during processing of HTTP Basic authentication
      * @throws ServletException
-     *             if any error occurs during processing of HTTP Basic authentication
+     *     if any error occurs during processing of HTTP Basic authentication
      *
      * @return {@code true} if an existing HTTP Basic authentication header was successfully processed, {@code false} otherwise
      */
@@ -415,17 +415,17 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * will be terminated. Otherwise processing may continue with the filter chain (if still applicable).
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void processKeycloakAuthenticationAndActions(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain) throws IOException, ServletException
@@ -556,21 +556,21 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Processes a sucessfull authentication via Keycloak.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      * @param chain
-     *            the filter chain
+     *     the filter chain
      * @param facade
-     *            the Keycloak HTTP facade
+     *     the Keycloak HTTP facade
      * @param tokenStore
-     *            the Keycloak token store
+     *     the Keycloak token store
      * @throws IOException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during Keycloak authentication or processing of the filter chain
+     *     if any error occurs during Keycloak authentication or processing of the filter chain
      */
     protected void onKeycloakAuthenticationSuccess(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res, final FilterChain chain, final OIDCServletHttpFacade facade,
@@ -668,16 +668,16 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Processes a failed authentication via Keycloak.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      *
      * @throws IOException
-     *             if any error occurs during processing of the filter chain
+     *     if any error occurs during processing of the filter chain
      * @throws ServletException
-     *             if any error occurs during processing of the filter chain
+     *     if any error occurs during processing of the filter chain
      */
     protected void onKeycloakAuthenticationFailure(final ServletContext context, final HttpServletRequest req,
             final HttpServletResponse res) throws IOException, ServletException
@@ -707,18 +707,18 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Checks if processing of the filter must be skipped for the specified request.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request to check for potential conditions to skip
+     *     the servlet request to check for potential conditions to skip
      * @param res
-     *            the servlet response on which potential updates of cookies / response headers need to be set
+     *     the servlet response on which potential updates of cookies / response headers need to be set
      * @return {@code true} if processing of the {@link #doFilter(ServletContext, ServletRequest, ServletResponse, FilterChain) filter
-     *         operation} must be skipped, {@code false} otherwise
+     * operation} must be skipped, {@code false} otherwise
      *
      * @throws IOException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      * @throws ServletException
-     *             if any error occurs during inspection of the request
+     *     if any error occurs during inspection of the request
      */
     protected boolean checkForSkipCondition(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res)
             throws IOException, ServletException
@@ -772,11 +772,10 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
         }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
-            if (session == null)
-            {
-                throw new IllegalStateException("Session should have been initialised by Bearer authentication in remote user mapper");
-            }
-            final AccessToken accessToken = (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName());
+            // even though we provide a remote user mapper, it may not be the first in the chain, so Bearer might not be processed (yet) and
+            // thus session not initialised
+            final AccessToken accessToken = session != null ? (AccessToken) session.getAttribute(KeycloakRemoteUserMapper.class.getName())
+                    : null;
             if (accessToken != null)
             {
                 if (accessToken.isActive())
@@ -1011,13 +1010,13 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Checks whether a particular request is aimed at a Public v1 ReST API web script which does not require any authentication.
      *
      * @param req
-     *            the request to check
+     *     the request to check
      * @param servletPath
-     *            the path to the servlet matching the request
+     *     the path to the servlet matching the request
      * @param pathInfo
-     *            the request path following the servlet path
+     *     the request path following the servlet path
      * @return {@code true} if the request targets a Public v1 ReST API web script which does not require authentication, {@code false}
-     *         otherwise
+     * otherwise
      */
     protected boolean isNoAuthPublicRestApiWebScriptRequest(final HttpServletRequest req, final String servletPath, final String pathInfo)
     {
@@ -1059,13 +1058,13 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * necessary or configured.
      *
      * @param req
-     *            the HTTP servlet request
+     *     the HTTP servlet request
      * @param res
-     *            the HTTP servlet response
+     *     the HTTP servlet response
      * @param userId
-     *            the ID of the authenticated user
+     *     the ID of the authenticated user
      * @return {@code true} if processing of the {@link #doFilter(ServletContext, ServletRequest, ServletResponse, FilterChain) filter
-     *         operation} can be skipped as the account represents a valid and still active authentication, {@code false} otherwise
+     * operation} can be skipped as the account represents a valid and still active authentication, {@code false} otherwise
      */
     protected boolean validateAndRefreshKeycloakAuthentication(final HttpServletRequest req, final HttpServletResponse res,
             final String userId)
@@ -1133,16 +1132,16 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Check if the request has specified a ticket parameter to bypass the standard authentication.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the request
+     *     the request
      * @param resp
-     *            the response
+     *     the response
      *
      * @throws IOException
-     *             if any error occurs during ticket processing
+     *     if any error occurs during ticket processing
      * @throws ServletException
-     *             if any error occurs during ticket processing
+     *     if any error occurs during ticket processing
      *
      * @return boolean
      */
@@ -1202,7 +1201,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Checks if the HTTP request has set the Keycloak state cookie.
      *
      * @param req
-     *            the HTTP request to check
+     *     the HTTP request to check
      * @return {@code true} if the state cookie is set, {@code false} otherwise
      */
     protected boolean hasStateCookie(final HttpServletRequest req)
@@ -1219,11 +1218,11 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * Resets any Keycloak-related state cookies present in the current request.
      *
      * @param context
-     *            the servlet context
+     *     the servlet context
      * @param req
-     *            the servlet request
+     *     the servlet request
      * @param res
-     *            the servlet response
+     *     the servlet response
      */
     protected void resetStateCookies(final ServletContext context, final HttpServletRequest req, final HttpServletResponse res)
     {
@@ -1247,7 +1246,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
      * technical default value in lieu of an explicitly configured value.
      *
      * @param req
-     *            the incoming request
+     *     the incoming request
      * @return the assumed SSL port to be used in redirects
      */
     protected int determineLikelySslPort(final HttpServletRequest req)

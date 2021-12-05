@@ -304,8 +304,6 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
             throw new AuthenticationException("Failed to authenticate against Keycloak", atex);
         }
 
-        // TODO Override setCurrentUser to perform user existence validation and role retrieval for non-Keycloak logins
-        // (e.g. via public API setCurrentUser)
         this.setCurrentUser(realUserName);
         this.handleUserTokens(accessTokenHolder.getAccessToken(), accessTokenHolder.getIdToken(), true);
     }
