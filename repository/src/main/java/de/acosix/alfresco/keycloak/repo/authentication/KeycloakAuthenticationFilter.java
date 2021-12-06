@@ -975,11 +975,9 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
 
         if (userId != null)
         {
-            LOGGER.debug("We have a previously-cached user with the wrong identity - replace them.");
-
             if (sessionUser != null && !sessionUser.getUserName().equals(userId))
             {
-                LOGGER.debug("Removing the session user, invalidating session.");
+                LOGGER.debug("Session user does not match mapped remote user - invalidating session.");
                 session.removeAttribute(sessionAttrib);
                 session.invalidate();
                 sessionUser = null;
