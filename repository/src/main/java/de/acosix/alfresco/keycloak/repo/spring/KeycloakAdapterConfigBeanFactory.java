@@ -33,7 +33,6 @@ import java.util.Set;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.PropertyCheck;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
@@ -44,7 +43,7 @@ import org.springframework.util.PropertyPlaceholderHelper;
 /**
  * @author Axel Faust
  */
-public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConfig>, InitializingBean
+public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAdapterConfig>, InitializingBean
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeycloakAdapterConfigBeanFactory.class);
@@ -74,7 +73,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
             primitiveWrapperTypeMap.put(primitiveTypes[i], wrapperTypes[i]);
         }
 
-        Class<?> cls = AdapterConfig.class;
+        Class<?> cls = ExtendedAdapterConfig.class;
         while (cls != null && !Object.class.equals(cls))
         {
             final Field[] fields = cls.getDeclaredFields();
@@ -152,7 +151,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
 
     /**
      * @param propertiesSource
-     *            the propertiesSource to set
+     *     the propertiesSource to set
      */
     public void setPropertiesSource(final Properties propertiesSource)
     {
@@ -161,7 +160,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
 
     /**
      * @param configPropertyPrefix
-     *            the configPropertyPrefix to set
+     *     the configPropertyPrefix to set
      */
     public void setConfigPropertyPrefix(final String configPropertyPrefix)
     {
@@ -170,7 +169,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
 
     /**
      * @param placeholderPrefix
-     *            the placeholderPrefix to set
+     *     the placeholderPrefix to set
      */
     public void setPlaceholderPrefix(final String placeholderPrefix)
     {
@@ -179,7 +178,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
 
     /**
      * @param placeholderSuffix
-     *            the placeholderSuffix to set
+     *     the placeholderSuffix to set
      */
     public void setPlaceholderSuffix(final String placeholderSuffix)
     {
@@ -188,7 +187,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
 
     /**
      * @param valueSeparator
-     *            the valueSeparator to set
+     *     the valueSeparator to set
      */
     public void setValueSeparator(final String valueSeparator)
     {
@@ -199,9 +198,9 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
      * {@inheritDoc}
      */
     @Override
-    public AdapterConfig getObject() throws Exception
+    public ExtendedAdapterConfig getObject() throws Exception
     {
-        final AdapterConfig adapterConfig = new AdapterConfig();
+        final ExtendedAdapterConfig adapterConfig = new ExtendedAdapterConfig();
 
         CONFIG_NAMES.forEach(configFieldName -> {
             final Class<?> valueType = VALUE_TYPE_BY_CONFIG_NAME.get(configFieldName);
@@ -248,7 +247,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<AdapterConf
     @Override
     public Class<?> getObjectType()
     {
-        return AdapterConfig.class;
+        return ExtendedAdapterConfig.class;
     }
 
     protected Object loadConfigValue(final String configFieldName, final Class<?> valueType)

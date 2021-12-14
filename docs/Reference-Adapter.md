@@ -11,7 +11,7 @@ Configuration of adapter properties in the Share-tier `share-config-custom.xml` 
 ```xml
     <config evaluator="string-compare" condition="Keycloak">
         <keycloak-adapter-config>
-            <proxy-url></proxy-url>
+            <forced-route-url></forced-route-url>
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>
             <resource>alfresco-share</resource>
@@ -30,7 +30,8 @@ Note: This listing does not include the common property key prefix `keycloak.ada
 | Property | Default Value | Description |
 | --- | ---: | --- |
 | `auth-server-url` | `http://localhost:8180/auth` | Publically resolvable base URL to the Keycloak server to be used in redirect URLs and remote calls |
-| `proxy-url` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved or round-trips via a public gateway / proxy should be avoided |
+| `forced-route-url` |  | Alternative base URL for the Keycloak server (excluding path) to be used for calls from Alfresco to Keycloak - useful e.g. in scenarios where the regular `auth-server-url` can not be resolved or round-trips via a public gateway / proxy should be avoided |
+| `proxy-url` |  | URL for proxy server to use for calls from Alfresco to Keycloak |
 | `realm` | `alfresco` | Technical name of the Keycloak realm |
 | `realm-public-key` |  | Fixed public key of the realm (PEM string) - if not set, the public key(s) will be dynamically loaded and automatically refreshed after a configurable amount of times between JSON Web Key Store requests |
 | `resource` | `alfresco` / `alfresco-share` | Technical name of the client set up in the realm |

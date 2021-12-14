@@ -37,6 +37,8 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     protected final ConfigValueHolder<Boolean> forceKeycloakSso = new ConfigValueHolder<>();
 
+    protected final ConfigValueHolder<Boolean> rememberKeycloakSso = new ConfigValueHolder<>();
+
     protected final ConfigValueHolder<Integer> bodyBufferLimit = new ConfigValueHolder<>();
 
     protected final ConfigValueHolder<Integer> sessionMapperLimit = new ConfigValueHolder<>();
@@ -57,7 +59,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param enhanceLoginForm
-     *            the enhanceLoginForm to set
+     *     the enhanceLoginForm to set
      */
     public void setEnhanceLoginForm(final Boolean enhanceLoginForm)
     {
@@ -74,7 +76,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param enableSsoFilter
-     *            the enableSsoFilter to set
+     *     the enableSsoFilter to set
      */
     public void setEnableSsoFilter(final Boolean enableSsoFilter)
     {
@@ -91,7 +93,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param forceKeycloakSso
-     *            the forceKeycloakSso to set
+     *     the forceKeycloakSso to set
      */
     public void setForceKeycloakSso(final Boolean forceKeycloakSso)
     {
@@ -107,8 +109,25 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
     }
 
     /**
+     * @param rememberKeycloakSso
+     *     the rememberKeycloakSso to set
+     */
+    public void setRememberKeycloakSso(final Boolean rememberKeycloakSso)
+    {
+        this.rememberKeycloakSso.setValue(rememberKeycloakSso);
+    }
+
+    /**
+     * @return the rememberKeycloakSso
+     */
+    public Boolean getRememberKeycloakSso()
+    {
+        return this.rememberKeycloakSso.getValue();
+    }
+
+    /**
      * @param bodyBufferLimit
-     *            the bodyBufferLimit to set
+     *     the bodyBufferLimit to set
      */
     public void setBodyBufferLimit(final Integer bodyBufferLimit)
     {
@@ -125,7 +144,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param sessionMapperLimit
-     *            the sessionMapperLimit to set
+     *     the sessionMapperLimit to set
      */
     public void setSessionMapperLimit(final Integer sessionMapperLimit)
     {
@@ -142,7 +161,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param ignoreDefaultFilter
-     *            the ignoreDefaultFilter to set
+     *     the ignoreDefaultFilter to set
      */
     public void setIgnoreDefaultFilter(final Boolean ignoreDefaultFilter)
     {
@@ -159,7 +178,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param performTokenExchange
-     *            the performTokenExchange to set
+     *     the performTokenExchange to set
      */
     public void setPerformTokenExchange(final Boolean performTokenExchange)
     {
@@ -176,7 +195,7 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
 
     /**
      * @param alfrescoResourceName
-     *            the alfrescoResourceName to set
+     *     the alfrescoResourceName to set
      */
     public void setAlfrescoResourceName(final String alfrescoResourceName)
     {
@@ -234,6 +253,17 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
         {
             combined.setForceKeycloakSso(otherConfigElement.getForceKeycloakSso() != null ? otherConfigElement.getForceKeycloakSso()
                     : this.getForceKeycloakSso());
+        }
+
+        if (otherConfigElement.rememberKeycloakSso.isUnset())
+        {
+            combined.rememberKeycloakSso.unset();
+        }
+        else
+        {
+            combined.setRememberKeycloakSso(
+                    otherConfigElement.getRememberKeycloakSso() != null ? otherConfigElement.getRememberKeycloakSso()
+                            : this.getRememberKeycloakSso());
         }
 
         if (otherConfigElement.bodyBufferLimit.isUnset())
@@ -308,6 +338,9 @@ public class KeycloakAuthenticationConfigElement extends BaseCustomConfigElement
         builder.append(", ");
         builder.append("forceKeycloakSso=");
         builder.append(this.forceKeycloakSso);
+        builder.append(", ");
+        builder.append("rememberKeycloakSso=");
+        builder.append(this.rememberKeycloakSso);
         builder.append(", ");
         builder.append("bodyBufferLimit=");
         builder.append(this.bodyBufferLimit);

@@ -40,7 +40,7 @@
             <alfresco-resource-name>alfresco</alfresco-resource-name>
         </keycloak-auth-config>
         <keycloak-adapter-config>
-            <proxy-url>http://keycloak:8080</proxy-url>
+            <forced-route-url>http://keycloak:8080</forced-route-url>
             <!-- by default use the same client as alfresco (not really "clean") -->
             <auth-server-url>http://localhost:8180/auth</auth-server-url>
             <realm>alfresco</realm>

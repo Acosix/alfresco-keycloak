@@ -58,6 +58,13 @@ public class KeycloakAuthenticationConfigElementReader implements ConfigElementR
             configElement.setForceKeycloakSso(value.isEmpty() ? null : Boolean.valueOf(value));
         }
 
+        final Element rememberKeycloakSso = element.element("remember-keycloak-sso");
+        if (rememberKeycloakSso != null)
+        {
+            final String value = rememberKeycloakSso.getTextTrim();
+            configElement.setRememberKeycloakSso(value.isEmpty() ? null : Boolean.valueOf(value));
+        }
+
         final Element bodyBufferLimit = element.element("body-buffer-limit");
         if (bodyBufferLimit != null)
         {

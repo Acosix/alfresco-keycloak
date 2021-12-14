@@ -15,18 +15,27 @@
  */
 package de.acosix.alfresco.keycloak.repo.spring;
 
+import java.net.InetAddress;
+
 import org.alfresco.httpclient.HttpClientFactory.NonBlockingHttpParamsFactory;
 import org.alfresco.util.PropertyCheck;
 import org.apache.commons.httpclient.params.DefaultHttpParams;
+import org.apache.http.HttpHost;
+import org.apache.http.client.HttpClient;
+import org.apache.http.conn.params.ConnRoutePNames;
+import org.apache.http.conn.params.ConnRouteParams;
+import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.params.HttpParams;
+import org.keycloak.adapters.HttpClientBuilder;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.KeycloakDeploymentBuilder;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
 
 /**
  * @author Axel Faust
  */
+@SuppressWarnings("deprecation")
 public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeployment>, InitializingBean
 {
 
@@ -36,7 +45,7 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
         DefaultHttpParams.setHttpParamsFactory(new NonBlockingHttpParamsFactory());
     }
 
-    protected AdapterConfig adapterConfig;
+    protected ExtendedAdapterConfig adapterConfig;
 
     /**
      *
@@ -52,7 +61,7 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
      * @param adapterConfig
      *     the adapterConfig to set
      */
-    public void setAdapterConfig(final AdapterConfig adapterConfig)
+    public void setAdapterConfig(final ExtendedAdapterConfig adapterConfig)
     {
         this.adapterConfig = adapterConfig;
     }
@@ -63,7 +72,12 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     @Override
     public KeycloakDeployment getObject() throws Exception
     {
-        return KeycloakDeploymentBuilder.build(this.adapterConfig);
+        final KeycloakDeployment keycloakDeployment = KeycloakDeploymentBuilder.build(this.adapterConfig);
+        final HttpClientBuilder httpClientBuilder = new HttpClientBuilder();
+        final HttpClient client = httpClientBuilder.build(this.adapterConfig);
+        this.configureForcedRouteIfNecessary(client, this.adapterConfig.getForcedRouteUrl());
+        keycloakDeployment.setClient(client);
+        return keycloakDeployment;
     }
 
     /**
@@ -85,5 +99,28 @@ public class KeycloakDeploymentBeanFactory implements FactoryBean<KeycloakDeploy
     public Class<?> getObjectType()
     {
         return KeycloakDeployment.class;
+    }
+
+    protected void configureForcedRouteIfNecessary(final HttpClient client, final String forcedRoute)
+    {
+        if (forcedRoute != null && !forcedRoute.isEmpty())
+        {
+            final HttpHost forcedRouteHost = HttpHost.create(forcedRoute);
+            final HttpParams params = client.getParams();
+            final InetAddress local = ConnRouteParams.getLocalAddress(params);
+            final HttpHost defaultProxy = ConnRouteParams.getDefaultProxy(params);
+            final boolean secure = forcedRouteHost.getSchemeName().equalsIgnoreCase("https");
+
+            HttpRoute route;
+            if (defaultProxy == null)
+            {
+                route = new HttpRoute(forcedRouteHost, local, secure);
+            }
+            else
+            {
+                route = new HttpRoute(forcedRouteHost, local, defaultProxy, secure);
+            }
+            params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
+        }
     }
 }

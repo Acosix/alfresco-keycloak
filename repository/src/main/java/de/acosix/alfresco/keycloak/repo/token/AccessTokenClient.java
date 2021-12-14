@@ -1,5 +1,7 @@
 package de.acosix.alfresco.keycloak.repo.token;
 
+import com.fasterxml.jackson.core.JsonParseException;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -326,6 +328,10 @@ public class AccessTokenClient
         try
         {
             return JsonSerialization.readValue(is, responseCls);
+        }
+        catch (final JsonParseException jpe)
+        {
+            throw new AccessTokenException("Failed to parse access token response", jpe);
         }
         finally
         {

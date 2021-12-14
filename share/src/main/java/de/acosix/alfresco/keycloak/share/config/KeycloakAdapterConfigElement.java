@@ -34,13 +34,11 @@ import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.ParameterCheck;
 import org.alfresco.util.PropertyCheck;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.extensions.config.ConfigElement;
 
 import de.acosix.alfresco.utility.share.config.BaseCustomConfigElement;
-import de.acosix.alfresco.utility.share.config.ConfigValueHolder;
 
 /**
  * @author Axel Faust
@@ -79,7 +77,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
             primitiveWrapperTypeMap.put(primitiveTypes[i], wrapperTypes[i]);
         }
 
-        Class<?> cls = AdapterConfig.class;
+        Class<?> cls = ExtendedAdapterConfig.class;
         while (cls != null && !Object.class.equals(cls))
         {
             final Field[] fields = cls.getDeclaredFields();
@@ -152,8 +150,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
     public boolean isFieldSupported(final String fieldName)
     {
         ParameterCheck.mandatoryString("fieldName", fieldName);
-        final boolean supported = CONFIG_NAMES.contains(fieldName);
-        return supported;
+        return CONFIG_NAMES.contains(fieldName);
     }
 
     /**
@@ -170,22 +167,21 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         {
             throw new IllegalArgumentException(fieldName + " is not a supported field");
         }
-        final Class<?> valueType = VALUE_TYPE_BY_CONFIG_NAME.get(fieldName);
-        return valueType;
+        return VALUE_TYPE_BY_CONFIG_NAME.get(fieldName);
     }
 
     /**
-     * Retrieves the configured value for a specific field. Default values inherent in the {@link AdapterConfig Keycloak classes} are not
+     * Retrieves the configured value for a specific field. Default values inherent in the {@link ExtendedAdapterConfig Keycloak classes}
+     * are not
      * considered by this operation.
      *
      * @param fieldName
-     *            the name of the field for which to retrieve the value
+     *     the name of the field for which to retrieve the value
      * @return the currently configured value for the field, or {@code null} if no value has been configured
      */
     public Object getFieldValue(final String fieldName)
     {
-        final Object value = this.configValueByField.get(fieldName);
-        return value;
+        return this.configValueByField.get(fieldName);
     }
 
     /**
@@ -252,8 +248,7 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
         {
             throw new IllegalArgumentException(fieldName + " is not a supported field");
         }
-        final boolean unset = this.markedAsUnset.contains(fieldName);
-        return unset;
+        return this.markedAsUnset.contains(fieldName);
     }
 
     /**
@@ -261,9 +256,9 @@ public class KeycloakAdapterConfigElement extends BaseCustomConfigElement
      *
      * @return the adapter configuration instance
      */
-    public AdapterConfig buildAdapterConfiguration()
+    public ExtendedAdapterConfig buildAdapterConfiguration()
     {
-        final AdapterConfig adapterConfig = new AdapterConfig();
+        final ExtendedAdapterConfig adapterConfig = new ExtendedAdapterConfig();
 
         try
         {

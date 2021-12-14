@@ -22,6 +22,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -48,12 +49,17 @@ import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SSOAuthenticationFilter;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.conn.params.ConnRoutePNames;
+import org.apache.http.conn.params.ConnRouteParams;
+import org.apache.http.conn.routing.HttpRoute;
 import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.params.HttpParams;
 import org.apache.http.util.EntityUtils;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.OAuth2Constants;
@@ -84,7 +90,6 @@ import org.keycloak.common.util.Time;
 import org.keycloak.constants.ServiceUrlConstants;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
-import org.keycloak.representations.adapters.config.AdapterConfig;
 import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -115,6 +120,7 @@ import org.springframework.extensions.webscripts.servlet.DependencyInjectedFilte
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import de.acosix.alfresco.keycloak.share.config.ExtendedAdapterConfig;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
@@ -127,6 +133,7 @@ import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
  *
  * @author Axel Faust
  */
+@SuppressWarnings("deprecation")
 public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, InitializingBean, ApplicationContextAware
 {
 
@@ -227,6 +234,8 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     protected boolean forceSso = false;
 
+    protected boolean rememberSso = false;
+
     protected boolean ignoreDefaultFilter = false;
 
     protected KeycloakDeployment keycloakDeployment;
@@ -316,6 +325,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             this.filterEnabled = Boolean.TRUE.equals(keycloakAuthConfig.getEnableSsoFilter());
             this.loginFormEnhancementEnabled = Boolean.TRUE.equals(keycloakAuthConfig.getEnhanceLoginForm());
             this.forceSso = Boolean.TRUE.equals(keycloakAuthConfig.getForceKeycloakSso());
+            this.rememberSso = Boolean.TRUE.equals(keycloakAuthConfig.getRememberKeycloakSso());
             this.ignoreDefaultFilter = Boolean.TRUE.equals(keycloakAuthConfig.getIgnoreDefaultFilter());
         }
         else
@@ -503,8 +513,15 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
     protected void initFromAdapterConfig(final KeycloakAdapterConfigElement keycloakAdapterConfig)
     {
-        final AdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
+        final ExtendedAdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
         this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
+        final String forcedRouteUrl = adapterConfiguration.getForcedRouteUrl();
+        if (forcedRouteUrl != null && !forcedRouteUrl.isEmpty())
+        {
+            final HttpClient client = this.keycloakDeployment.getClient();
+            this.configureForcedRouteIfNecessary(client, forcedRouteUrl);
+            this.keycloakDeployment.setClient(client);
+        }
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -531,12 +548,15 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
             tokenStore.logout();
 
-            final Cookie keycloakCookie = new Cookie(KEYCLOAK_AUTHENTICATED_COOKIE, "false");
-            keycloakCookie.setPath(context.getContextPath());
-            keycloakCookie.setMaxAge(0);
-            keycloakCookie.setHttpOnly(true);
-            keycloakCookie.setSecure(req.isSecure());
-            res.addCookie(keycloakCookie);
+            if (this.rememberSso)
+            {
+                final Cookie keycloakCookie = new Cookie(KEYCLOAK_AUTHENTICATED_COOKIE, "false");
+                keycloakCookie.setPath(context.getContextPath());
+                keycloakCookie.setMaxAge(0);
+                keycloakCookie.setHttpOnly(true);
+                keycloakCookie.setSecure(req.isSecure());
+                res.addCookie(keycloakCookie);
+            }
 
             chain.doFilter(req, res);
         }
@@ -1010,7 +1030,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     {
         final boolean hasKeycloakCookie = this.hasKeycloakCookie(req);
 
-        if (!hasKeycloakCookie)
+        if (!hasKeycloakCookie && this.rememberSso)
         {
             final Cookie keycloakCookie = new Cookie(KEYCLOAK_AUTHENTICATED_COOKIE, "true");
             keycloakCookie.setPath(req.getServletContext().getContextPath());
@@ -1025,7 +1045,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     {
         final Cookie[] cookies = req.getCookies();
         boolean hasKeycloakCookie = false;
-        if (cookies != null)
+        if (cookies != null && this.rememberSso)
         {
             for (final Cookie cookie : cookies)
             {
@@ -1826,5 +1846,25 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             sslPort = 8443;
         }
         return sslPort;
+    }
+
+    protected void configureForcedRouteIfNecessary(final HttpClient client, final String forcedRoute)
+    {
+        final HttpHost forcedRouteHost = HttpHost.create(forcedRoute);
+        final HttpParams params = client.getParams();
+        final InetAddress local = ConnRouteParams.getLocalAddress(params);
+        final HttpHost defaultProxy = ConnRouteParams.getDefaultProxy(params);
+        final boolean secure = forcedRouteHost.getSchemeName().equalsIgnoreCase("https");
+
+        HttpRoute route;
+        if (defaultProxy == null)
+        {
+            route = new HttpRoute(forcedRouteHost, local, secure);
+        }
+        else
+        {
+            route = new HttpRoute(forcedRouteHost, local, defaultProxy, secure);
+        }
+        params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
     }
 }
