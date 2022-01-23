@@ -29,6 +29,7 @@
 
     <properties>
         <docker.tests.keycloakPort>8380</docker.tests.keycloakPort>
+        <docker.tests.skipSearchImage>false</docker.tests.skipSearchImage>
     </properties>
 
     <dependencies>
