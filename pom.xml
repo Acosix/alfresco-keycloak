@@ -26,7 +26,7 @@
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
     <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-    <version>1.1.0-rc7-SNAPSHOT</version>
+    <version>1.1.0-rc7</version>
     <packaging>pom</packaging>
 
     <name>Acosix Alfresco Keycloak - Parent</name>
@@ -99,7 +99,7 @@
 
         <docker.tests.repositoryImageBuilder.preRun>USER root</docker.tests.repositoryImageBuilder.preRun>
         <docker.tests.repositoryImageBuilder.postRun>USER alfresco</docker.tests.repositoryImageBuilder.postRun>
-        <acosix.utility.version>1.3.0-SNAPSHOT</acosix.utility.version>
+        <acosix.utility.version>1.3.0</acosix.utility.version>
         -->
     </properties>
 
