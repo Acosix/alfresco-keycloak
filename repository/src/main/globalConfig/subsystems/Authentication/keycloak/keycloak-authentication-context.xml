@@ -201,6 +201,12 @@
 
     <bean id="userToken.default" class="${project.artifactId}.authentication.DefaultPersonProcessor" />
 
+    <bean id="authoritySync" class="${project.artifactId}.authentication.KeycloakTokenAuthoritySync">
+        <property name="enabled" value="${keycloak.authentication.syncAuthoritiesOnLogin}" />
+        <property name="syncAuthorityMembershipOnLogin" value="${keycloak.authentication.syncAuthorityMembershipOnLogin}" />
+        <property name="authorityService" ref="authorityService" />
+    </bean>
+
     <bean id="userFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
         <property name="identitiesClient" ref="identitiesClient" />
     </bean>
