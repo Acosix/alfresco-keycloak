@@ -49,8 +49,6 @@
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
         <property name="allowGuestLogin" value="${keycloak.authentication.allowGuestLogin}" />
         <property name="failExpiredTicketTokens" value="${keycloak.authentication.failExpiredTicketTokens}" />
-        <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
-        <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
     </bean>
     
@@ -187,6 +185,11 @@
         <property name="enabled" value="${keycloak.roles.mapRoles}" />
         <property name="processRealmRoles" value="${keycloak.roles.mapRealmRoles}" />
         <property name="processResourceRoles" value="${keycloak.roles.mapResourceRoles}" />
+    </bean>
+
+    <bean id="authorityMapper" class="${project.artifactId}.authentication.KeycloakTokenAuthorityMapper">
+        <property name="enabled" value="${keycloak.authentication.mapAuthorities}" />
+        <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
     </bean>
 
     <bean id="userAuthority.default" class="${project.artifactId}.authentication.DefaultAuthorityExtractor">
