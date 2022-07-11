@@ -15,13 +15,17 @@
  */
 package de.acosix.alfresco.keycloak.repo.authentication;
 
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.authentication.AbstractAuthenticationComponent;
 import org.alfresco.repo.security.authentication.AuthenticationException;
+import org.alfresco.repo.transaction.RetryingTransactionHelper;
+import org.alfresco.repo.transaction.RetryingTransactionHelper.RetryingTransactionCallback;
 import org.alfresco.util.PropertyCheck;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.representations.AccessToken;
@@ -36,6 +40,7 @@ import de.acosix.alfresco.keycloak.repo.token.AccessTokenClient;
 import de.acosix.alfresco.keycloak.repo.token.AccessTokenException;
 import de.acosix.alfresco.keycloak.repo.token.AccessTokenRefreshException;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
+import net.sf.acegisecurity.Authentication;
 
 /**
  * This component provides Keycloak-integrated user/password authentication support to an Alfresco instance.
@@ -67,6 +72,8 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected AccessTokenClient accessTokenClient;
     
     protected List<TokenProcessor> tokenProcessors;
+    
+    private RetryingTransactionHelper rthelper;
 
     /**
      *
@@ -83,6 +90,15 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         List<TokenProcessor> tokenProcessors = new ArrayList<>(this.applicationContext.getBeansOfType(TokenProcessor.class, false, true).values());
         Collections.sort(tokenProcessors);
         this.tokenProcessors = Collections.unmodifiableList(tokenProcessors);
+
+        this.rthelper = new RetryingTransactionHelper();
+        this.rthelper.setMaxRetries(3);
+        this.rthelper.setMinRetryWaitMs(2000);
+        this.rthelper.setTransactionService(this.getTransactionService());
+        this.rthelper.setExtraExceptions(Arrays.asList(
+        		AccessDeniedException.class // likely caused by a race condition, where multiple threads are authenticating at the same time
+        									// this is due to modern web apps and threading
+        		));
     }
 
     /**
@@ -295,5 +311,15 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected boolean implementationAllowsGuestLogin()
     {
         return this.allowGuestLogin;
+    }
+    
+    public Authentication setCurrentUser(final String realUserName) throws AuthenticationException {
+        RetryingTransactionCallback<Authentication> rtcallback = new RetryingTransactionCallback<Authentication>() {
+        	@Override
+        	public Authentication execute() throws RuntimeException {
+            	return KeycloakAuthenticationComponent.super.setCurrentUser(realUserName);
+        	}
+        };
+        return this.rthelper.doInTransaction(rtcallback, this.getTransactionService().isReadOnly(), true);
     }
 }
