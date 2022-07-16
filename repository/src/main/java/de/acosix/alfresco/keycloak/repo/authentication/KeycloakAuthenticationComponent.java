@@ -65,7 +65,7 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected KeycloakDeployment deployment;
 
     protected AccessTokenClient accessTokenClient;
-    
+
     protected List<TokenProcessor> tokenProcessors;
 
     /**
@@ -79,10 +79,10 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         PropertyCheck.mandatory(this, "keycloakDeployment", this.deployment);
 
         this.accessTokenClient = new AccessTokenClient(this.deployment);
-        
-        List<TokenProcessor> tokenProcessors = new ArrayList<>(this.applicationContext.getBeansOfType(TokenProcessor.class, false, true).values());
-        Collections.sort(tokenProcessors);
-        this.tokenProcessors = Collections.unmodifiableList(tokenProcessors);
+
+        this.tokenProcessors = new ArrayList<>(this.applicationContext.getBeansOfType(TokenProcessor.class, false, true).values());
+        Collections.sort(this.tokenProcessors);
+        this.tokenProcessors = Collections.unmodifiableList(this.tokenProcessors);
     }
 
     /**
@@ -267,25 +267,23 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     }
 
     /**
-     * Processes tokens for authenticated users, mapping them to Alfresco person properties or granted authorities as configured for this
-     * instance.
+     * Handles user tokens after authentication (initial or refresh) by delegating them to {@link TokenProcessor token processors} defined
+     * in the application context.
      *
      * @param accessToken
      *     the access token
      * @param idToken
      *     the ID token
      * @param freshLogin
-     *     {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise -
-     *     Alfresco person node properties will only be mapped for fresh tokens, while granted authorities processors will always be
-     *     handled if enabled
+     *     {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise
      */
     public void handleUserTokens(final AccessToken accessToken, final IDToken idToken, final boolean freshLogin)
     {
-    	for (TokenProcessor processor : this.tokenProcessors)
-    	{
+        for (final TokenProcessor processor : this.tokenProcessors)
+        {
             LOGGER.debug("Processing token with {}", processor.getName());
-    		processor.handleUserTokens(this, accessToken, idToken, freshLogin);
-    	}
+            processor.handleUserTokens(accessToken, idToken, freshLogin);
+        }
     }
 
     /**
