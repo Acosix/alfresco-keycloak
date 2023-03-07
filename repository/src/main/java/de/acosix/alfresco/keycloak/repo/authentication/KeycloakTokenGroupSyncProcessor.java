@@ -25,6 +25,7 @@ import org.alfresco.repo.security.authentication.AuthenticationUtil;
 import org.alfresco.repo.transaction.AlfrescoTransactionSupport;
 import org.alfresco.repo.transaction.AlfrescoTransactionSupport.TxnReadState;
 import org.alfresco.service.cmr.repository.DuplicateChildNodeNameException;
+import org.alfresco.service.cmr.security.AuthenticationService;
 import org.alfresco.service.cmr.security.AuthorityService;
 import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.service.cmr.security.PermissionService;
@@ -63,6 +64,8 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
     protected TransactionService transactionService;
 
     protected AuthorityService authorityService;
+    
+    protected AuthenticationService authenticationService;
 
     protected Collection<AuthorityExtractor> authorityExtractors;
 
@@ -159,7 +162,14 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
             if (this.syncGroupMembershipOnLogin)
             {
                 AuthenticationUtil.runAsSystem(() -> this.transactionService.getRetryingTransactionHelper().doInTransaction(() -> {
-                    this.syncGroupMemberships(groups);
+                    boolean changed = this.syncGroupMemberships(groups);
+                    if (changed) {
+                    	String ticket = this.authenticationService.getCurrentTicket();
+                    	if (ticket != null) {
+                    		LOGGER.debug("Invalidating Alflresco ticket as group membership changed: {}", ticket);
+                    		this.authenticationService.invalidateTicket(ticket);
+                    	}
+                    }
                     return null;
                 }, false, requiresNew));
             }
@@ -222,11 +232,13 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
      *
      * @param groups
      *     the Alfresco group authorities as determined from the Keycloak access token for the current user
+     * @return true if group membership changed
      */
-    protected void syncGroupMemberships(final Collection<String> groups)
+    protected boolean syncGroupMemberships(final Collection<String> groups)
     {
         final String userName = AuthenticationUtil.getFullyAuthenticatedUser();
         final String maskedUsername = AlfrescoCompatibilityUtil.maskUsername(userName);
+        boolean changed = false;
 
         LOGGER.debug("Synchronising group membership for user {} and token extracted groups {}", maskedUsername, groups);
 
@@ -241,6 +253,7 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
             {
                 LOGGER.debug("Adding user {} to group {}", maskedUsername, group);
                 this.authorityService.addAuthority(group, userName);
+                changed = true;
             }
         }
 
@@ -248,6 +261,9 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
         {
             LOGGER.debug("Removing user {} from group {}", maskedUsername, group);
             this.authorityService.removeAuthority(group, userName);
+            changed = true;
         }
+        
+        return changed;
     }
 }

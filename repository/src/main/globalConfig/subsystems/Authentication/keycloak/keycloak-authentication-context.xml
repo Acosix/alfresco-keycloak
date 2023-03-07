@@ -222,6 +222,7 @@
         <property name="syncGroupMembershipOnLogin" value="${keycloak.authentication.syncGroupMembershipOnLogin}" />
         <property name="transactionService" ref="TransactionService" />
         <property name="authorityService" ref="AuthorityService" />
+        <property name="authenticationService" ref="localAuthenticationService" />
     </bean>
 
     <bean id="userFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
