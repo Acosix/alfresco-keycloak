@@ -591,7 +591,11 @@
             {
                 "clientScope": "alfresco",
                 "roles": [
-                    "admin"
+                    "admin",
+                    "search-admin",
+                    "model-admin",
+                    "site-admin",
+                    "acme-group"
                 ]
             }
         ]
@@ -1091,6 +1095,22 @@
                 {
                     "name": "admin",
                     "clientRole": true
+                },
+                {
+                    "name": "model-admin",
+                    "clientRole": true
+                },
+                {
+                    "name": "search-admin",
+                    "clientRole": true
+                },
+                {
+                    "name": "site-admin",
+                    "clientRole": true
+                },
+                {
+                    "name": "acme-group",
+                    "clientRole": true
                 }
             ]
         }
@@ -1157,6 +1177,11 @@
             "realmRoles": [
                 "default-roles-test"
             ],
+            "clientRoles": {
+                "alfresco": [
+                    "acme-group"
+                ]
+            },
             "groups": [
                 "/Test A/Test AB",
                 "/Test B/Test BA"
