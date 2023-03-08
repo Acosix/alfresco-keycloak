@@ -124,6 +124,15 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
     {
         this.authorityService = authorityService;
     }
+    
+    /**
+     * @param authenticationService
+     *     the authenticationService to set
+     */
+    public void setAuthenticationService(AuthenticationService authenticationService)
+    {
+		this.authenticationService = authenticationService;
+	}
 
     /**
      *
