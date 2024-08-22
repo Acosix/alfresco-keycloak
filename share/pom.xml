@@ -21,7 +21,7 @@
     <parent>
         <groupId>de.acosix.alfresco.keycloak</groupId>
         <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-        <version>1.1.0-rc8-SNAPSHOT</version>
+        <version>1.2.0-rc2-SNAPSHOT</version>
     </parent>
 
     <artifactId>de.acosix.alfresco.keycloak.share</artifactId>
@@ -61,8 +61,8 @@
         </dependency>
 
         <dependency>
-            <groupId>javax.servlet</groupId>
-            <artifactId>javax.servlet-api</artifactId>
+            <groupId>jakarta.servlet</groupId>
+            <artifactId>jakarta.servlet-api</artifactId>
         </dependency>
 
         <dependency>
@@ -83,7 +83,7 @@
 
         <dependency>
             <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-servlet-adapter-spi</artifactId>
+            <artifactId>keycloak-jakarta-servlet-adapter-spi</artifactId>
             <exclusions>
                 <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
                 <exclusion>
@@ -104,7 +104,7 @@
 
         <dependency>
             <groupId>org.keycloak</groupId>
-            <artifactId>keycloak-servlet-filter-adapter</artifactId>
+            <artifactId>keycloak-jakarta-servlet-filter-adapter</artifactId>
             <exclusions>
                 <!-- don't include activation standalone JAR - rely on JDK inclusion since Java 6 -->
                 <exclusion>
@@ -284,7 +284,8 @@
                                 <goal>shade</goal>
                             </goals>
                             <configuration>
-                                <createSourcesJar>true</createSourcesJar>
+								<!-- generating using `sources` classifier, which conflicts with the main `sources` -->
+                                <createSourcesJar>false</createSourcesJar>
                                 <shadeSourcesContent>true</shadeSourcesContent>
                                 <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
                                 <artifactSet>
