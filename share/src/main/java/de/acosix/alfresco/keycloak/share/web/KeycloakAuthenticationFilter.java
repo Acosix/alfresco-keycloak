@@ -23,33 +23,41 @@ import java.io.InputStream;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.Callable;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SSOAuthenticationFilter;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -58,8 +66,11 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.params.ConnRouteParams;
 import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.conn.routing.HttpRoutePlanner;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.OAuth2Constants;
@@ -73,7 +84,6 @@ import org.keycloak.adapters.OAuthRequestAuthenticator;
 import org.keycloak.adapters.OIDCAuthenticationError;
 import org.keycloak.adapters.OidcKeycloakAccount;
 import org.keycloak.adapters.PreAuthActionsHandler;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
 import org.keycloak.adapters.servlet.FilterRequestAuthenticator;
@@ -88,6 +98,7 @@ import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.KeycloakUriBuilder;
 import org.keycloak.common.util.Time;
 import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.protocol.oidc.client.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.util.JsonSerialization;
@@ -125,6 +136,8 @@ import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
 import de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfrescoConnector;
+import de.acosix.alfresco.keycloak.share.util.HttpClientBuilder;
+import de.acosix.alfresco.keycloak.share.util.NameValueMapAdapter;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 
 /**
@@ -515,13 +528,25 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     {
         final ExtendedAdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
         this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
-        final String forcedRouteUrl = adapterConfiguration.getForcedRouteUrl();
-        if (forcedRouteUrl != null && !forcedRouteUrl.isEmpty())
-        {
-            final HttpClient client = this.keycloakDeployment.getClient();
-            this.configureForcedRouteIfNecessary(client, forcedRouteUrl);
-            this.keycloakDeployment.setClient(client);
-        }
+
+        // we need to recreate the HttpClient to configure the forced route URL
+        this.keycloakDeployment.setClient(new Callable<HttpClient>() {
+            private HttpClient client;
+            @Override
+            public HttpClient call() throws Exception {
+                if (client == null) {
+                    synchronized (this) {
+                        if (client == null) {
+                            client = new HttpClientBuilder()
+                                    .routePlanner(createForcedRoutePlanner(adapterConfiguration))
+                                    .build(adapterConfiguration);
+                        }
+                    }
+                }
+                return client;
+            }
+        });
+        
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -1726,7 +1751,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         final HttpPost post = new HttpPost(KeycloakUriBuilder.fromUri(this.keycloakDeployment.getAuthServerBaseUrl())
                 .path(ServiceUrlConstants.TOKEN_PATH).build(this.keycloakDeployment.getRealm()));
-        final List<NameValuePair> formParams = new ArrayList<>();
+        final List<NameValuePair> formParams = new LinkedList<>();
 
         formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE));
         formParams.add(new BasicNameValuePair(OAuth2Constants.AUDIENCE, alfrescoResourceName));
@@ -1748,9 +1773,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             throw new IllegalStateException(
                     "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
         }
+        
+        final List<Header> headers = new LinkedList<>();
 
-        ClientCredentialsProviderUtils.setClientCredentials(this.keycloakDeployment, post, formParams);
+        ClientCredentialsProviderUtils.setClientCredentials(
+        		this.keycloakDeployment.getAdapterConfig(),
+        		this.keycloakDeployment.getClientAuthenticator(),
+        		new NameValueMapAdapter<>(headers, BasicHeader.class),
+        		new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
 
+        for (Header header : headers)
+            post.addHeader(header);
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
 
@@ -1866,5 +1899,48 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             route = new HttpRoute(forcedRouteHost, local, defaultProxy, secure);
         }
         params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
+    }
+
+    protected HttpRoute createRoute(ExtendedAdapterConfig adapterConfig, HttpHost routeHost) throws UnknownHostException, MalformedURLException {
+        boolean secure = "https".equalsIgnoreCase(routeHost.getSchemeName());
+
+        if (adapterConfig.getProxyUrl() != null) {
+            // useful in parsing the URL for just what is needed for HttpHost
+            URL proxyUrl = new URL(adapterConfig.getProxyUrl());
+            HttpHost proxyHost = new HttpHost(proxyUrl.getHost(), proxyUrl.getPort(), proxyUrl.getProtocol());
+            return new HttpRoute(routeHost, InetAddress.getLocalHost(), proxyHost, secure);
+        } else {
+            return new HttpRoute(routeHost, InetAddress.getLocalHost(), secure);
+        }
+    }
+
+    protected HttpRoute createForcedRoute(ExtendedAdapterConfig adapterConfig) throws UnknownHostException, MalformedURLException {
+        // useful in parsing the URL for just what is needed for HttpHost
+        URL forcedRouteUrl = new URL(adapterConfig.getForcedRouteUrl());
+        HttpHost forcedRouteHost = new HttpHost(forcedRouteUrl.getHost(), forcedRouteUrl.getPort(), forcedRouteUrl.getProtocol());
+        return this.createRoute(adapterConfig, forcedRouteHost);
+    }
+
+    protected HttpRoutePlanner createForcedRoutePlanner(ExtendedAdapterConfig adapterConfig) throws MalformedURLException {
+        URL authServerUrl = new URL(adapterConfig.getAuthServerUrl());
+        final HttpHost authServerHost = new HttpHost(authServerUrl.getHost(), authServerUrl.getPort(), authServerUrl.getProtocol());
+
+        return new HttpRoutePlanner() {
+            @Override
+            public HttpRoute determineRoute(HttpHost target, HttpRequest request, HttpContext context) throws HttpException {
+                try {
+                    if (authServerHost.equals(target)) {
+                        LOGGER.trace("Rerouting to forced route");
+                        HttpRoute route = createForcedRoute(adapterConfig);
+                        LOGGER.trace("Rerouting to forced route: {}", route);
+                        return route;
+                    } else {
+                        return createRoute(adapterConfig, target);
+                    }
+                } catch (IOException ie) {
+                    throw new HttpException(ie.getMessage(), ie);
+                }
+            }
+        };
     }
 }

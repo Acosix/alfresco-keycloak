@@ -17,7 +17,7 @@ package de.acosix.alfresco.keycloak.share.remote;
 
 import java.util.Collections;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 
 import org.alfresco.web.site.servlet.SlingshotAlfrescoConnector;
 import org.keycloak.KeycloakSecurityContext;
