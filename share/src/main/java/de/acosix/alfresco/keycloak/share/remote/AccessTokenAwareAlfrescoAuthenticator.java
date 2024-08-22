@@ -15,7 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.share.remote;
 
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.http.HttpSession;
 
 import org.keycloak.adapters.OidcKeycloakAccount;
 import org.keycloak.adapters.spi.KeycloakAccount;
