@@ -6,7 +6,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 
 import org.alfresco.util.ParameterCheck;
@@ -22,13 +25,13 @@ import org.keycloak.TokenVerifier;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.ServerRequest;
 import org.keycloak.adapters.ServerRequest.HttpFailure;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.KeycloakUriBuilder;
 import org.keycloak.common.util.Time;
 import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.protocol.oidc.client.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.util.JsonSerialization;
@@ -284,8 +287,16 @@ public class AccessTokenClient
         final List<NameValuePair> formParams = new ArrayList<>();
 
         postParamProvider.accept(formParams);
+        
+        Map<String, String> formMap = new HashMap<>();
+        for (NameValuePair pair : formParams)
+        	formMap.put(pair.getName(), pair.getValue());
 
-        ClientCredentialsProviderUtils.setClientCredentials(this.deployment, post, formParams);
+        ClientCredentialsProviderUtils.setClientCredentials(
+        		this.deployment.getAdapterConfig(),
+        		this.deployment.getClientAuthenticator(),
+        		Collections.emptyMap(),
+        		formMap);
 
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);

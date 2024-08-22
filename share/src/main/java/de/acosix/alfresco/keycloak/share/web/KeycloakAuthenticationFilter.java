@@ -26,23 +26,25 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import javax.servlet.FilterChain;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletException;
-import javax.servlet.ServletRequest;
-import javax.servlet.ServletResponse;
-import javax.servlet.http.Cookie;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletRequestWrapper;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.http.HttpSession;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
@@ -73,7 +75,6 @@ import org.keycloak.adapters.OAuthRequestAuthenticator;
 import org.keycloak.adapters.OIDCAuthenticationError;
 import org.keycloak.adapters.OidcKeycloakAccount;
 import org.keycloak.adapters.PreAuthActionsHandler;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
 import org.keycloak.adapters.servlet.FilterRequestAuthenticator;
@@ -88,6 +89,7 @@ import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.KeycloakUriBuilder;
 import org.keycloak.common.util.Time;
 import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.protocol.oidc.client.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.util.JsonSerialization;
@@ -1748,8 +1750,16 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             throw new IllegalStateException(
                     "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
         }
+        
+        Map<String, String> formMap = new HashMap<>();
+        for (NameValuePair formParam : formParams)
+        	formMap.put(formParam.getName(), formParam.getValue());
 
-        ClientCredentialsProviderUtils.setClientCredentials(this.keycloakDeployment, post, formParams);
+        ClientCredentialsProviderUtils.setClientCredentials(
+        		this.keycloakDeployment.getAdapterConfig(),
+        		this.keycloakDeployment.getClientAuthenticator(),
+        		Collections.emptyMap(),
+        		formMap);
 
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
