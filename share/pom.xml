@@ -45,8 +45,8 @@
 
             <dependency>
                 <groupId>org.bouncycastle</groupId>
-                <artifactId>bcpkix-jdk15on</artifactId>
-                <version>1.68</version>
+                <artifactId>bcpkix-jdk18on</artifactId>
+                <version>1.77</version>
             </dependency>
 
         </dependencies>
@@ -132,7 +132,7 @@
         <!-- BouncyCastle cannot be made part of an uber-JAR -->
         <dependency>
             <groupId>org.bouncycastle</groupId>
-            <artifactId>bcpkix-jdk15on</artifactId>
+            <artifactId>bcpkix-jdk18on</artifactId>
         </dependency>
 
         <dependency>
