@@ -20,13 +20,13 @@
 
     <parent>
         <groupId>de.acosix.alfresco.maven</groupId>
-        <artifactId>de.acosix.alfresco.maven.project.parent-6.0.7</artifactId>
-        <version>1.4.1</version>
+        <artifactId>de.acosix.alfresco.maven.project.parent-23.1.0</artifactId>
+        <version>1.5.0</version>
     </parent>
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
     <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-    <version>1.1.0-rc7</version>
+    <version>1.2.0-rc1</version>
     <packaging>pom</packaging>
 
     <name>Acosix Alfresco Keycloak - Parent</name>
@@ -61,6 +61,15 @@
                 <twitter>twitter.com/ReluctantBird83</twitter>
             </properties>
         </developer>
+        <developer>
+            <id>blong</id>
+            <name>Brian Long</name>
+            <email>brian@inteligr8.com</email>
+            <organization>Inteligr8 LLC</organization>
+            <properties>
+                <twitter>twitter.com/brian_m_long</twitter>
+            </properties>
+        </developer>
     </developers>
 
     <properties>
@@ -68,18 +77,18 @@
         <messages.packageId>acosix.keycloak</messages.packageId>
         <moduleId>acosix-keycloak</moduleId>
 
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.version>3.13.0</maven.compiler.version>
+        <maven.shade.version>3.6.0</maven.shade.version>
 
-        <maven.shade.version>3.2.4</maven.shade.version>
-
-        <keycloak.version>16.1.0</keycloak.version>
+        <keycloak.version>22.0.3</keycloak.version>
         <resteasy.version>3.15.1.Final</resteasy.version>
         <!-- lowest common denominator of Repository / Share in 6.0 -->
         <apache.httpclient.version>4.5.13</apache.httpclient.version>
-        <apache.httpcore.version>4.4.14</apache.httpcore.version>
+        <apache.httpcore.version>4.4.16</apache.httpcore.version>
+        <!-- parent is including 6.11 erroneously -->
+        <surf.version>9.0</surf.version>
 
-        <acosix.utility.version>1.2.5</acosix.utility.version>
+        <acosix.utility.version>1.4.3</acosix.utility.version>
         <ootbee.support-tools.version>1.1.0.0</ootbee.support-tools.version>
 
         <docker.tests.repositoryImageBuilder.preRun></docker.tests.repositoryImageBuilder.preRun>
@@ -101,6 +110,7 @@
         <docker.tests.repositoryImageBuilder.postRun>USER alfresco</docker.tests.repositoryImageBuilder.postRun>
         <acosix.utility.version>1.3.0</acosix.utility.version>
         -->
+        
     </properties>
 
     <dependencyManagement>
@@ -132,13 +142,13 @@
 
             <dependency>
                 <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-servlet-adapter-spi</artifactId>
+                <artifactId>keycloak-jakarta-servlet-adapter-spi</artifactId>
                 <version>${keycloak.version}</version>
             </dependency>
 
             <dependency>
                 <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-servlet-filter-adapter</artifactId>
+                <artifactId>keycloak-jakarta-servlet-filter-adapter</artifactId>
                 <version>${keycloak.version}</version>
             </dependency>
 
@@ -150,7 +160,7 @@
 
             <dependency>
                 <groupId>org.keycloak</groupId>
-                <artifactId>keycloak-admin-client</artifactId>
+                <artifactId>keycloak-admin-client-jakarta</artifactId>
                 <version>${keycloak.version}</version>
             </dependency>
 
@@ -184,6 +194,13 @@
                 <groupId>org.apache.httpcomponents</groupId>
                 <artifactId>httpcore</artifactId>
                 <version>${apache.httpcore.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.alfresco.surf</groupId>
+                <artifactId>spring-surf</artifactId>
+                <version>${surf.version}</version>
                 <scope>provided</scope>
             </dependency>
 
@@ -298,6 +315,14 @@
     <build>
         <pluginManagement>
             <plugins>
+				<plugin>
+					<artifactId>maven-source-plugin</artifactId>
+					<version>${maven.source.version}</version>
+				</plugin>
+				<plugin>
+					<artifactId>maven-compiler-plugin</artifactId>
+					<version>${maven.compiler.version}</version>
+				</plugin>
                 <plugin>
                     <artifactId>maven-shade-plugin</artifactId>
                     <version>${maven.shade.version}</version>
