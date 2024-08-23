@@ -26,10 +26,9 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -50,6 +49,7 @@ import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.PropertyCheck;
 import org.alfresco.web.site.servlet.SSOAuthenticationFilter;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.HttpResponse;
@@ -60,6 +60,7 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.params.ConnRoutePNames;
 import org.apache.http.conn.params.ConnRouteParams;
 import org.apache.http.conn.routing.HttpRoute;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
 import org.apache.http.util.EntityUtils;
@@ -127,6 +128,7 @@ import de.acosix.alfresco.keycloak.share.config.KeycloakAdapterConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakAuthenticationConfigElement;
 import de.acosix.alfresco.keycloak.share.config.KeycloakConfigConstants;
 import de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfrescoConnector;
+import de.acosix.alfresco.keycloak.share.util.NameValueMapAdapter;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
 
 /**
@@ -1728,7 +1730,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
 
         final HttpPost post = new HttpPost(KeycloakUriBuilder.fromUri(this.keycloakDeployment.getAuthServerBaseUrl())
                 .path(ServiceUrlConstants.TOKEN_PATH).build(this.keycloakDeployment.getRealm()));
-        final List<NameValuePair> formParams = new ArrayList<>();
+        final List<NameValuePair> formParams = new LinkedList<>();
 
         formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE));
         formParams.add(new BasicNameValuePair(OAuth2Constants.AUDIENCE, alfrescoResourceName));
@@ -1751,16 +1753,16 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                     "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
         }
         
-        Map<String, String> formMap = new HashMap<>();
-        for (NameValuePair formParam : formParams)
-        	formMap.put(formParam.getName(), formParam.getValue());
+        final List<Header> headers = new LinkedList<>();
 
         ClientCredentialsProviderUtils.setClientCredentials(
         		this.keycloakDeployment.getAdapterConfig(),
         		this.keycloakDeployment.getClientAuthenticator(),
-        		Collections.emptyMap(),
-        		formMap);
+        		new NameValueMapAdapter<>(headers, BasicHeader.class),
+        		new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
 
+        for (Header header : headers)
+            post.addHeader(header);
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
 
