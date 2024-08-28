@@ -547,13 +547,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             }
         });
         
-        final String forcedRouteUrl = adapterConfiguration.getForcedRouteUrl();
-        if (forcedRouteUrl != null && !forcedRouteUrl.isEmpty())
-        {
-            final HttpClient client = this.keycloakDeployment.getClient();
-            this.configureForcedRouteIfNecessary(client, forcedRouteUrl);
-            this.keycloakDeployment.setClient(client);
-        }
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
