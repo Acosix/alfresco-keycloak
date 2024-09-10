@@ -15,7 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.share.web;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.springframework.extensions.surf.RequestContext;
 import org.springframework.extensions.surf.RequestContextUtil;
@@ -27,7 +27,7 @@ import org.springframework.web.context.request.WebRequest;
 
 /**
  * This specialisation of the request context interceptor exists only to ensure that a newly created request context is properly
- * {@link RequestContextUtil#populateRequestContext(org.springframework.extensions.surf.RequestContext, javax.servlet.http.HttpServletRequest)
+ * {@link RequestContextUtil#populateRequestContext(org.springframework.extensions.surf.RequestContext, jakarta.servlet.http.HttpServletRequest)
  * populated} as to ensure that somewhat important data, such as the user object, is properly initialised.
  *
  * @author Axel Faust

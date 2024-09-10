@@ -4,37 +4,40 @@ import com.fasterxml.jackson.core.JsonParseException;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.function.Consumer;
 
 import org.alfresco.util.ParameterCheck;
+import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.TokenVerifier;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.adapters.ServerRequest;
 import org.keycloak.adapters.ServerRequest.HttpFailure;
-import org.keycloak.adapters.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier;
 import org.keycloak.adapters.rotation.AdapterTokenVerifier.VerifiedTokens;
 import org.keycloak.common.VerificationException;
 import org.keycloak.common.util.KeycloakUriBuilder;
 import org.keycloak.common.util.Time;
 import org.keycloak.constants.ServiceUrlConstants;
+import org.keycloak.protocol.oidc.client.authentication.ClientCredentialsProviderUtils;
 import org.keycloak.representations.AccessToken;
 import org.keycloak.representations.AccessTokenResponse;
 import org.keycloak.util.JsonSerialization;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import de.acosix.alfresco.keycloak.repo.util.NameValueMapAdapter;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
 
 /**
@@ -282,12 +285,20 @@ public class AccessTokenClient
 
         final HttpPost post = new HttpPost(KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
                 .path(ServiceUrlConstants.TOKEN_PATH).build(this.deployment.getRealm()));
-        final List<NameValuePair> formParams = new ArrayList<>();
+        final List<NameValuePair> formParams = new LinkedList<>();
 
         postParamProvider.accept(formParams);
+        
+        final List<Header> headers = new LinkedList<>();
 
-        ClientCredentialsProviderUtils.setClientCredentials(this.deployment, post, formParams);
+        ClientCredentialsProviderUtils.setClientCredentials(
+        		this.deployment.getAdapterConfig(),
+        		this.deployment.getClientAuthenticator(),
+        		new NameValueMapAdapter<>(headers, BasicHeader.class),
+        		new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
 
+        for (Header header : headers)
+            post.addHeader(header);
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
 
