@@ -171,11 +171,11 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
             if (this.syncGroupMembershipOnLogin)
             {
                 AuthenticationUtil.runAsSystem(() -> this.transactionService.getRetryingTransactionHelper().doInTransaction(() -> {
-                    boolean changed = this.syncGroupMemberships(groups);
+                    boolean changed = this.syncGroupMemberships(accessToken.getPreferredUsername(), groups);
                     if (changed) {
                     	String ticket = this.authenticationService.getCurrentTicket();
                     	if (ticket != null) {
-                    		LOGGER.debug("Invalidating Alflresco ticket as group membership changed: {}", ticket);
+                    		LOGGER.debug("Invalidating Alfresco ticket as group membership changed: {}", ticket);
                     		this.authenticationService.invalidateTicket(ticket);
                     	}
                     }
@@ -243,15 +243,14 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
      *     the Alfresco group authorities as determined from the Keycloak access token for the current user
      * @return true if group membership changed
      */
-    protected boolean syncGroupMemberships(final Collection<String> groups)
+    protected boolean syncGroupMemberships(String username, final Collection<String> groups)
     {
-        final String userName = AuthenticationUtil.getFullyAuthenticatedUser();
-        final String maskedUsername = AlfrescoCompatibilityUtil.maskUsername(userName);
+        final String maskedUsername = AlfrescoCompatibilityUtil.maskUsername(username);
         boolean changed = false;
 
         LOGGER.debug("Synchronising group membership for user {} and token extracted groups {}", maskedUsername, groups);
 
-        final Set<String> existingUnprocessedGroups = this.authorityService.getContainingAuthorities(AuthorityType.GROUP, userName, true);
+        final Set<String> existingUnprocessedGroups = this.authorityService.getContainingAuthorities(AuthorityType.GROUP, username, true);
 
         LOGGER.debug("User {} is currently in the groups {}", maskedUsername, existingUnprocessedGroups);
 
@@ -261,7 +260,7 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
             if (!existingUnprocessedGroups.remove(group) && this.authorityService.authorityExists(group))
             {
                 LOGGER.debug("Adding user {} to group {}", maskedUsername, group);
-                this.authorityService.addAuthority(group, userName);
+                this.authorityService.addAuthority(group, username);
                 changed = true;
             }
         }
@@ -269,7 +268,7 @@ public class KeycloakTokenGroupSyncProcessor implements TokenProcessor, Initiali
         for (final String group : existingUnprocessedGroups)
         {
             LOGGER.debug("Removing user {} from group {}", maskedUsername, group);
-            this.authorityService.removeAuthority(group, userName);
+            this.authorityService.removeAuthority(group, username);
             changed = true;
         }
         
