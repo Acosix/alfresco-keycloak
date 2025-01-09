@@ -151,6 +151,8 @@ public class KeycloakTokenPersonProcessor implements TokenProcessor, Initializin
                 this.updatePerson(accessToken, idToken);
                 return null;
             }, false, requiresNew);
+            
+            AuthenticationUtil.setFullyAuthenticatedUser(accessToken.getPreferredUsername());
         }
     }
 
@@ -164,16 +166,16 @@ public class KeycloakTokenPersonProcessor implements TokenProcessor, Initializin
      */
     protected void updatePerson(final AccessToken accessToken, final IDToken idToken)
     {
-        final String userName = AuthenticationUtil.getFullyAuthenticatedUser();
+        final String username = accessToken.getPreferredUsername();
 
-        LOGGER.debug("Mapping person property updates for user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
+        LOGGER.debug("Mapping person property updates for user {}", AlfrescoCompatibilityUtil.maskUsername(username));
 
-        final NodeRef person = this.personService.getPerson(userName);
+        final NodeRef person = this.personService.getPerson(username);
 
         final Map<QName, Serializable> updates = new HashMap<>();
         this.userProcessors.forEach(processor -> processor.mapUser(accessToken, idToken != null ? idToken : accessToken, updates));
 
-        LOGGER.debug("Determined property updates for person node of user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
+        LOGGER.debug("Determined property updates for person node of user {}", AlfrescoCompatibilityUtil.maskUsername(username));
 
         final Set<QName> propertiesToRemove = updates.keySet().stream().filter(k -> updates.get(k) == null).collect(Collectors.toSet());
         updates.keySet().removeAll(propertiesToRemove);
