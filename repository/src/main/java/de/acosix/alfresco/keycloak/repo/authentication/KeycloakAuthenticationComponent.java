@@ -15,26 +15,17 @@
  */
 package de.acosix.alfresco.keycloak.repo.authentication;
 
-import java.io.Serializable;
+import java.nio.file.AccessDeniedException;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.authentication.AbstractAuthenticationComponent;
 import org.alfresco.repo.security.authentication.AuthenticationException;
-import org.alfresco.repo.transaction.AlfrescoTransactionSupport;
-import org.alfresco.repo.transaction.AlfrescoTransactionSupport.TxnReadState;
-import org.alfresco.service.cmr.repository.NodeRef;
-import org.alfresco.service.cmr.repository.NodeService;
-import org.alfresco.service.namespace.QName;
+import org.alfresco.repo.transaction.RetryingTransactionHelper;
+import org.alfresco.repo.transaction.RetryingTransactionHelper.RetryingTransactionCallback;
 import org.alfresco.util.PropertyCheck;
 import org.keycloak.adapters.KeycloakDeployment;
 import org.keycloak.representations.AccessToken;
@@ -48,12 +39,8 @@ import org.springframework.context.ApplicationContextAware;
 import de.acosix.alfresco.keycloak.repo.token.AccessTokenClient;
 import de.acosix.alfresco.keycloak.repo.token.AccessTokenException;
 import de.acosix.alfresco.keycloak.repo.token.AccessTokenRefreshException;
-import de.acosix.alfresco.keycloak.repo.util.AlfrescoCompatibilityUtil;
 import de.acosix.alfresco.keycloak.repo.util.RefreshableAccessTokenHolder;
 import net.sf.acegisecurity.Authentication;
-import net.sf.acegisecurity.GrantedAuthority;
-import net.sf.acegisecurity.GrantedAuthorityImpl;
-import net.sf.acegisecurity.providers.UsernamePasswordAuthenticationToken;
 
 /**
  * This component provides Keycloak-integrated user/password authentication support to an Alfresco instance.
@@ -80,17 +67,13 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
 
     protected boolean allowGuestLogin;
 
-    protected boolean mapAuthorities;
-
-    protected boolean mapPersonPropertiesOnLogin;
-
     protected KeycloakDeployment deployment;
 
     protected AccessTokenClient accessTokenClient;
 
-    protected Collection<AuthorityExtractor> authorityExtractors;
-
-    protected Collection<UserProcessor> userProcessors;
+    protected List<TokenProcessor> tokenProcessors;
+    
+    private RetryingTransactionHelper rthelper;
 
     /**
      *
@@ -103,10 +86,19 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
         PropertyCheck.mandatory(this, "keycloakDeployment", this.deployment);
 
         this.accessTokenClient = new AccessTokenClient(this.deployment);
-        this.authorityExtractors = Collections
-                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(AuthorityExtractor.class, false, true).values()));
-        this.userProcessors = Collections
-                .unmodifiableList(new ArrayList<>(this.applicationContext.getBeansOfType(UserProcessor.class, false, true).values()));
+
+        this.tokenProcessors = new ArrayList<>(this.applicationContext.getBeansOfType(TokenProcessor.class, false, true).values());
+        Collections.sort(this.tokenProcessors);
+        this.tokenProcessors = Collections.unmodifiableList(this.tokenProcessors);
+
+        this.rthelper = new RetryingTransactionHelper();
+        this.rthelper.setMaxRetries(3);
+        this.rthelper.setMinRetryWaitMs(2000);
+        this.rthelper.setTransactionService(this.getTransactionService());
+        this.rthelper.setExtraExceptions(Arrays.asList(
+        		AccessDeniedException.class // likely caused by a race condition, where multiple threads are authenticating at the same time
+        									// this is due to modern web apps and threading
+        		));
     }
 
     /**
@@ -172,24 +164,6 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     public void setAllowGuestLogin(final Boolean allowGuestLogin)
     {
         this.setAllowGuestLogin(Boolean.TRUE.equals(allowGuestLogin));
-    }
-
-    /**
-     * @param mapAuthorities
-     *     the mapAuthorities to set
-     */
-    public void setMapAuthorities(final boolean mapAuthorities)
-    {
-        this.mapAuthorities = mapAuthorities;
-    }
-
-    /**
-     * @param mapPersonPropertiesOnLogin
-     *     the mapPersonPropertiesOnLogin to set
-     */
-    public void setMapPersonPropertiesOnLogin(final boolean mapPersonPropertiesOnLogin)
-    {
-        this.mapPersonPropertiesOnLogin = mapPersonPropertiesOnLogin;
     }
 
     /**
@@ -309,102 +283,22 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     }
 
     /**
-     * Processes tokens for authenticated users, mapping them to Alfresco person properties or granted authorities as configured for this
-     * instance.
+     * Handles user tokens after authentication (initial or refresh) by delegating them to {@link TokenProcessor token processors} defined
+     * in the application context.
      *
      * @param accessToken
      *     the access token
      * @param idToken
      *     the ID token
      * @param freshLogin
-     *     {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise -
-     *     Alfresco person node properties will only be mapped for fresh tokens, while granted authorities processors will always be
-     *     handled if enabled
+     *     {@code true} if the tokens are fresh, that is have just been obtained from an initial login, {@code false} otherwise
      */
     public void handleUserTokens(final AccessToken accessToken, final IDToken idToken, final boolean freshLogin)
     {
-        if (this.mapAuthorities)
+        for (final TokenProcessor processor : this.tokenProcessors)
         {
-            LOGGER.debug("Mapping Keycloak access token to user authorities");
-
-            final Set<String> mappedAuthorities = new HashSet<>();
-            this.authorityExtractors.stream().map(extractor -> extractor.extractAuthorities(accessToken))
-                    .forEach(mappedAuthorities::addAll);
-
-            LOGGER.debug("Mapped user authorities from access token: {}", mappedAuthorities);
-
-            if (!mappedAuthorities.isEmpty())
-            {
-                final Authentication currentAuthentication = this.getCurrentAuthentication();
-                if (currentAuthentication instanceof UsernamePasswordAuthenticationToken)
-                {
-                    GrantedAuthority[] grantedAuthorities = currentAuthentication.getAuthorities();
-
-                    final List<GrantedAuthority> grantedAuthoritiesL = mappedAuthorities.stream().map(GrantedAuthorityImpl::new)
-                            .collect(Collectors.toList());
-                    grantedAuthoritiesL.addAll(Arrays.asList(grantedAuthorities));
-
-                    grantedAuthorities = grantedAuthoritiesL.toArray(new GrantedAuthority[0]);
-                    ((UsernamePasswordAuthenticationToken) currentAuthentication).setAuthorities(grantedAuthorities);
-                }
-                else
-                {
-                    LOGGER.warn(
-                            "Authentication for user is not of the expected type {} - Keycloak access token cannot be mapped to granted authorities",
-                            UsernamePasswordAuthenticationToken.class);
-                }
-            }
-        }
-
-        if (freshLogin && this.mapPersonPropertiesOnLogin)
-        {
-            final boolean requiresNew = AlfrescoTransactionSupport.getTransactionReadState() == TxnReadState.TXN_READ_ONLY;
-            this.getTransactionService().getRetryingTransactionHelper().doInTransaction(() -> {
-                this.updatePerson(accessToken, idToken);
-                return null;
-            }, false, requiresNew);
-        }
-    }
-
-    /**
-     * Updates the person for the current user with data mapped from the Keycloak tokens.
-     *
-     * @param accessToken
-     *     the access token
-     * @param idToken
-     *     the ID token
-     */
-    protected void updatePerson(final AccessToken accessToken, final IDToken idToken)
-    {
-        final String userName = this.getCurrentUserName();
-
-        LOGGER.debug("Mapping person property updates for user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
-
-        final NodeRef person = this.getPersonService().getPerson(userName);
-
-        final Map<QName, Serializable> updates = new HashMap<>();
-        this.userProcessors.forEach(processor -> processor.mapUser(accessToken, idToken != null ? idToken : accessToken, updates));
-
-        LOGGER.debug("Determined property updates for person node of user {}", AlfrescoCompatibilityUtil.maskUsername(userName));
-
-        final Set<QName> propertiesToRemove = updates.keySet().stream().filter(k -> updates.get(k) == null).collect(Collectors.toSet());
-        updates.keySet().removeAll(propertiesToRemove);
-
-        final NodeService nodeService = this.getNodeService();
-        final Map<QName, Serializable> currentProperties = nodeService.getProperties(person);
-
-        propertiesToRemove.retainAll(currentProperties.keySet());
-        if (!propertiesToRemove.isEmpty())
-        {
-            // there is no bulk-remove, so we need to use setProperties to achieve a single update event
-            final Map<QName, Serializable> newProperties = new HashMap<>(currentProperties);
-            newProperties.putAll(updates);
-            newProperties.keySet().removeAll(propertiesToRemove);
-            nodeService.setProperties(person, newProperties);
-        }
-        else if (!updates.isEmpty())
-        {
-            nodeService.addProperties(person, updates);
+            LOGGER.debug("Processing token with {}", processor.getName());
+            processor.handleUserTokens(accessToken, idToken, freshLogin);
         }
     }
 
@@ -415,5 +309,15 @@ public class KeycloakAuthenticationComponent extends AbstractAuthenticationCompo
     protected boolean implementationAllowsGuestLogin()
     {
         return this.allowGuestLogin;
+    }
+    
+    public Authentication setCurrentUser(final String realUserName) throws AuthenticationException {
+        RetryingTransactionCallback<Authentication> rtcallback = new RetryingTransactionCallback<Authentication>() {
+        	@Override
+        	public Authentication execute() throws RuntimeException {
+            	return KeycloakAuthenticationComponent.super.setCurrentUser(realUserName);
+        	}
+        };
+        return this.rthelper.doInTransaction(rtcallback, this.getTransactionService().isReadOnly(), true);
     }
 }
