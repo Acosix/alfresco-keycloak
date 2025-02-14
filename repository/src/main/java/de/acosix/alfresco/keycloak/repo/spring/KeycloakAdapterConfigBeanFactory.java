@@ -288,7 +288,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAda
                 {
                     throw new IllegalStateException("Value " + trimmedValue + " has more than one character");
                 }
-                effectiveValue = new Character(trimmedValue.charAt(0));
+                effectiveValue = Character.valueOf(trimmedValue.charAt(0));
             }
             else if (String.class.equals(valueType))
             {

@@ -38,17 +38,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletRequestWrapper;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
-
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
 import org.alfresco.util.PropertyCheck;
@@ -57,7 +46,6 @@ import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
-import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -70,7 +58,6 @@ import org.apache.http.conn.routing.HttpRoutePlanner;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
-import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.OAuth2Constants;
@@ -139,6 +126,16 @@ import de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfresc
 import de.acosix.alfresco.keycloak.share.util.HttpClientBuilder;
 import de.acosix.alfresco.keycloak.share.util.NameValueMapAdapter;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 /**
  * Keycloak-based authentication filter class which can act as a standalone filter or a facade to the default {@link SSOAuthenticationFilter
@@ -534,19 +531,19 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             private HttpClient client;
             @Override
             public HttpClient call() throws Exception {
-                if (client == null) {
+                if (this.client == null) {
                     synchronized (this) {
-                        if (client == null) {
-                            client = new HttpClientBuilder()
-                                    .routePlanner(createForcedRoutePlanner(adapterConfiguration))
+                        if (this.client == null) {
+                            this.client = new HttpClientBuilder()
+                                    .routePlanner(KeycloakAuthenticationFilter.this.createForcedRoutePlanner(adapterConfiguration))
                                     .build(adapterConfiguration);
                         }
                     }
                 }
-                return client;
+                return this.client;
             }
         });
-        
+
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -1773,7 +1770,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             throw new IllegalStateException(
                     "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
         }
-        
+
         final List<Header> headers = new LinkedList<>();
 
         ClientCredentialsProviderUtils.setClientCredentials(
@@ -1782,8 +1779,10 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         		new NameValueMapAdapter<>(headers, BasicHeader.class),
         		new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
 
-        for (Header header : headers)
+        for (final Header header : headers)
+        {
             post.addHeader(header);
+        }
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
 
@@ -1901,45 +1900,42 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
     }
 
-    protected HttpRoute createRoute(ExtendedAdapterConfig adapterConfig, HttpHost routeHost) throws UnknownHostException, MalformedURLException {
-        boolean secure = "https".equalsIgnoreCase(routeHost.getSchemeName());
+    protected HttpRoute createRoute(final ExtendedAdapterConfig adapterConfig, final HttpHost routeHost) throws UnknownHostException, MalformedURLException {
+        final boolean secure = "https".equalsIgnoreCase(routeHost.getSchemeName());
 
         if (adapterConfig.getProxyUrl() != null) {
             // useful in parsing the URL for just what is needed for HttpHost
-            URL proxyUrl = new URL(adapterConfig.getProxyUrl());
-            HttpHost proxyHost = new HttpHost(proxyUrl.getHost(), proxyUrl.getPort(), proxyUrl.getProtocol());
+            final URL proxyUrl = new URL(adapterConfig.getProxyUrl());
+            final HttpHost proxyHost = new HttpHost(proxyUrl.getHost(), proxyUrl.getPort(), proxyUrl.getProtocol());
             return new HttpRoute(routeHost, InetAddress.getLocalHost(), proxyHost, secure);
         } else {
             return new HttpRoute(routeHost, InetAddress.getLocalHost(), secure);
         }
     }
 
-    protected HttpRoute createForcedRoute(ExtendedAdapterConfig adapterConfig) throws UnknownHostException, MalformedURLException {
+    protected HttpRoute createForcedRoute(final ExtendedAdapterConfig adapterConfig) throws UnknownHostException, MalformedURLException {
         // useful in parsing the URL for just what is needed for HttpHost
-        URL forcedRouteUrl = new URL(adapterConfig.getForcedRouteUrl());
-        HttpHost forcedRouteHost = new HttpHost(forcedRouteUrl.getHost(), forcedRouteUrl.getPort(), forcedRouteUrl.getProtocol());
+        final URL forcedRouteUrl = new URL(adapterConfig.getForcedRouteUrl());
+        final HttpHost forcedRouteHost = new HttpHost(forcedRouteUrl.getHost(), forcedRouteUrl.getPort(), forcedRouteUrl.getProtocol());
         return this.createRoute(adapterConfig, forcedRouteHost);
     }
 
-    protected HttpRoutePlanner createForcedRoutePlanner(ExtendedAdapterConfig adapterConfig) throws MalformedURLException {
-        URL authServerUrl = new URL(adapterConfig.getAuthServerUrl());
+    protected HttpRoutePlanner createForcedRoutePlanner(final ExtendedAdapterConfig adapterConfig) throws MalformedURLException {
+        final URL authServerUrl = new URL(adapterConfig.getAuthServerUrl());
         final HttpHost authServerHost = new HttpHost(authServerUrl.getHost(), authServerUrl.getPort(), authServerUrl.getProtocol());
 
-        return new HttpRoutePlanner() {
-            @Override
-            public HttpRoute determineRoute(HttpHost target, HttpRequest request, HttpContext context) throws HttpException {
-                try {
-                    if (authServerHost.equals(target)) {
-                        LOGGER.trace("Rerouting to forced route");
-                        HttpRoute route = createForcedRoute(adapterConfig);
-                        LOGGER.trace("Rerouting to forced route: {}", route);
-                        return route;
-                    } else {
-                        return createRoute(adapterConfig, target);
-                    }
-                } catch (IOException ie) {
-                    throw new HttpException(ie.getMessage(), ie);
+        return (target, request, context) -> {
+            try {
+                if (authServerHost.equals(target)) {
+                    LOGGER.trace("Rerouting to forced route");
+                    final HttpRoute route = KeycloakAuthenticationFilter.this.createForcedRoute(adapterConfig);
+                    LOGGER.trace("Rerouting to forced route: {}", route);
+                    return route;
+                } else {
+                    return KeycloakAuthenticationFilter.this.createRoute(adapterConfig, target);
                 }
+            } catch (final IOException ie) {
+                throw new HttpException(ie.getMessage(), ie);
             }
         };
     }
