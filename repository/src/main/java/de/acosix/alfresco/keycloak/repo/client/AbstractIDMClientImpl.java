@@ -15,6 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.client;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.MappingIterator;
 
@@ -52,6 +53,12 @@ public abstract class AbstractIDMClientImpl implements InitializingBean
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AbstractIDMClientImpl.class);
+
+    static
+    {
+        // newer Keycloak versions may introduce properties the libraries included in this project do not support
+        JsonSerialization.mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+    }
 
     protected KeycloakDeployment deployment;
 

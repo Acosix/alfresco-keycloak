@@ -102,7 +102,7 @@ public class KeycloakAdapterConfigElementReader implements ConfigElementReader
                         {
                             throw new IllegalStateException("Value " + textTrim + " has more than one character");
                         }
-                        configElement.setFieldValue(subElementName, new Character(textTrim.charAt(0)));
+                        configElement.setFieldValue(subElementName, Character.valueOf(textTrim.charAt(0)));
                     }
                     else if (String.class.equals(valueType))
                     {
