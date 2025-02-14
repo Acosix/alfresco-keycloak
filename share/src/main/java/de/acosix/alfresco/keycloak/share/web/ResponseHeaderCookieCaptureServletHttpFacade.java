@@ -23,7 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequest;
 
 import org.alfresco.util.Pair;
 import org.keycloak.adapters.servlet.ServletHttpFacade;
@@ -39,7 +39,7 @@ import org.keycloak.adapters.spi.HttpFacade;
 public class ResponseHeaderCookieCaptureServletHttpFacade extends ServletHttpFacade
 {
 
-    protected final Map<Pair<String, String>, javax.servlet.http.Cookie> cookies = new HashMap<>();
+    protected final Map<Pair<String, String>, jakarta.servlet.http.Cookie> cookies = new HashMap<>();
 
     protected final Map<String, List<String>> headers = new HashMap<>();
 
@@ -67,7 +67,7 @@ public class ResponseHeaderCookieCaptureServletHttpFacade extends ServletHttpFac
     /**
      * @return the cookies
      */
-    public List<javax.servlet.http.Cookie> getCookies()
+    public List<jakarta.servlet.http.Cookie> getCookies()
     {
         return new ArrayList<>(this.cookies.values());
     }
@@ -137,7 +137,7 @@ public class ResponseHeaderCookieCaptureServletHttpFacade extends ServletHttpFac
         public void setCookie(final String name, final String value, final String path, final String domain, final int maxAge,
                 final boolean secure, final boolean httpOnly)
         {
-            final javax.servlet.http.Cookie cookie = new javax.servlet.http.Cookie(name, value);
+            final jakarta.servlet.http.Cookie cookie = new jakarta.servlet.http.Cookie(name, value);
             cookie.setPath(path);
             if (domain != null)
             {
