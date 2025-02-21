@@ -144,6 +144,13 @@
             <plugins>
 
                 <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <configuration>
+                        <classifier>sources-unshaded</classifier>
+                    </configuration>
+                </plugin>
+
+                <plugin>
                     <artifactId>maven-shade-plugin</artifactId>
                     <executions>
                         <execution>

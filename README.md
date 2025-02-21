@@ -59,13 +59,13 @@ This project uses a Maven build using templates from the [Acosix Alfresco Maven]
 A simple build of this project can be executed by running:
 
 ```
-mvn install
+mvn clean install
 ```
 
 Since version 1.2.0-rc1 this project includes a sub-module that - when executed - starts up a local Alfresco + Keycloak stack for running user interaction tests and (in the future) integration tests. This sub-module is optionally enabled by using a Maven profile. A build starting such a stack without installing or publishing artifacts can be executed by running:
 
 ```
-mvn integration-test -P dockerTest
+mvn clean integration-test -P dockerTest
 ```
 
 or just running
@@ -74,7 +74,7 @@ or just running
 mvn integration-test
 ```
 
-in the `docker-test` sub-module directly. The Alfresco + Keycloak stack started that way will remain up and running until the `clean` target is executed on the project while the `tareget/classes/docker-compose.yaml` file is present in the sub-module. A run with the `clean` target will only stop the stack - in order to remove all persistent data and the images built for the stack, the `clean` target must be run with the additional profile `purge`.
+in the `docker-test` sub-module directly (this requires the artifacts of the other modules to be present in the local Maven repository, e.g. after a previous `mvn clean install`). The Alfresco + Keycloak stack started that way will remain up and running until the `clean` target is executed on the project while the `tareget/classes/docker-compose.yaml` file is present in the sub-module. A run with the `clean` target will only stop the stack - in order to remove all persistent data and the images built for the stack, the `clean` target must be run with the additional profile `purge`.
 
 Running the Alfresco + Keycloak stack with the `docker-test` sub-module requires the presence of a Toolchain that provides a path where the `docker` binary can be found. The locally installed Docker versions also needs to support Docker Compose v2.
 

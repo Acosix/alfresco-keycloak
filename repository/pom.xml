@@ -138,6 +138,13 @@
             <plugins>
 
                 <plugin>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <configuration>
+                        <classifier>sources-unshaded</classifier>
+                    </configuration>
+                </plugin>
+
+                <plugin>
                     <artifactId>maven-shade-plugin</artifactId>
                     <executions>
                         <execution>
@@ -176,6 +183,20 @@
                                         <addHeader>false</addHeader>
                                     </transformer>
                                 </transformers>
+                                <filters>
+                                    <filter>
+                                        <artifact>org.keycloak:*</artifact>
+                                        <excludes>
+                                            <exclude>META-INF/MANIFEST.MF</exclude>
+                                        </excludes>
+                                    </filter>
+                                    <filter>
+                                        <artifact>org.jboss.logging:*</artifact>
+                                        <excludes>
+                                            <exclude>META-INF/MANIFEST.MF</exclude>
+                                        </excludes>
+                                    </filter>
+                                </filters>
                             </configuration>
                         </execution>
                     </executions>
