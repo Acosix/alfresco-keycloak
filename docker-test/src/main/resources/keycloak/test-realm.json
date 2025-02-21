@@ -1162,6 +1162,10 @@
     "groups": [
         {
             "name": "Test A",
+            "attributes": {
+                "alfrescoGroupName": ["Group_A"],
+                "alfrescoGroupDisplayName": ["Group with custom mapped attributes"]
+            },
             "subGroups": [
                 {
                     "name": "Test AA"

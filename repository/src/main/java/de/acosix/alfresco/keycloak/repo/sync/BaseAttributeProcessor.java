@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Predicate;
 
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.namespace.NamespaceService;
@@ -36,6 +37,8 @@ public abstract class BaseAttributeProcessor implements InitializingBean
 {
 
     protected NamespaceService namespaceService;
+
+    protected boolean mapBlankString;
 
     protected boolean mapNull;
 
@@ -55,14 +58,13 @@ public abstract class BaseAttributeProcessor implements InitializingBean
         if (this.attributes != null && !this.attributes.isEmpty())
         {
             this.attributePropertyQNameMappings = new HashMap<>();
-            this.attributes
-                    .forEach((k, v) -> this.attributePropertyQNameMappings.put(k, QName.resolveToQName(this.namespaceService, v)));
+            this.attributes.forEach((k, v) -> this.attributePropertyQNameMappings.put(k, QName.resolveToQName(this.namespaceService, v)));
         }
     }
 
     /**
      * @param namespaceService
-     *            the namespaceService to set
+     *     the namespaceService to set
      */
     public void setNamespaceService(final NamespaceService namespaceService)
     {
@@ -71,7 +73,7 @@ public abstract class BaseAttributeProcessor implements InitializingBean
 
     /**
      * @param attributes
-     *            the attributes to set
+     *     the attributes to set
      */
     public void setAttributes(final Map<String, String> attributes)
     {
@@ -79,8 +81,17 @@ public abstract class BaseAttributeProcessor implements InitializingBean
     }
 
     /**
+     * @param mapBlankString
+     *     the mapBlankString to set
+     */
+    public void setMapBlankString(final boolean mapBlankString)
+    {
+        this.mapBlankString = mapBlankString;
+    }
+
+    /**
      * @param mapNull
-     *            the mapNull to set
+     *     the mapNull to set
      */
     public void setMapNull(final boolean mapNull)
     {
@@ -95,9 +106,9 @@ public abstract class BaseAttributeProcessor implements InitializingBean
      * property, again leaving that kind of processing to the Alfresco default functionality of integrity checking.
      *
      * @param attributes
-     *            the list of attributes
+     *     the list of attributes
      * @param nodeDescription
-     *            the node description to enhance
+     *     the node description to enhance
      */
     protected void map(final Map<String, List<String>> attributes, final NodeDescription nodeDescription)
     {
@@ -112,11 +123,11 @@ public abstract class BaseAttributeProcessor implements InitializingBean
      * Maps an individual attribute to the correlating node property of the node description.
      *
      * @param attribute
-     *            the name of the attribute to map
+     *     the name of the attribute to map
      * @param attributes
-     *            the list of attributes
+     *     the list of attributes
      * @param nodeDescription
-     *            the node description to enhance
+     *     the node description to enhance
      */
     protected void mapAttribute(final String attribute, final Map<String, List<String>> attributes, final NodeDescription nodeDescription)
     {
@@ -128,12 +139,30 @@ public abstract class BaseAttributeProcessor implements InitializingBean
             if (values.size() == 1)
             {
                 value = values.get(0);
+                if (!this.mapBlankString && ((String) value).isBlank())
+                {
+                    value = null;
+                }
             }
             else
             {
-                value = new ArrayList<>(values);
+                if (!this.mapBlankString)
+                {
+                    value = new ArrayList<>(values.stream().filter(Predicate.not(String::isBlank)).toList());
+                    if (((List<?>) value).isEmpty())
+                    {
+                        value = null;
+                    }
+                }
+                else
+                {
+                    value = new ArrayList<>(values);
+                }
             }
-            nodeDescription.getProperties().put(propertyQName, value);
+            if (value != null || this.mapNull)
+            {
+                nodeDescription.getProperties().put(propertyQName, value);
+            }
         }
         else if (this.mapNull)
         {

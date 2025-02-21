@@ -30,10 +30,12 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
 
+import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.repo.security.sync.UserRegistry;
+import org.alfresco.service.cmr.repository.datatype.DefaultTypeConverter;
 import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.PropertyCheck;
@@ -263,22 +265,28 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
      */
     protected NodeDescription mapGroup(final GroupRepresentation group)
     {
-        // need to use group ID as unique name as Keycloak group name itself is non-unique
-
         final NodeDescription groupD = new NodeDescription(group.getId());
         final PropertyMap groupProperties = groupD.getProperties();
 
-        final String groupName = AuthorityType.GROUP.getPrefixString() + group.getId();
-        LOGGER.debug("Mapping group {}", groupName);
+        LOGGER.debug("Mapping group {} ({})", group.getName(), group.getId());
 
         this.groupProcessors.forEach(processor -> processor.mapGroup(group, groupD));
 
-        // always wins against user-defined mappings for cm:authorityName
+        // make sure groupName is mapped + prefixed
+        String groupName = DefaultTypeConverter.INSTANCE.convert(String.class, groupProperties.get(ContentModel.PROP_AUTHORITY_NAME));
+        if (groupName == null || groupName.isBlank())
+        {
+            // should never happen due to DefaultGroupProcessor
+            groupName = group.getId();
+        }
+        if (AuthorityType.getAuthorityType(groupName) != AuthorityType.GROUP)
+        {
+            groupName = AuthorityType.GROUP.getPrefixString() + group.getId();
+        }
         groupProperties.put(ContentModel.PROP_AUTHORITY_NAME, groupName);
 
         final Set<String> childAssociations = groupD.getChildAssociations();
-        group.getSubGroups().stream()
-                .filter(subGroup -> !this.groupFilters.stream().anyMatch(filter -> !filter.shouldIncludeGroup(subGroup)))
+        group.getSubGroups().stream().filter(subGroup -> isGroupAllowed(this.groupFilters, subGroup))
                 .forEach(subGroup -> childAssociations.add(AuthorityType.GROUP.getPrefixString() + subGroup.getId()));
 
         int offset = 0;
@@ -286,8 +294,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         while (processedMembers > 0)
         {
             processedMembers = this.identitiesClient.processMembers(group.getId(), offset, this.personLoadBatchSize, user -> {
-                final boolean skipSync = this.userFilters.stream().anyMatch(filter -> !filter.shouldIncludeUser(user));
-                if (!skipSync)
+                if (KeycloakUserRegistry.isUserAllowed(this.userFilters, user))
                 {
                     childAssociations.add(user.getUsername());
                 }
@@ -483,8 +490,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
             // TODO Evaluate other iteration approaches, e.g. crawling from a configured root group
             // How to count totals in advance though?
             return KeycloakUserRegistry.this.identitiesClient.processUsers(offset, batchSize, user -> {
-                final boolean skipSync = KeycloakUserRegistry.this.userFilters.stream().anyMatch(filter -> !filter.shouldIncludeUser(user));
-                if (!skipSync)
+                if (KeycloakUserRegistry.isUserAllowed(KeycloakUserRegistry.this.userFilters, user))
                 {
                     authorityProcessor.accept(user);
                 }
@@ -530,16 +536,17 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         {
             // TODO Evaluate other iteration approaches, e.g. crawling from a configured root group
             // How to count totals in advance though?
-            return KeycloakUserRegistry.this.identitiesClient.processGroups(offset, batchSize, group -> {
-                this.processGroupsRecursively(group, filteredHandler, authorityProcessor);
+            final AtomicInteger count = new AtomicInteger();
+            final int loadedDirect = KeycloakUserRegistry.this.identitiesClient.processGroups(offset, batchSize, group -> {
+                this.processGroupsRecursively(group, filteredHandler, authorityProcessor, count);
             });
+            return count.addAndGet(loadedDirect);
         }
 
         protected void processGroupsRecursively(final GroupRepresentation group, final IntConsumer filteredHandler,
-                final Consumer<GroupRepresentation> authorityProcessor)
+                final Consumer<GroupRepresentation> authorityProcessor, final AtomicInteger count)
         {
-            final boolean skipSync = KeycloakUserRegistry.this.groupFilters.stream().anyMatch(filter -> !filter.shouldIncludeGroup(group));
-            if (!skipSync)
+            if (KeycloakUserRegistry.isGroupAllowed(KeycloakUserRegistry.this.groupFilters, group))
             {
                 authorityProcessor.accept(group);
             }
@@ -548,9 +555,58 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
                 filteredHandler.accept(1);
             }
 
-            // any filtering applied above does not apply here as any sub-group will be individually checked for filtering by recursive
-            // processing
-            group.getSubGroups().forEach(subGroup -> this.processGroupsRecursively(subGroup, filteredHandler, authorityProcessor));
+            final List<GroupRepresentation> subGroups = group.getSubGroups();
+            if (subGroups == null || subGroups.isEmpty())
+            {
+                try
+                {
+                    final int loadedChilren = KeycloakUserRegistry.this.identitiesClient.processSubGroups(group.getId(), subGroup -> {
+                        this.processGroupsRecursively(subGroup, filteredHandler, authorityProcessor, count);
+                    });
+                    count.addAndGet(loadedChilren);
+                }
+                catch (final AlfrescoRuntimeException ex)
+                {
+                    LOGGER.warn("Failed to load sub groups for {} ({})", group.getName(), group.getId(), ex);
+                }
+            }
+            else
+            {
+                subGroups.stream().forEach(subGroup -> this.processGroupsRecursively(subGroup, filteredHandler, authorityProcessor, count));
+                count.addAndGet(subGroups.size());
+            }
         }
+    }
+
+    private static boolean isUserAllowed(final Collection<UserFilter> filters, final UserRepresentation user)
+    {
+        final FilterResult res = filters.stream().map(f -> f.shouldIncludeUser(user)).reduce(KeycloakUserRegistry::combine)
+                .orElse(FilterResult.ABSTAIN);
+        return res == FilterResult.ALLOW;
+    }
+
+    private static boolean isGroupAllowed(final Collection<GroupFilter> filters, final GroupRepresentation group)
+    {
+        final FilterResult res = filters.stream().map(f -> f.shouldIncludeGroup(group)).reduce(KeycloakUserRegistry::combine)
+                .orElse(FilterResult.ABSTAIN);
+        return res == FilterResult.ALLOW;
+    }
+
+    private static FilterResult combine(final FilterResult a, final FilterResult b)
+    {
+        FilterResult res;
+        if (a == FilterResult.DENY || b == FilterResult.DENY)
+        {
+            res = FilterResult.DENY;
+        }
+        else if (a == FilterResult.ABSTAIN)
+        {
+            res = b;
+        }
+        else
+        {
+            res = a;
+        }
+        return res;
     }
 }

@@ -202,8 +202,24 @@
         <property name="identitiesClient" ref="identitiesClient" />
     </bean>
 
+    <bean id="userFilter.notContainedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
+        <property name="identitiesClient" ref="identitiesClient" />
+        <property name="matchDenies" value="true" />
+    </bean>
+
+    <bean id="groupFilter.pathMatch" class="${project.artifactId}.sync.GroupPathFilter" />
+
+    <bean id="groupFilter.notPathMatch" class="${project.artifactId}.sync.GroupPathFilter">
+        <property name="matchDenies" value="true" />
+    </bean>
+
     <bean id="groupFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
         <property name="identitiesClient" ref="identitiesClient" />
+    </bean>
+
+    <bean id="groupFilter.notContainedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
+        <property name="identitiesClient" ref="identitiesClient" />
+        <property name="matchDenies" value="true" />
     </bean>
 
     <bean id="authorityMapper.simpleAttributes" abstract="true">
