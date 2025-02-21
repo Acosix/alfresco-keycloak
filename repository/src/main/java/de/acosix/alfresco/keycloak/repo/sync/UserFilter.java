@@ -31,8 +31,8 @@ public interface UserFilter
      * Determines whether this user should be included in the synchronisation.
      *
      * @param user
-     *            the user to consider
-     * @return {@code true} if the user should be synchronised, {@code false} if not
+     *     the user to consider
+     * @return the filter result
      */
-    boolean shouldIncludeUser(UserRepresentation user);
+    FilterResult shouldIncludeUser(UserRepresentation user);
 }

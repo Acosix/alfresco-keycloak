@@ -31,8 +31,8 @@ public interface GroupFilter
      * Determines whether this group should be included in the synchronisation.
      *
      * @param group
-     *            the group to consider
-     * @return {@code true} if the group should be synchronised, {@code false} if not
+     *     the group to consider
+     * @return the filter result
      */
-    boolean shouldIncludeGroup(GroupRepresentation group);
+    FilterResult shouldIncludeGroup(GroupRepresentation group);
 }

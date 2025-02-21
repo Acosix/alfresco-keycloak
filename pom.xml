@@ -88,7 +88,7 @@
         <!-- parent is including 6.11 erroneously -->
         <surf.version>9.0</surf.version>
 
-        <acosix.utility.version>1.4.3</acosix.utility.version>
+        <acosix.utility.version>1.4.6-SNAPSHOT</acosix.utility.version>
         <ootbee.support-tools.version>1.2.2.0</ootbee.support-tools.version>
 
         <keycloak.docker.image>keycloak/keycloak</keycloak.docker.image>
