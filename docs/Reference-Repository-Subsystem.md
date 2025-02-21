@@ -10,7 +10,7 @@ in the `alfresco-global.properties` file, or via other supported means of config
 
 Since it rarely (if ever) makes sense to have more than one instance of the Keycloak authentication subsystem in the chain, all configuration properties specific for this type of subsystem can be set in the `alfresco-global.properties` file, though it is generally recommended (Acosix recommendation, not necessarily documented as such by Alfresco) to use the proper subsystem configuration paths. For a subsystem instance listed in the authentication chain as `keycloak1:keycloak`, custom configuration properties files can be placed in the configuration path `alfresco/extension/subsystems/Authentication/keycloak/keycloak1/*.properties`.
 
-The supported configuration properites can be grouped in the following categories:
+The supported configuration properties can be grouped in the following categories:
 
 - [Keycloak adapter configuration](./Reference-Adapter.md)
 - Authentication properties
