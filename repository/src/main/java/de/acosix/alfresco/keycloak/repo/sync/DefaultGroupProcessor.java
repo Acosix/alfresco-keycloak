@@ -17,7 +17,7 @@ package de.acosix.alfresco.keycloak.repo.sync;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
-import org.alfresco.service.cmr.security.AuthorityType;
+import org.alfresco.service.cmr.repository.datatype.DefaultTypeConverter;
 import org.alfresco.util.PropertyMap;
 import org.keycloak.representations.idm.GroupRepresentation;
 
@@ -51,8 +51,19 @@ public class DefaultGroupProcessor implements GroupProcessor
         {
             final PropertyMap properties = groupNode.getProperties();
 
-            properties.put(ContentModel.PROP_AUTHORITY_NAME, AuthorityType.GROUP.getPrefixString() + group.getId());
-            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
+            final String existingName = DefaultTypeConverter.INSTANCE.convert(String.class,
+                    properties.get(ContentModel.PROP_AUTHORITY_NAME));
+            final String existingDisplayName = DefaultTypeConverter.INSTANCE.convert(String.class,
+                    properties.get(ContentModel.PROP_AUTHORITY_DISPLAY_NAME));
+
+            if (existingName == null || existingName.isBlank())
+            {
+                properties.put(ContentModel.PROP_AUTHORITY_NAME, group.getId());
+            }
+            if (existingDisplayName == null || existingDisplayName.isBlank())
+            {
+                properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
+            }
         }
     }
 }

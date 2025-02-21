@@ -158,7 +158,8 @@ public class IdentitiesClientImpl extends AbstractIDMClientImpl implements Ident
         ParameterCheck.mandatory("groupProcessor", groupProcessor);
 
         final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl()).path("/admin/realms/{realm}/groups")
-                .queryParam("first", offset).queryParam("max", groupBatchSize).build(this.deployment.getRealm());
+                .queryParam("first", offset).queryParam("max", groupBatchSize).queryParam("briefRepresentation", false)
+                .build(this.deployment.getRealm());
 
         if (offset < 0)
         {
@@ -168,6 +169,23 @@ public class IdentitiesClientImpl extends AbstractIDMClientImpl implements Ident
         {
             throw new IllegalArgumentException("groupBatchSize must be a positive integer");
         }
+
+        return this.processEntityBatch(uri, groupProcessor, GroupRepresentation.class);
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int processSubGroups(final String groupId, final Consumer<GroupRepresentation> groupProcessor)
+    {
+        ParameterCheck.mandatoryString("groupId", groupId);
+        ParameterCheck.mandatory("groupProcessor", groupProcessor);
+
+        final URI uri = KeycloakUriBuilder.fromUri(this.deployment.getAuthServerBaseUrl())
+                .path("/admin/realms/{realm}/groups/{groupId}/children").substitutePathParam("groupId", groupId, false)
+                .queryParam("briefRepresentation", false).build(this.deployment.getRealm());
 
         return this.processEntityBatch(uri, groupProcessor, GroupRepresentation.class);
     }

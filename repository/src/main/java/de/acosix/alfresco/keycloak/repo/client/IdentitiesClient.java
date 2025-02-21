@@ -93,6 +93,17 @@ public interface IdentitiesClient
     int processGroups(int offset, int groupBatchSize, Consumer<GroupRepresentation> groupProcessor);
 
     /**
+     * Loads and processes a sub-groups from Keycloak using an externally specified processor.
+     *
+     * @param groupId
+     *     the ID of the parent group
+     * @param groupProcessor
+     *     the processor handling the loaded groups
+     * @return the number of processed groups
+     */
+    int processSubGroups(String groupId, Consumer<GroupRepresentation> groupProcessor);
+
+    /**
      * Loads and processes a batch of users / members of a group from Keycloak using an externally specified processor.
      *
      * @param groupId
