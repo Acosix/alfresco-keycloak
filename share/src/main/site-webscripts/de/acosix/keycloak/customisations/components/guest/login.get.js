@@ -44,7 +44,17 @@ function main()
                     parameterModel.value = decodeURIComponent(parameter.substring(parameter.indexOf('=') + 1));
                     if (parameterModel.value.indexOf('?') !== -1)
                     {
-                        parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('?'));
+                        if (parameterModel.value.indexOf('?alfRedirectUrl=') !== -1)
+                        {
+                            if (parameterModel.value.indexOf('&') !== -1)
+                            {
+                                parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('&'));
+                            }
+                        }
+                        else
+                        {
+                            parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('?'));
+                        }
                     }
                 }
                 else
