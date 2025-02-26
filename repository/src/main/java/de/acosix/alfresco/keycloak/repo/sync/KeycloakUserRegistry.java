@@ -24,18 +24,19 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.IntConsumer;
+import java.util.function.Predicate;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.management.subsystems.ActivateableBean;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.repo.security.sync.UserRegistry;
-import org.alfresco.service.cmr.repository.datatype.DefaultTypeConverter;
 import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.service.namespace.QName;
 import org.alfresco.util.PropertyCheck;
@@ -198,7 +199,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         if (this.active)
         {
             personNames = new UserCollection<>(this.personLoadBatchSize, this.identitiesClient.countUsers(),
-                    UserRepresentation::getUsername);
+                    this::determineEffectiveUserName);
         }
 
         return personNames;
@@ -215,7 +216,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         if (this.active)
         {
             groupNames = new GroupCollection<>(this.groupLoadBatchSize, this.identitiesClient.countGroups(),
-                    group -> AuthorityType.GROUP.getPrefixString() + group.getId());
+                    this::determineEffectiveGroupName);
         }
 
         return groupNames;
@@ -244,14 +245,17 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
     protected NodeDescription mapUser(final UserRepresentation user)
     {
         final NodeDescription person = new NodeDescription(user.getId());
+
+        LOGGER.debug("Mapping user {} ({})", user.getUsername(), user.getId());
+
+        // reverse ordered so higher priority mappers may override properties of lower priority ones
+        this.userProcessors.stream().sorted((o1, o2) -> -o1.compareTo(o2)).forEach(processor -> processor.mapUser(user, person));
+
         final PropertyMap personProperties = person.getProperties();
+        final String userName = this.determineEffectiveUserName(user);
+        personProperties.put(ContentModel.PROP_USERNAME, userName);
 
-        LOGGER.debug("Mapping user {}", user.getUsername());
-
-        this.userProcessors.forEach(processor -> processor.mapUser(user, person));
-
-        // always wins against user-defined mappings for cm:userName
-        personProperties.put(ContentModel.PROP_USERNAME, user.getUsername());
+        LOGGER.debug("Mapped user {} ({}) as {}", user.getUsername(), user.getId(), userName);
 
         return person;
     }
@@ -266,28 +270,20 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
     protected NodeDescription mapGroup(final GroupRepresentation group)
     {
         final NodeDescription groupD = new NodeDescription(group.getId());
-        final PropertyMap groupProperties = groupD.getProperties();
 
         LOGGER.debug("Mapping group {} ({})", group.getName(), group.getId());
 
         this.groupProcessors.forEach(processor -> processor.mapGroup(group, groupD));
 
-        // make sure groupName is mapped + prefixed
-        String groupName = DefaultTypeConverter.INSTANCE.convert(String.class, groupProperties.get(ContentModel.PROP_AUTHORITY_NAME));
-        if (groupName == null || groupName.isBlank())
-        {
-            // should never happen due to DefaultGroupProcessor
-            groupName = group.getId();
-        }
-        if (AuthorityType.getAuthorityType(groupName) != AuthorityType.GROUP)
-        {
-            groupName = AuthorityType.GROUP.getPrefixString() + group.getId();
-        }
+        final PropertyMap groupProperties = groupD.getProperties();
+        final String groupName = this.determineEffectiveGroupName(group);
         groupProperties.put(ContentModel.PROP_AUTHORITY_NAME, groupName);
+
+        LOGGER.debug("Mapped group {} ({}) as {}", group.getName(), group.getId(), groupName);
 
         final Set<String> childAssociations = groupD.getChildAssociations();
         group.getSubGroups().stream().filter(subGroup -> isGroupAllowed(this.groupFilters, subGroup))
-                .forEach(subGroup -> childAssociations.add(AuthorityType.GROUP.getPrefixString() + subGroup.getId()));
+                .forEach(subGroup -> childAssociations.add(this.determineEffectiveGroupName(subGroup)));
 
         int offset = 0;
         int processedMembers = 1;
@@ -296,7 +292,7 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
             processedMembers = this.identitiesClient.processMembers(group.getId(), offset, this.personLoadBatchSize, user -> {
                 if (KeycloakUserRegistry.isUserAllowed(this.userFilters, user))
                 {
-                    childAssociations.add(user.getUsername());
+                    childAssociations.add(this.determineEffectiveUserName(user));
                 }
             });
             offset += processedMembers;
@@ -305,6 +301,40 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
         LOGGER.debug("Mapped members of group {}: {}", groupName, childAssociations);
 
         return groupD;
+    }
+
+    private String determineEffectiveUserName(final UserRepresentation user)
+    {
+        final List<String> userNameCandidates = this.userProcessors.stream().sorted().map(gp -> gp.mapUserName(user))
+                .filter(Predicate.not(Optional::isEmpty)).map(Optional::get).toList();
+
+        String userName = userNameCandidates.isEmpty() ? null : userNameCandidates.get(0);
+        if (userName == null || userName.isBlank())
+        {
+            // should never happen due to DefaultPersonProcessor
+            userName = user.getUsername();
+        }
+        return userName;
+    }
+
+    private String determineEffectiveGroupName(final GroupRepresentation group)
+    {
+        final List<String> groupNameCandidates = this.groupProcessors.stream().sorted().map(gp -> gp.mapGroupName(group))
+                .filter(Predicate.not(Optional::isEmpty)).map(Optional::get).toList();
+
+        String groupName = groupNameCandidates.isEmpty() ? null : groupNameCandidates.get(0);
+        if (groupName == null || groupName.isBlank())
+        {
+            // should never happen due to DefaultGroupProcessor
+            groupName = group.getId();
+        }
+
+        // make sure groupName is prefixed
+        if (AuthorityType.getAuthorityType(groupName) != AuthorityType.GROUP)
+        {
+            groupName = AuthorityType.GROUP.getPrefixString() + groupName;
+        }
+        return groupName;
     }
 
     /**
@@ -558,9 +588,12 @@ public class KeycloakUserRegistry implements UserRegistry, InitializingBean, Act
             final List<GroupRepresentation> subGroups = group.getSubGroups();
             if (subGroups == null || subGroups.isEmpty())
             {
+                final List<GroupRepresentation> newSubGroups = new ArrayList<>();
+                group.setSubGroups(newSubGroups);
                 try
                 {
                     final int loadedChilren = KeycloakUserRegistry.this.identitiesClient.processSubGroups(group.getId(), subGroup -> {
+                        newSubGroups.add(subGroup);
                         this.processGroupsRecursively(subGroup, filteredHandler, authorityProcessor, count);
                     });
                     count.addAndGet(loadedChilren);
