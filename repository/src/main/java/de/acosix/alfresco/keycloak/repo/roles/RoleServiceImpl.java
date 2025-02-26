@@ -466,7 +466,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
     {
         List<Role> roles;
 
-        if (this.enabled && !this.processResourceRoles)
+        if (this.enabled && this.processResourceRoles)
         {
             final RoleNameFilter roleNameFilter = this.resourceRoleNameFilter.get(resourceName);
             final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resourceName);

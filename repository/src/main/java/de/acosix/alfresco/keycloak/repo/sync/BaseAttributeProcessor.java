@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.alfresco.repo.security.sync.NodeDescription;
@@ -37,6 +38,8 @@ public abstract class BaseAttributeProcessor implements InitializingBean
 {
 
     protected NamespaceService namespaceService;
+
+    protected int priority = 50;
 
     protected boolean mapBlankString;
 
@@ -69,6 +72,15 @@ public abstract class BaseAttributeProcessor implements InitializingBean
     public void setNamespaceService(final NamespaceService namespaceService)
     {
         this.namespaceService = namespaceService;
+    }
+
+    /**
+     * @param priority
+     *     the priority to set
+     */
+    public void setPriority(final int priority)
+    {
+        this.priority = priority;
     }
 
     /**
@@ -168,5 +180,35 @@ public abstract class BaseAttributeProcessor implements InitializingBean
         {
             nodeDescription.getProperties().put(propertyQName, null);
         }
+    }
+
+    protected Optional<String> mapAuthorityName(final QName authorityNameProperty, final Map<String, List<String>> attributes)
+    {
+        final Optional<String> result;
+        final String attribute = this.attributePropertyQNameMappings.entrySet().stream()
+                .filter((final Map.Entry<String, QName> e) -> authorityNameProperty.equals(e.getValue())).findFirst().map(Map.Entry::getKey)
+                .orElse(null);
+        if (attribute != null)
+        {
+            List<String> attrValues = attributes.get(attribute);
+            if (attrValues != null && !this.mapBlankString)
+            {
+                attrValues = attrValues.stream().filter(Predicate.not(String::isBlank)).toList();
+            }
+
+            if (attrValues != null && attrValues.size() == 1)
+            {
+                result = Optional.of(attrValues.get(0));
+            }
+            else
+            {
+                result = Optional.empty();
+            }
+        }
+        else
+        {
+            result = Optional.empty();
+        }
+        return result;
     }
 }

@@ -15,9 +15,10 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
+import java.util.Optional;
+
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
-import org.alfresco.service.cmr.repository.datatype.DefaultTypeConverter;
 import org.alfresco.util.PropertyMap;
 import org.keycloak.representations.idm.GroupRepresentation;
 
@@ -45,25 +46,33 @@ public class DefaultGroupProcessor implements GroupProcessor
      * {@inheritDoc}
      */
     @Override
+    public int getPriority()
+    {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public void mapGroup(final GroupRepresentation group, final NodeDescription groupNode)
     {
         if (this.enabled)
         {
             final PropertyMap properties = groupNode.getProperties();
-
-            final String existingName = DefaultTypeConverter.INSTANCE.convert(String.class,
-                    properties.get(ContentModel.PROP_AUTHORITY_NAME));
-            final String existingDisplayName = DefaultTypeConverter.INSTANCE.convert(String.class,
-                    properties.get(ContentModel.PROP_AUTHORITY_DISPLAY_NAME));
-
-            if (existingName == null || existingName.isBlank())
-            {
-                properties.put(ContentModel.PROP_AUTHORITY_NAME, group.getId());
-            }
-            if (existingDisplayName == null || existingDisplayName.isBlank())
-            {
-                properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
-            }
+            properties.put(ContentModel.PROP_AUTHORITY_NAME, group.getId());
+            properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
         }
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapGroupName(final GroupRepresentation group)
+    {
+        return this.enabled ? Optional.of(group.getId()) : Optional.empty();
     }
 }

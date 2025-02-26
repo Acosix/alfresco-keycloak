@@ -15,6 +15,9 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
+import java.util.Optional;
+
+import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.keycloak.representations.idm.GroupRepresentation;
 
@@ -23,19 +26,28 @@ import org.keycloak.representations.idm.GroupRepresentation;
  *
  * @author Axel Faust
  */
-public class SimpleGroupAttributeProcessor extends BaseAttributeProcessor
-        implements GroupProcessor
+public class SimpleGroupAttributeProcessor extends BaseAttributeProcessor implements GroupProcessor
 {
 
     protected boolean enabled;
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
         this.enabled = enabled;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int getPriority()
+    {
+        return this.priority;
     }
 
     /**
@@ -51,4 +63,13 @@ public class SimpleGroupAttributeProcessor extends BaseAttributeProcessor
         }
     }
 
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapGroupName(final GroupRepresentation group)
+    {
+        return this.enabled ? this.mapAuthorityName(ContentModel.PROP_AUTHORITY_NAME, group.getAttributes()) : Optional.empty();
+    }
 }
