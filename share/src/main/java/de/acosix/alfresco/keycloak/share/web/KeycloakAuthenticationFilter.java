@@ -529,30 +529,34 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final ExtendedAdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
         this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
 
-        // we need to recreate the HttpClient to configure the forced route URL
-        this.keycloakDeployment.setClient(new Callable<HttpClient>()
+        final String forcedRouteUrl = adapterConfiguration.getForcedRouteUrl();
+        if (forcedRouteUrl != null && !forcedRouteUrl.isBlank())
         {
-
-            private HttpClient client;
-
-            @Override
-            public HttpClient call() throws Exception
+            // we need to recreate the HttpClient to configure the forced route URL
+            this.keycloakDeployment.setClient(new Callable<HttpClient>()
             {
-                if (this.client == null)
+
+                private HttpClient client;
+
+                @Override
+                public HttpClient call() throws Exception
                 {
-                    synchronized (this)
+                    if (this.client == null)
                     {
-                        if (this.client == null)
+                        synchronized (this)
                         {
-                            this.client = new HttpClientBuilder()
-                                    .routePlanner(KeycloakAuthenticationFilter.this.createForcedRoutePlanner(adapterConfiguration))
-                                    .build(adapterConfiguration);
+                            if (this.client == null)
+                            {
+                                this.client = new HttpClientBuilder()
+                                        .routePlanner(KeycloakAuthenticationFilter.this.createForcedRoutePlanner(adapterConfiguration))
+                                        .build(adapterConfiguration);
+                            }
                         }
                     }
+                    return this.client;
                 }
-                return this.client;
-            }
-        });
+            });
+        }
 
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
@@ -1973,7 +1977,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             {
                 if (authServerHost.equals(target))
                 {
-                    LOGGER.trace("Rerouting to forced route");
                     final HttpRoute route = KeycloakAuthenticationFilter.this.createForcedRoute(adapterConfig);
                     LOGGER.trace("Rerouting to forced route: {}", route);
                     return route;
