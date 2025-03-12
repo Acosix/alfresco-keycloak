@@ -18,5 +18,5 @@ RUN java -jar ${alfresco.share.docker.mmt.path}/alfresco-mmt*.jar install \
 
 RUN sed -i 's/<secure>true<\/secure>/<secure>false<\/secure>/' ${alfresco.share.docker.tomcat.path}/conf/web.xml
 
-COPY share.xml ${alfresco.repo.docker.tomcat.path}/conf/Catalina/localhost/share.xml
-COPY share-config-custom.xml ${alfresco.repo.docker.tomcat.path}/shared/classes/alfresco/web-extension/share-config-custom.xml
+COPY share.xml ${alfresco.share.docker.tomcat.path}/conf/Catalina/localhost/share.xml
+COPY share-config-custom.xml ${alfresco.share.docker.tomcat.path}/shared/classes/alfresco/web-extension/share-config-custom.xml
