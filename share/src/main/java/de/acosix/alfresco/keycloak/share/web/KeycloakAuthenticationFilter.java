@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,17 +37,6 @@ import java.util.function.BiFunction;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletContext;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.ServletRequest;
-import jakarta.servlet.ServletResponse;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletRequestWrapper;
-import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.HttpSession;
 
 import org.alfresco.error.AlfrescoRuntimeException;
 import org.alfresco.util.EqualsHelper;
@@ -139,6 +128,16 @@ import de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareSlingshotAlfresc
 import de.acosix.alfresco.keycloak.share.util.HttpClientBuilder;
 import de.acosix.alfresco.keycloak.share.util.NameValueMapAdapter;
 import de.acosix.alfresco.keycloak.share.util.RefreshableAccessTokenHolder;
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletContext;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.ServletRequest;
+import jakarta.servlet.ServletResponse;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletRequestWrapper;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 /**
  * Keycloak-based authentication filter class which can act as a standalone filter or a facade to the default {@link SSOAuthenticationFilter
@@ -181,6 +180,9 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
     private static final String LOGIN_PAGE_TYPE_PARAMETER_VALUE = "login";
 
     private static final String PAGE_TYPE_PARAMETER_NAME = "pt";
+
+    // used on some login page redirects - see PageView ALF_REDIRECT_URL constant
+    private static final String ALF_REDIRECT_URL = "alfRedirectUrl";
 
     private static final String LOGIN_PATH_INFORMATION = "/dologin";
 
@@ -529,24 +531,34 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         final ExtendedAdapterConfig adapterConfiguration = keycloakAdapterConfig.buildAdapterConfiguration();
         this.keycloakDeployment = KeycloakDeploymentBuilder.build(adapterConfiguration);
 
-        // we need to recreate the HttpClient to configure the forced route URL
-        this.keycloakDeployment.setClient(new Callable<HttpClient>() {
-            private HttpClient client;
-            @Override
-            public HttpClient call() throws Exception {
-                if (client == null) {
-                    synchronized (this) {
-                        if (client == null) {
-                            client = new HttpClientBuilder()
-                                    .routePlanner(createForcedRoutePlanner(adapterConfiguration))
-                                    .build(adapterConfiguration);
+        final String forcedRouteUrl = adapterConfiguration.getForcedRouteUrl();
+        if (forcedRouteUrl != null && !forcedRouteUrl.isBlank())
+        {
+            // we need to recreate the HttpClient to configure the forced route URL
+            this.keycloakDeployment.setClient(new Callable<HttpClient>()
+            {
+                private HttpClient client;
+
+                @Override
+                public HttpClient call() throws Exception
+                {
+                    if (this.client == null)
+                    {
+                        synchronized (this)
+                        {
+                            if (this.client == null)
+                            {
+                                this.client = new HttpClientBuilder()
+                                        .routePlanner(KeycloakAuthenticationFilter.this.createForcedRoutePlanner(adapterConfiguration))
+                                        .build(adapterConfiguration);
+                            }
                         }
                     }
+                    return this.client;
                 }
-                return client;
-            }
-        });
-        
+            });
+        }
+
         this.deploymentContext = new AdapterDeploymentContext(this.keycloakDeployment);
     }
 
@@ -848,11 +860,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             return cookie;
         }).forEach(res::addCookie);
 
-        final List<String> redirects = captureFacade.getHeaders().get("Location");
-        if (redirects != null && !redirects.isEmpty())
-        {
-            LOGIN_REDIRECT_URL.set(redirects.get(0));
-        }
+        setRedirectFromCaptureFacade(req, captureFacade);
     }
 
     /**
@@ -884,6 +892,14 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             {
                 // no query parameters, so no code= and no error=
                 // this will cause login redirect challenge to be generated
+
+                // but use the alfRedirectUrl if present in request
+                final String alfRedirectUrl = req.getParameter(ALF_REDIRECT_URL);
+                if (alfRedirectUrl != null && !alfRedirectUrl.isBlank())
+                {
+                    LOGGER.debug("Found {} query parameter with value {}", ALF_REDIRECT_URL, alfRedirectUrl);
+                    return ALF_REDIRECT_URL + "=" + alfRedirectUrl;
+                }
                 return "";
             }
 
@@ -918,10 +934,17 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             return cookie;
         }).forEach(res::addCookie);
 
+        setRedirectFromCaptureFacade(req, captureFacade);
+    }
+
+    private static void setRedirectFromCaptureFacade(final HttpServletRequest req,
+            final ResponseHeaderCookieCaptureServletHttpFacade captureFacade)
+    {
         final List<String> redirects = captureFacade.getHeaders().get("Location");
         if (redirects != null && !redirects.isEmpty())
         {
-            LOGIN_REDIRECT_URL.set(redirects.get(0));
+            final String redirectPath = redirects.get(0);
+            LOGIN_REDIRECT_URL.set(redirectPath);
         }
     }
 
@@ -964,9 +987,19 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             this.handleAlfrescoResourceAccessToken(session);
         }
 
+        final String alfRedirectUrl = req.getParameter(ALF_REDIRECT_URL);
+
         if (facade.isEnded())
         {
             LOGGER.debug("Authenticator already handled response");
+
+            if (alfRedirectUrl != null && !alfRedirectUrl.isBlank())
+            {
+                LOGGER.debug("Found {} query parameter - redirecting to {}", ALF_REDIRECT_URL, alfRedirectUrl);
+                // this may override any redirect set by the authenticator
+                res.sendRedirect(alfRedirectUrl);
+            }
+
             return;
         }
 
@@ -1025,9 +1058,19 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         session.setAttribute(UserFactory.SESSION_ATTRIBUTE_EXTERNAL_AUTH, Boolean.TRUE);
         session.setAttribute(UserFactory.SESSION_ATTRIBUTE_KEY_USER_ID, userId);
 
+        final String alfRedirectUrl = req.getParameter(ALF_REDIRECT_URL);
+
         if (facade.isEnded())
         {
             LOGGER.debug("Authenticator already handled response");
+
+            if (alfRedirectUrl != null && !alfRedirectUrl.isBlank())
+            {
+                LOGGER.debug("Found {} query parameter - redirecting to {}", ALF_REDIRECT_URL, alfRedirectUrl);
+                // this may override any redirect set by the authenticator
+                res.sendRedirect(alfRedirectUrl);
+            }
+
             return;
         }
 
@@ -1044,8 +1087,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
                 return;
             }
         }
-
-        this.completeRequestContext(req);
 
         LOGGER.debug("Continueing with filter chain processing");
         this.continueFilterChain(context, req, res, chain);
@@ -1776,14 +1817,14 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         
         final List<Header> headers = new LinkedList<>();
 
-        ClientCredentialsProviderUtils.setClientCredentials(
-        		this.keycloakDeployment.getAdapterConfig(),
-        		this.keycloakDeployment.getClientAuthenticator(),
-        		new NameValueMapAdapter<>(headers, BasicHeader.class),
-        		new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
+        ClientCredentialsProviderUtils.setClientCredentials(this.keycloakDeployment.getAdapterConfig(),
+                this.keycloakDeployment.getClientAuthenticator(), new NameValueMapAdapter<>(headers, BasicHeader.class),
+                new NameValueMapAdapter<>(formParams, BasicNameValuePair.class));
 
-        for (Header header : headers)
+        for (final Header header : headers)
+        {
             post.addHeader(header);
+        }
         final UrlEncodedFormEntity form = new UrlEncodedFormEntity(formParams, "UTF-8");
         post.setEntity(form);
 
@@ -1901,45 +1942,54 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
         params.setParameter(ConnRoutePNames.FORCED_ROUTE, route);
     }
 
-    protected HttpRoute createRoute(ExtendedAdapterConfig adapterConfig, HttpHost routeHost) throws UnknownHostException, MalformedURLException {
-        boolean secure = "https".equalsIgnoreCase(routeHost.getSchemeName());
+    protected HttpRoute createRoute(final ExtendedAdapterConfig adapterConfig, final HttpHost routeHost)
+            throws UnknownHostException, MalformedURLException
+    {
+        final boolean secure = "https".equalsIgnoreCase(routeHost.getSchemeName());
 
-        if (adapterConfig.getProxyUrl() != null) {
+        if (adapterConfig.getProxyUrl() != null)
+        {
             // useful in parsing the URL for just what is needed for HttpHost
-            URL proxyUrl = new URL(adapterConfig.getProxyUrl());
-            HttpHost proxyHost = new HttpHost(proxyUrl.getHost(), proxyUrl.getPort(), proxyUrl.getProtocol());
+            final URL proxyUrl = new URL(adapterConfig.getProxyUrl());
+            final HttpHost proxyHost = new HttpHost(proxyUrl.getHost(), proxyUrl.getPort(), proxyUrl.getProtocol());
             return new HttpRoute(routeHost, InetAddress.getLocalHost(), proxyHost, secure);
-        } else {
+        }
+        else
+        {
             return new HttpRoute(routeHost, InetAddress.getLocalHost(), secure);
         }
     }
 
-    protected HttpRoute createForcedRoute(ExtendedAdapterConfig adapterConfig) throws UnknownHostException, MalformedURLException {
+    protected HttpRoute createForcedRoute(final ExtendedAdapterConfig adapterConfig) throws UnknownHostException, MalformedURLException
+    {
         // useful in parsing the URL for just what is needed for HttpHost
-        URL forcedRouteUrl = new URL(adapterConfig.getForcedRouteUrl());
-        HttpHost forcedRouteHost = new HttpHost(forcedRouteUrl.getHost(), forcedRouteUrl.getPort(), forcedRouteUrl.getProtocol());
+        final URL forcedRouteUrl = new URL(adapterConfig.getForcedRouteUrl());
+        final HttpHost forcedRouteHost = new HttpHost(forcedRouteUrl.getHost(), forcedRouteUrl.getPort(), forcedRouteUrl.getProtocol());
         return this.createRoute(adapterConfig, forcedRouteHost);
     }
 
-    protected HttpRoutePlanner createForcedRoutePlanner(ExtendedAdapterConfig adapterConfig) throws MalformedURLException {
-        URL authServerUrl = new URL(adapterConfig.getAuthServerUrl());
+    protected HttpRoutePlanner createForcedRoutePlanner(final ExtendedAdapterConfig adapterConfig) throws MalformedURLException
+    {
+        final URL authServerUrl = new URL(adapterConfig.getAuthServerUrl());
         final HttpHost authServerHost = new HttpHost(authServerUrl.getHost(), authServerUrl.getPort(), authServerUrl.getProtocol());
 
-        return new HttpRoutePlanner() {
-            @Override
-            public HttpRoute determineRoute(HttpHost target, HttpRequest request, HttpContext context) throws HttpException {
-                try {
-                    if (authServerHost.equals(target)) {
-                        LOGGER.trace("Rerouting to forced route");
-                        HttpRoute route = createForcedRoute(adapterConfig);
-                        LOGGER.trace("Rerouting to forced route: {}", route);
-                        return route;
-                    } else {
-                        return createRoute(adapterConfig, target);
-                    }
-                } catch (IOException ie) {
-                    throw new HttpException(ie.getMessage(), ie);
+        return (target, request, context) -> {
+            try
+            {
+                if (authServerHost.equals(target))
+                {
+                    final HttpRoute route = KeycloakAuthenticationFilter.this.createForcedRoute(adapterConfig);
+                    LOGGER.trace("Rerouting to forced route: {}", route);
+                    return route;
                 }
+                else
+                {
+                    return KeycloakAuthenticationFilter.this.createRoute(adapterConfig, target);
+                }
+            }
+            catch (final IOException ie)
+            {
+                throw new HttpException(ie.getMessage(), ie);
             }
         };
     }

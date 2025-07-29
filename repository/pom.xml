@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 - 2021 Acosix GmbH
+ Copyright 2019 - 2025 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -21,16 +21,11 @@
     <parent>
         <groupId>de.acosix.alfresco.keycloak</groupId>
         <artifactId>de.acosix.alfresco.keycloak.parent</artifactId>
-        <version>1.2.0-rc2-SNAPSHOT</version>
+        <version>1.2.0-rc1</version>
     </parent>
 
     <artifactId>de.acosix.alfresco.keycloak.repo</artifactId>
     <name>Acosix Alfresco Keycloak - Repository Module</name>
-
-    <properties>
-        <docker.tests.keycloakPort>8380</docker.tests.keycloakPort>
-        <docker.tests.skipSearchImage>false</docker.tests.skipSearchImage>
-    </properties>
 
     <dependencies>
 
@@ -74,7 +69,7 @@
                 <!-- use default from Alfresco Repository -->
                 <exclusion>
                     <groupId>org.apache.httpcomponents</groupId>
-                    <artifactId>httpclient</artifactId>
+                    <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -103,7 +98,7 @@
                 <!-- use default from Alfresco Repository -->
                 <exclusion>
                     <groupId>org.apache.httpcomponents</groupId>
-                    <artifactId>httpcomponents-client</artifactId>
+                    <artifactId>*</artifactId>
                 </exclusion>
             </exclusions>
         </dependency>
@@ -136,96 +131,16 @@
             </exclusions>
         </dependency>
 
-        <dependency>
-            <groupId>de.acosix.alfresco.utility</groupId>
-            <artifactId>de.acosix.alfresco.utility.core.repo</artifactId>
-            <classifier>installable</classifier>
-        </dependency>
-
-        <dependency>
-            <groupId>de.acosix.alfresco.utility</groupId>
-            <artifactId>de.acosix.alfresco.utility.repo</artifactId>
-            <classifier>installable</classifier>
-        </dependency>
-
-        <dependency>
-            <groupId>org.orderofthebee.support-tools</groupId>
-            <artifactId>support-tools-repo</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.apache.activemq</groupId>
-            <artifactId>activemq-broker</artifactId>
-        </dependency>
-
     </dependencies>
 
     <build>
         <pluginManagement>
             <plugins>
-            
-                <!-- some image customisations -->
-                <!-- Maven + docker-maven-plugin result in somewhat weird inheritance handling -->
-                <!-- (relying on positional order of images for overrides) -->
+
                 <plugin>
-                    <groupId>io.fabric8</groupId>
-                    <artifactId>docker-maven-plugin</artifactId>
+                    <artifactId>maven-source-plugin</artifactId>
                     <configuration>
-                        <images>
-                            <image>
-                                <!-- no change to postgres image (first image in parent POM) -->
-                            </image>
-                            <image>
-                                <!-- customise repository image (second image in parent POM) -->
-                                <run>
-                                    <!-- add log directory mount to just the contentstore -->
-                                    <!-- (cannot be done in parent POM due to hard requirement on specific project structure -->
-                                    <!-- for tests to easily check contentstore files, we also mount alf_data locally, not in a volume -->
-                                    <volumes>
-                                        <bind>
-                                            <volume>${moduleId}-repository-test-contentstore:/usr/local/tomcat/alf_data</volume>
-                                            <volume>${project.build.directory}/docker/repository-logs:/usr/local/tomcat/logs</volume>
-                                        </bind>
-                                    </volumes>
-                                    <dependsOn>
-                                        <container>postgres</container>
-                                        <container>keycloak</container>
-                                    </dependsOn>
-                                </run>
-                            </image>
-                            <image>
-                                <!-- no change to Share image (we don't use it) -->
-                            </image>
-                            <image>
-                                <!-- no change to Search image -->
-                            </image>
-                            <image>
-                                <name>jboss/keycloak:${keycloak.version}</name>
-                                <alias>keycloak</alias>
-                                <run>
-                                    <hostname>keycloak</hostname>
-                                    <env>
-                                        <KEYCLOAK_USER>admin</KEYCLOAK_USER>
-                                        <KEYCLOAK_PASSWORD>admin</KEYCLOAK_PASSWORD>
-                                        <KEYCLOAK_IMPORT>/tmp/test-realm.json</KEYCLOAK_IMPORT>
-                                        <DB_VENDOR>h2</DB_VENDOR>
-                                    </env>
-                                    <ports>
-                                        <port>${docker.tests.keycloakPort}:8080</port>
-                                    </ports>
-                                    <network>
-                                        <mode>custom</mode>
-                                        <name>${moduleId}-test</name>
-                                        <alias>keycloak</alias>
-                                    </network>
-                                    <volumes>
-                                        <bind>
-                                            <volume>${project.build.directory}/docker/test-realm.json:/tmp/test-realm.json</volume>
-                                        </bind>
-                                    </volumes>
-                                </run>
-                            </image>
-                        </images>
+                        <classifier>sources-unshaded</classifier>
                     </configuration>
                 </plugin>
 
@@ -239,7 +154,7 @@
                             </goals>
                             <configuration>
 								<!-- generating using `sources` classifier, which conflicts with the main `sources` -->
-                                <createSourcesJar>false</createSourcesJar>
+                                <createSourcesJar>true</createSourcesJar>
                                 <shadeSourcesContent>true</shadeSourcesContent>
                                 <keepDependenciesWithProvidedScope>false</keepDependenciesWithProvidedScope>
                                 <artifactSet>
@@ -268,6 +183,20 @@
                                         <addHeader>false</addHeader>
                                     </transformer>
                                 </transformers>
+                                <filters>
+                                    <filter>
+                                        <artifact>org.keycloak:*</artifact>
+                                        <excludes>
+                                            <exclude>META-INF/MANIFEST.MF</exclude>
+                                        </excludes>
+                                    </filter>
+                                    <filter>
+                                        <artifact>org.jboss.logging:*</artifact>
+                                        <excludes>
+                                            <exclude>META-INF/MANIFEST.MF</exclude>
+                                        </excludes>
+                                    </filter>
+                                </filters>
                             </configuration>
                         </execution>
                     </executions>
@@ -319,11 +248,6 @@
         </pluginManagement>
 
         <plugins>
-
-            <plugin>
-                <groupId>io.fabric8</groupId>
-                <artifactId>docker-maven-plugin</artifactId>
-            </plugin>
 
             <plugin>
                 <artifactId>maven-shade-plugin</artifactId>

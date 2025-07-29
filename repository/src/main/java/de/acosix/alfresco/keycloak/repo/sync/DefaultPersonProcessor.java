@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ package de.acosix.alfresco.keycloak.repo.sync;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Optional;
 
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
@@ -47,7 +48,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
@@ -56,7 +57,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapNull
-     *            the mapNull to set
+     *     the mapNull to set
      */
     public void setMapNull(final boolean mapNull)
     {
@@ -65,7 +66,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapFirstName
-     *            the mapFirstName to set
+     *     the mapFirstName to set
      */
     public void setMapFirstName(final boolean mapFirstName)
     {
@@ -74,7 +75,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapLastName
-     *            the mapLastName to set
+     *     the mapLastName to set
      */
     public void setMapLastName(final boolean mapLastName)
     {
@@ -83,7 +84,7 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapEmail
-     *            the mapEmail to set
+     *     the mapEmail to set
      */
     public void setMapEmail(final boolean mapEmail)
     {
@@ -92,11 +93,21 @@ public class DefaultPersonProcessor implements UserProcessor
 
     /**
      * @param mapEnabledState
-     *            the mapEnabledState to set
+     *     the mapEnabledState to set
      */
     public void setMapEnabledState(final boolean mapEnabledState)
     {
         this.mapEnabledState = mapEnabledState;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int getPriority()
+    {
+        return Integer.MAX_VALUE;
     }
 
     /**
@@ -110,6 +121,7 @@ public class DefaultPersonProcessor implements UserProcessor
         {
             final PropertyMap properties = person.getProperties();
 
+            properties.put(ContentModel.PROP_USERNAME, user.getUsername());
             if ((this.mapNull || user.getFirstName() != null) && this.mapFirstName)
             {
                 properties.put(ContentModel.PROP_FIRSTNAME, user.getFirstName());
@@ -140,6 +152,7 @@ public class DefaultPersonProcessor implements UserProcessor
         if (this.enabled)
         {
             mappedProperties = new ArrayList<>(4);
+            mappedProperties.add(ContentModel.PROP_USERNAME);
             if (this.mapFirstName)
             {
                 mappedProperties.add(ContentModel.PROP_FIRSTNAME);
@@ -163,5 +176,15 @@ public class DefaultPersonProcessor implements UserProcessor
         }
 
         return mappedProperties;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapUserName(final UserRepresentation user)
+    {
+        return this.enabled ? Optional.of(user.getUsername()) : Optional.empty();
     }
 }

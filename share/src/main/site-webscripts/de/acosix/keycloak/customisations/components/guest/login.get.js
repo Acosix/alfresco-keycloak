@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,7 +44,17 @@ function main()
                     parameterModel.value = decodeURIComponent(parameter.substring(parameter.indexOf('=') + 1));
                     if (parameterModel.value.indexOf('?') !== -1)
                     {
-                        parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('?'));
+                        if (parameterModel.value.indexOf('?alfRedirectUrl=') !== -1)
+                        {
+                            if (parameterModel.value.indexOf('&') !== -1)
+                            {
+                                parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('&'));
+                            }
+                        }
+                        else
+                        {
+                            parameterModel.value = parameterModel.value.substring(0, parameterModel.value.indexOf('?'));
+                        }
                     }
                 }
                 else

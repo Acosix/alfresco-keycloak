@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8' ?>
 <!-- 
- Copyright 2019 - 2021 Acosix GmbH
+ Copyright 2019 - 2025 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -32,6 +32,15 @@
                 <description>Authenticator with flexible support for ticket, cookie, remote user, and access token</description>
                 <class>de.acosix.alfresco.keycloak.share.remote.AccessTokenAwareAlfrescoAuthenticator</class>
             </authenticator>
+
+            <endpoint>
+                <id>alfresco-noauth</id>
+                <name>Alfresco - unauthenticated access</name>
+                <description>Access to Alfresco Repository WebScripts that do not require authentication</description>
+                <connector-id>alfresco</connector-id>
+                <endpoint-url>http://repository:8080/alfresco/s</endpoint-url>
+                <identity>none</identity>
+            </endpoint>
 
             <endpoint>
                 <id>alfresco</id>
@@ -71,12 +80,12 @@
         <keycloak-auth-config>
             <enhance-login-form>true</enhance-login-form>
             <enable-sso-filter>true</enable-sso-filter>
-            <force-keycloak-sso>false</force-keycloak-sso>
+            <force-keycloak-sso>true</force-keycloak-sso>
             <perform-token-exchange>true</perform-token-exchange>
         </keycloak-auth-config>
         <keycloak-adapter-config>
             <forced-route-url>http://keycloak:8080</forced-route-url>
-            <auth-server-url>http://localhost:${docker.tests.keycloakPort}/auth</auth-server-url>
+            <auth-server-url>http://localhost:${keycloak.docker.port}</auth-server-url>
             <realm>test</realm>
             <resource>alfresco-share</resource>
             <ssl-required>none</ssl-required>
@@ -88,4 +97,61 @@
         </keycloak-adapter-config>
     </config>
 
+    <!-- Must be specified (typically provided as part of packaging) -->
+   <config evaluator="string-compare" condition="DocumentLibrary" replace="true">
+      <tree>
+         <evaluate-child-folders>false</evaluate-child-folders>
+         <maximum-folder-count>1000</maximum-folder-count>
+         <timeout>7000</timeout>
+      </tree>
+      <aspects>
+         <!-- Aspects that a user can see -->
+         <visible>
+            <aspect name="cm:generalclassifiable" />
+            <aspect name="cm:complianceable" />
+            <aspect name="cm:dublincore" />
+            <aspect name="cm:effectivity" />
+            <aspect name="cm:summarizable" />
+            <aspect name="cm:versionable" />
+            <aspect name="cm:templatable" />
+            <aspect name="cm:emailed" />
+            <aspect name="emailserver:aliasable" />
+            <aspect name="cm:taggable" />
+            <aspect name="app:inlineeditable" />
+            <aspect name="cm:geographic" />
+            <aspect name="exif:exif" />
+            <aspect name="audio:audio" />
+            <aspect name="cm:indexControl" />
+            <aspect name="dp:restrictable" />
+            <aspect name="smf:customConfigSmartFolder" />
+            <aspect name="smf:systemConfigSmartFolder" />
+         </visible>
+         <addable>
+         </addable>
+         <removeable>
+         </removeable>
+      </aspects>
+      <types>
+         <type name="cm:content">
+            <subtype name="smf:smartFolderTemplate" />
+         </type>
+          <type name="cm:folder">
+         </type>
+         <type name="trx:transferTarget">
+            <subtype name="trx:fileTransferTarget" />
+         </type>
+      </types>
+      <repository-url>http://repository:8080/alfresco</repository-url>
+      <google-docs>
+         <enabled>false</enabled>
+         <creatable-types>
+            <creatable type="doc">application/vnd.openxmlformats-officedocument.wordprocessingml.document</creatable>
+            <creatable type="xls">application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</creatable>
+            <creatable type="ppt">application/vnd.ms-powerpoint</creatable>
+         </creatable-types>
+      </google-docs>
+      <file-upload>
+         <adobe-flash-enabled>false</adobe-flash-enabled>
+      </file-upload>
+   </config>
 </alfresco-config>

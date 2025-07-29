@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -288,7 +288,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAda
                 {
                     throw new IllegalStateException("Value " + trimmedValue + " has more than one character");
                 }
-                effectiveValue = new Character(trimmedValue.charAt(0));
+                effectiveValue = Character.valueOf(trimmedValue.charAt(0));
             }
             else if (String.class.equals(valueType))
             {

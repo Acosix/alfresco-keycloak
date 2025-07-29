@@ -157,6 +157,7 @@ public class AccessTokenClient
                 formParams.add(new BasicNameValuePair(OAuth2Constants.GRANT_TYPE, OAuth2Constants.TOKEN_EXCHANGE_GRANT_TYPE));
                 formParams.add(new BasicNameValuePair(OAuth2Constants.AUDIENCE, client));
                 formParams.add(new BasicNameValuePair(OAuth2Constants.REQUESTED_TOKEN_TYPE, OAuth2Constants.REFRESH_TOKEN_TYPE));
+                formParams.add(new BasicNameValuePair(OAuth2Constants.SUBJECT_TOKEN, accessToken));
                 this.processScopes(scopes, formParams);
             });
             final VerifiedTokens verifiedTokens = this.verifyAccessTokenResponse(response, client);

@@ -1,6 +1,6 @@
 <?xml version='1.0' encoding='UTF-8'?>
 <!-- 
- Copyright 2019 - 2021 Acosix GmbH
+ Copyright 2019 - 2025 Acosix GmbH
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -229,8 +229,24 @@
         <property name="identitiesClient" ref="identitiesClient" />
     </bean>
 
+    <bean id="userFilter.notContainedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
+        <property name="identitiesClient" ref="identitiesClient" />
+        <property name="matchDenies" value="true" />
+    </bean>
+
+    <bean id="groupFilter.pathMatch" class="${project.artifactId}.sync.GroupPathFilter" />
+
+    <bean id="groupFilter.notPathMatch" class="${project.artifactId}.sync.GroupPathFilter">
+        <property name="matchDenies" value="true" />
+    </bean>
+
     <bean id="groupFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
         <property name="identitiesClient" ref="identitiesClient" />
+    </bean>
+
+    <bean id="groupFilter.notContainedInGroup" class="${project.artifactId}.sync.GroupContainmentGroupFilter">
+        <property name="identitiesClient" ref="identitiesClient" />
+        <property name="matchDenies" value="true" />
     </bean>
 
     <bean id="authorityMapper.simpleAttributes" abstract="true">

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -466,7 +466,7 @@ public class RoleServiceImpl implements RoleService, InitializingBean
     {
         List<Role> roles;
 
-        if (this.enabled && !this.processResourceRoles)
+        if (this.enabled && this.processResourceRoles)
         {
             final RoleNameFilter roleNameFilter = this.resourceRoleNameFilter.get(resourceName);
             final RoleNameMapper roleNameMapper = this.resourceRoleNameMapper.get(resourceName);

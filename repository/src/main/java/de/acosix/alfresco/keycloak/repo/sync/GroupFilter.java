@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,8 @@ public interface GroupFilter
      * Determines whether this group should be included in the synchronisation.
      *
      * @param group
-     *            the group to consider
-     * @return {@code true} if the group should be synchronised, {@code false} if not
+     *     the group to consider
+     * @return the filter result
      */
-    boolean shouldIncludeGroup(GroupRepresentation group);
+    FilterResult shouldIncludeGroup(GroupRepresentation group);
 }
