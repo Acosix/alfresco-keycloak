@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,8 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
 
     protected List<String> idResolvedGroupPaths;
 
+    protected boolean matchDenies;
+
     protected boolean requireAll = false;
 
     protected boolean allowTransitive = true;
@@ -75,7 +77,7 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
 
     /**
      * @param groupPaths
-     *            the groupPaths to set as a comma-separated string of paths
+     *     the groupPaths to set as a comma-separated string of paths
      */
     public void setGroupPaths(final String groupPaths)
     {
@@ -84,7 +86,7 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
 
     /**
      * @param groupIds
-     *            the groupIds to set as a comma-separated string of paths
+     *     the groupIds to set as a comma-separated string of paths
      */
     public void setGroupIds(final String groupIds)
     {
@@ -92,8 +94,17 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
     }
 
     /**
+     * @param matchDenies
+     *     the matchDenies to set
+     */
+    public void setMatchDenies(final boolean matchDenies)
+    {
+        this.matchDenies = matchDenies;
+    }
+
+    /**
      * @param requireAll
-     *            the requireAll to set
+     *     the requireAll to set
      */
     public void setRequireAll(final boolean requireAll)
     {
@@ -102,7 +113,7 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
 
     /**
      * @param allowTransitive
-     *            the allowTransitive to set
+     *     the allowTransitive to set
      */
     public void setAllowTransitive(final boolean allowTransitive)
     {
@@ -111,7 +122,7 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
 
     /**
      * @param groupLoadBatchSize
-     *            the groupLoadBatchSize to set
+     *     the groupLoadBatchSize to set
      */
     public void setGroupLoadBatchSize(final int groupLoadBatchSize)
     {
@@ -122,9 +133,9 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
      * Checks whether parent groups match the configured restrictions.
      *
      * @param parentGroupIds
-     *            the list of parent group IDs for an authority
+     *     the list of parent group IDs for an authority
      * @param parentGroupPaths
-     *            the list of parent group paths for an authority
+     *     the list of parent group paths for an authority
      * @return {@code true} if the parent groups match the configured restrictions, {@code false} otherwise
      */
     protected boolean parentGroupsMatch(final List<String> parentGroupIds, final List<String> parentGroupPaths)
@@ -177,9 +188,9 @@ public abstract class BaseGroupContainmentFilter implements InitializingBean
      * Checks whether a specific group path matches any entry in a list of paths using either exact match or prefix matching.
      *
      * @param groupPath
-     *            the path to check
+     *     the path to check
      * @param groupPaths
-     *            the paths to check against
+     *     the paths to check against
      * @return {@code true} if the path matches one of the paths in exact match or prefix matching mode
      */
     protected boolean groupPathOrTransitiveContained(final String groupPath, final Collection<String> groupPaths)

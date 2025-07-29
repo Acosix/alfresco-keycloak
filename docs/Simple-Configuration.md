@@ -37,6 +37,7 @@ Two clients must be created for the Alfresco Repository and Share. The following
 - "Mappers" => "Add Builtin" `groups` (on the client for Alfresco Repository, if mapping of authorities from Keycloak groups should be supported)
 - "Service Account Roles" (on the client for Alfresco Repository, if active user / group synchronisation *or* the service/web script to expose roles for use e.g. in permission mangement should be supported)
     - Assign client roles `query-groups`, `query-users`, `view-users` and `view-clients` on the client `realm-management`
+- When using Keycloak 23 or newer, you must turn on "Exclude Issuer From Authentication Response" under "Advanced" => "OpenID Connect Compatibility Modes" for both clients
     
 If the RFC 8693 OAuth 2.0 Token Exchange functionality is to be used for delegation of user authentication from Share to the Repository, an authorisation policy needs to be defined on the pre-existing client `realm-management`. The necessary elements can all be configured in the "Authorization" tab in the configuration of that client. The following elements must be created (if not pre-existing) and/or associated with one another.
 

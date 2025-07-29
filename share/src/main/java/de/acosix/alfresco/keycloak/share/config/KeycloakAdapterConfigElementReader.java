@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ public class KeycloakAdapterConfigElementReader implements ConfigElementReader
                         {
                             throw new IllegalStateException("Value " + textTrim + " has more than one character");
                         }
-                        configElement.setFieldValue(subElementName, new Character(textTrim.charAt(0)));
+                        configElement.setFieldValue(subElementName, Character.valueOf(textTrim.charAt(0)));
                     }
                     else if (String.class.equals(valueType))
                     {

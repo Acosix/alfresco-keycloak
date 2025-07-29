@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,11 +23,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jakarta.servlet.http.HttpServletRequest;
-
 import org.alfresco.util.Pair;
-import org.keycloak.adapters.servlet.ServletHttpFacade;
+import org.keycloak.adapters.servlet.OIDCServletHttpFacade;
 import org.keycloak.adapters.spi.HttpFacade;
+
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * This {@link HttpFacade} wraps servlet requests and responses in such a way that any response headers / cookies being set by Keycloak
@@ -36,7 +36,7 @@ import org.keycloak.adapters.spi.HttpFacade;
  *
  * @author Axel Faust
  */
-public class ResponseHeaderCookieCaptureServletHttpFacade extends ServletHttpFacade
+public class ResponseHeaderCookieCaptureServletHttpFacade extends OIDCServletHttpFacade
 {
 
     protected final Map<Pair<String, String>, jakarta.servlet.http.Cookie> cookies = new HashMap<>();

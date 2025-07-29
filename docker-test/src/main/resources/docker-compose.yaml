@@ -1,0 +1,131 @@
+version: '3.8'
+
+services:
+
+    kc-pg:
+        image: postgres:${postgres.docker.version}
+        hostname: kc-pg
+        restart: unless-stopped
+        command: postgres -c max_connections=50
+        volumes:
+          - kc_psql:/srv/postgresql
+        environment:
+            PGDATA: /srv/postgresql/data
+            POSTGRES_DB: keycloak
+            POSTGRES_USER: keycloak
+            POSTGRES_PASSWORD: keycloak
+
+    alf-pg:
+        image: postgres:${postgres.docker.version}
+        hostname: alf-pg
+        restart: unless-stopped
+        command: postgres -c max_connections=300
+        volumes:
+          - alf_psql:/srv/postgresql
+        environment:
+          PGDATA: /srv/postgresql/data
+          POSTGRES_DB: alfresco
+          POSTGRES_USER: alfresco
+          POSTGRES_PASSWORD: alfresco
+
+    keycloak:
+        build:
+            context: ./keycloak
+            dockerfile: Dockerfile
+        hostname: keycloak
+        restart: unless-stopped
+        depends_on:
+          - kc-pg
+        command: start-dev --import-realm
+        ports:
+          - ${keycloak.docker.port}:8080
+        environment:
+            KC_BOOTSTRAP_ADMIN_USERNAME: admin
+            KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+            KC_DB: postgres
+            KC_DB_URL: "jdbc:postgresql://kc-pg:5432/keycloak"
+            KC_DB_USERNAME: keycloak
+            KC_DB_PASSWORD: "keycloak"
+            KC_DB_POOL_INITIAL_SIZE: 5
+            KC_DB_POOL_MAX_SIZE: 50
+            KC_HOSTNAME: http://localhost:${keycloak.docker.port}
+            KC_HOSTNAME_BACKCHANNEL_DYNAMIC: true
+# in newer Keycloak versions, token-exchange does not work without admin-fine-grained-authz
+# (even with properly set up resources, scopes, permissions, policies in realm-management)
+            KC_FEATURES: "token-exchange,admin-fine-grained-authz"
+            KC_FEATURES_DISABLED: "ciba,impersonation,kerberos,par,step-up-authentication,web-authn"
+
+    repository:
+        build:
+            context: ./repository
+            dockerfile: Dockerfile
+        hostname: repository
+        restart: unless-stopped
+        depends_on:
+          - alf-pg
+        volumes:
+          - contentstore:${alfresco.repo.docker.data.path}
+          - repo_logs:${alfresco.repo.docker.tomcat.path}/logs
+        ports:
+          - ${alfresco.repo.docker.port}:8080
+          - ${alfresco.repo.docker.debugPort}:8888
+        environment:
+            JAVA_OPTS: >-
+              -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:8888
+              -Xms2g -Xmx2g -XX:+UseG1GC -XX:+ParallelRefProcEnabled
+              -XX:+UseStringDeduplication -XX:+ScavengeBeforeFullGC
+              -XX:+DisableExplicitGC -XX:+AlwaysPreTouch
+              -Dencryption.keystore.type=JCEKS
+              -Dencryption.cipherAlgorithm=DESede/CBC/PKCS5Padding
+              -Dencryption.keyAlgorithm=DESede
+              -Dencryption.keystore.location=${alfresco.repo.docker.tomcat.path}/shared/classes/alfresco/extension/keystore/keystore
+              -Dmetadata-keystore.password=mp6yc0UD9e
+              -Dmetadata-keystore.aliases=metadata
+              -Dmetadata-keystore.metadata.password=oKIWzVdEdA
+              -Dmetadata-keystore.metadata.algorithm=DESede
+              -Dsolr.secureComms=secret
+              -Dsolr.sharedSecret=secret
+
+    share:
+        build:
+            context: ./share
+            dockerfile: Dockerfile
+        environment:
+            REPO_HOST: repository
+            REPO_PORT: 8080
+            JAVA_OPTS: >-
+              -agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=0.0.0.0:8888
+              -Xms500m -Xmx500m
+              -XX:+UseG1GC -XX:+ParallelRefProcEnabled -XX:+UseStringDeduplication
+              -XX:+ScavengeBeforeFullGC -XX:+DisableExplicitGC -XX:+AlwaysPreTouch
+        ports:
+          - ${alfresco.share.docker.port}:8080
+          - ${alfresco.share.docker.debugPort}:8888
+
+    solr6:
+        image: alfresco/alfresco-search-services:${alfresco.solr6.docker.version}
+        environment:
+            SOLR_ALFRESCO_HOST: repository
+            SOLR_ALFRESCO_PORT: 8080
+            SOLR_SOLR_HOST: solr6
+            SOLR_SOLR_PORT: 8983
+            SOLR_CREATE_ALFRESCO_DEFAULTS: alfresco
+            ALFRESCO_SECURE_COMMS: secret
+            JAVA_TOOL_OPTIONS: -Dalfresco.secureComms.secret=secret
+            SOLR_JAVA_MEM: -Xms2g -Xmx2g
+
+    activemq:
+        image: alfresco/alfresco-activemq:${alfresco.activemq.docker.version}
+
+    transform-core-aio:
+        image: alfresco/alfresco-transform-core-aio:${alfresco.aio.docker.version}
+        environment:
+            JAVA_OPTS: " -Xms256m -Xmx1536m"
+            ACTIVEMQ_URL: nio://activemq:61616
+
+volumes:
+    kc_psql:
+    alf_psql:
+    contentstore:
+    repo_logs:
+    share_logs:

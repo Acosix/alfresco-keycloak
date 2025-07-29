@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,10 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
+import java.util.Optional;
+
 import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
-import org.alfresco.service.cmr.security.AuthorityType;
 import org.alfresco.util.PropertyMap;
 import org.keycloak.representations.idm.GroupRepresentation;
 
@@ -45,14 +46,33 @@ public class DefaultGroupProcessor implements GroupProcessor
      * {@inheritDoc}
      */
     @Override
+    public int getPriority()
+    {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
     public void mapGroup(final GroupRepresentation group, final NodeDescription groupNode)
     {
         if (this.enabled)
         {
             final PropertyMap properties = groupNode.getProperties();
-
-            properties.put(ContentModel.PROP_AUTHORITY_NAME, AuthorityType.GROUP.getPrefixString() + group.getId());
+            properties.put(ContentModel.PROP_AUTHORITY_NAME, group.getId());
             properties.put(ContentModel.PROP_AUTHORITY_DISPLAY_NAME, group.getName());
         }
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapGroupName(final GroupRepresentation group)
+    {
+        return this.enabled ? Optional.of(group.getId()) : Optional.empty();
     }
 }

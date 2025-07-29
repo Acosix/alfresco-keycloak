@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,7 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
-import java.util.ArrayList;
 import java.util.Collections;
-import java.util.List;
 
 import org.keycloak.representations.idm.GroupRepresentation;
 import org.slf4j.Logger;
@@ -29,8 +27,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author Axel Faust
  */
-public class GroupContainmentGroupFilter extends BaseGroupContainmentFilter
-        implements GroupFilter
+public class GroupContainmentGroupFilter extends BaseGroupContainmentFilter implements GroupFilter
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GroupContainmentGroupFilter.class);
@@ -40,38 +37,46 @@ public class GroupContainmentGroupFilter extends BaseGroupContainmentFilter
      * {@inheritDoc}
      */
     @Override
-    public boolean shouldIncludeGroup(final GroupRepresentation group)
+    public FilterResult shouldIncludeGroup(final GroupRepresentation group)
     {
-        boolean matches;
+        final FilterResult res;
 
         if ((this.groupPaths != null && !this.groupPaths.isEmpty()) || (this.groupIds != null && !this.groupIds.isEmpty()))
         {
             LOGGER.debug(
-                    "Checking group {} ({}) for containment in groups with paths {} / IDs {}, using allowTransitive={} and requireAll={}",
-                    group.getId(), group.getPath(), this.groupPaths, this.groupIds, this.allowTransitive, this.requireAll);
+                    "Checking group {} ({}) for containment in groups with paths {} / IDs {}, using allowTransitive={}, requireAll={}, matchDenies={}",
+                    group.getId(), group.getPath(), this.groupPaths, this.groupIds, this.allowTransitive, this.requireAll,
+                    this.matchDenies);
 
             // no need to retrieve parent group ID as path should be sufficient
             // Keycloak groups can only ever have one parent
-
-            final List<String> parentGroupIds = Collections.emptyList();
-            final List<String> parentGroupPaths = new ArrayList<>();
-
             final String groupPath = group.getPath();
             final String parentPath = groupPath.substring(0, groupPath.lastIndexOf('/'));
             if (!parentPath.isEmpty())
             {
-                parentGroupPaths.add(parentPath);
+                final boolean parentGroupsMatch = this.parentGroupsMatch(Collections.emptyList(), Collections.singletonList(parentPath));
+                if (this.matchDenies)
+                {
+                    res = parentGroupsMatch ? FilterResult.DENY : FilterResult.ABSTAIN;
+                }
+                else
+                {
+                    res = parentGroupsMatch ? FilterResult.ALLOW : FilterResult.ABSTAIN;
+                }
+            }
+            else
+            {
+                // no parents to check
+                res = FilterResult.ABSTAIN;
             }
 
-            matches = this.parentGroupsMatch(parentGroupIds, parentGroupPaths);
-
-            LOGGER.debug("Group containment result for group {}: {}", group.getId(), matches);
+            LOGGER.debug("Group containment result for group {}: {}", group.getId(), res);
         }
         else
         {
-            matches = true;
+            res = FilterResult.ABSTAIN;
         }
 
-        return matches;
+        return res;
     }
 }

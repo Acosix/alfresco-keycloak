@@ -496,62 +496,6 @@
             ]
         },
         {
-            "name": "alfresco",
-            "protocol": "openid-connect",
-            "attributes": {
-                "include.in.token.scope": "false",
-                "display.on.consent.screen": "false"
-            },
-            "protocolMappers": [
-                {
-                    "name": "Alfresco Audience",
-                    "protocol": "openid-connect",
-                    "protocolMapper": "oidc-audience-mapper",
-                    "consentRequired": false,
-                    "config": {
-                        "included.client.audience": "alfresco",
-                        "id.token.claim": "false",
-                        "access.token.claim": "true"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "alfresco-share",
-            "protocol": "openid-connect",
-            "attributes": {
-                "include.in.token.scope": "false",
-                "display.on.consent.screen": "false"
-            },
-            "protocolMappers": [
-                {
-                    "name": "Alfresco Share Audience",
-                    "protocol": "openid-connect",
-                    "protocolMapper": "oidc-audience-mapper",
-                    "consentRequired": false,
-                    "config": {
-                        "included.client.audience": "alfresco-share",
-                        "id.token.claim": "false",
-                        "access.token.claim": "true"
-                    }
-                },
-                {
-                    "name": "username",
-                    "protocol": "openid-connect",
-                    "protocolMapper": "oidc-usermodel-property-mapper",
-                    "consentRequired": false,
-                    "config": {
-                        "userinfo.token.claim": "true",
-                        "user.attribute": "username",
-                        "id.token.claim": "true",
-                        "access.token.claim": "true",
-                        "claim.name": "preferred_username",
-                        "jsonType.label": "String"
-                    }
-                }
-            ]
-        },
-        {
             "name": "web-origins",
             "description": "OpenID Connect scope for add allowed web origins to the access token",
             "protocol": "openid-connect",
@@ -588,12 +532,6 @@
             "roles": [
                 "offline_access"
             ]
-        },
-        {
-            "clientScope": "alfresco",
-            "roles": [
-                "user"
-            ]
         }
     ],
     "clientScopeMappings": {
@@ -621,18 +559,6 @@
                     "manage-account"
                 ]
             }
-        ],
-        "alfresco": [
-            {
-                "clientScope": "alfresco",
-                "roles": [
-                    "admin",
-                    "search-admin",
-                    "model-admin",
-                    "site-admin",
-                    "acme-group"
-                ]
-            }
         ]
     },
     "clients": [
@@ -640,8 +566,8 @@
             "id": "alfresco",
             "clientId": "alfresco",
             "name": "Alfresco Repository",
-            "rootUrl": "http://localhost:${docker.tests.repositoryPort}/alfresco",
-            "adminUrl": "http://localhost:${docker.tests.repositoryPort}/alfresco/keycloak",
+            "rootUrl": "http://localhost:${alfresco.repo.docker.port}/alfresco",
+            "adminUrl": "http://localhost:${alfresco.repo.docker.port}/alfresco/keycloak",
             "baseUrl": "/",
             "redirectUris": [
                 "/*"
@@ -656,26 +582,51 @@
             "serviceAccountsEnabled": true,
             "publicClient": false,
             "protocol": "openid-connect",
+            "attributes": {
+                "exclude.issuer.from.auth.response": "true"
+            },
             "fullScopeAllowed": false,
             "defaultClientScopes": [
                 "profile",
                 "email",
                 "address",
                 "phone",
-                "roles",
-                "alfresco"
+                "roles"
             ],
             "optionalClientScopes": [
                 "alfresco-authority-sync",
                 "alfresco-role-service"
+            ],
+            "protocolMappers": [
+                {
+                    "name": "Alfresco Audience",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "alfresco",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true"
+                    }
+                },
+                {
+                    "name": "sub",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-sub-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "introspection.token.claim": "true",
+                        "access.token.claim": "true"
+                    }
+                }
             ]
         },
         {
             "id": "alfresco-share",
             "clientId": "alfresco-share",
             "name": "Alfresco Share",
-            "rootUrl": "http://localhost:${docker.tests.sharePort}/share",
-            "adminUrl": "http://localhost:${docker.tests.sharePort}/share/keycloak",
+            "rootUrl": "http://localhost:${alfresco.share.docker.port}/share",
+            "adminUrl": "http://localhost:${alfresco.share.docker.port}/share/keycloak",
             "baseUrl": "/",
             "redirectUris": [
                 "/*"
@@ -688,11 +639,50 @@
             "secret": "a5b3e8bc-39cc-4ddd-8c8f-1c34e7a35975",
             "publicClient": false,
             "protocol": "openid-connect",
+            "attributes": {
+                "exclude.issuer.from.auth.response": "true"
+            },
             "alwaysDisplayInConsole": true,
             "fullScopeAllowed": false,
             "defaultClientScopes": [
-                "roles",
-                "alfresco-share"
+                "roles"
+            ],
+            "protocolMappers": [
+                {
+                    "name": "Alfresco Share Audience",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-audience-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "included.client.audience": "alfresco-share",
+                        "id.token.claim": "false",
+                        "access.token.claim": "true"
+                    }
+                },
+                {
+                    "name": "sub",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-sub-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "introspection.token.claim": "true",
+                        "access.token.claim": "true"
+                    }
+                },
+                {
+                    "name": "username",
+                    "protocol": "openid-connect",
+                    "protocolMapper": "oidc-usermodel-property-mapper",
+                    "consentRequired": false,
+                    "config": {
+                        "userinfo.token.claim": "true",
+                        "user.attribute": "username",
+                        "id.token.claim": "true",
+                        "access.token.claim": "true",
+                        "claim.name": "preferred_username",
+                        "jsonType.label": "String"
+                    }
+                }
             ]
         },
         {
@@ -1188,6 +1178,10 @@
     "groups": [
         {
             "name": "Test A",
+            "attributes": {
+                "alfrescoGroupName": ["Group_A"],
+                "alfrescoGroupDisplayName": ["Group with custom mapped attributes"]
+            },
             "subGroups": [
                 {
                     "name": "Test AA"

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,8 +29,7 @@ import org.springframework.beans.factory.InitializingBean;
  *
  * @author Axel Faust
  */
-public class GroupContainmentUserFilter extends BaseGroupContainmentFilter
-        implements UserFilter, InitializingBean
+public class GroupContainmentUserFilter extends BaseGroupContainmentFilter implements UserFilter, InitializingBean
 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(GroupContainmentUserFilter.class);
@@ -40,14 +39,15 @@ public class GroupContainmentUserFilter extends BaseGroupContainmentFilter
      * {@inheritDoc}
      */
     @Override
-    public boolean shouldIncludeUser(final UserRepresentation user)
+    public FilterResult shouldIncludeUser(final UserRepresentation user)
     {
-        boolean matches;
+        final FilterResult res;
 
         if ((this.groupPaths != null && !this.groupPaths.isEmpty()) || (this.groupIds != null && !this.groupIds.isEmpty()))
         {
-            LOGGER.debug("Checking user {} for containment in groups with paths {} / IDs {}, using allowTransitive={} and requireAll={}",
-                    user.getUsername(), this.groupPaths, this.groupIds, this.allowTransitive, this.requireAll);
+            LOGGER.debug(
+                    "Checking user {} for containment in groups with paths {} / IDs {}, using allowTransitive={}, requireAll={}, matchDenies={}",
+                    user.getUsername(), this.groupPaths, this.groupIds, this.allowTransitive, this.requireAll, this.matchDenies);
 
             final List<String> parentGroupIds = new ArrayList<>();
             final List<String> parentGroupPaths = new ArrayList<>();
@@ -63,15 +63,31 @@ public class GroupContainmentUserFilter extends BaseGroupContainmentFilter
                 offset += processedGroups;
             }
 
-            matches = this.parentGroupsMatch(parentGroupIds, parentGroupPaths);
+            if (parentGroupIds.isEmpty() || parentGroupPaths.isEmpty())
+            {
+                final boolean parentGroupsMatch = this.parentGroupsMatch(parentGroupIds, parentGroupPaths);
+                if (this.matchDenies)
+                {
+                    res = parentGroupsMatch ? FilterResult.DENY : FilterResult.ABSTAIN;
+                }
+                else
+                {
+                    res = parentGroupsMatch ? FilterResult.ALLOW : FilterResult.ABSTAIN;
+                }
+            }
+            else
+            {
+                // no parents to check
+                res = FilterResult.ABSTAIN;
+            }
 
-            LOGGER.debug("Group containment result for user {}: {}", user.getUsername(), matches);
+            LOGGER.debug("Group containment result for user {}: {}", user.getUsername(), res);
         }
         else
         {
-            matches = true;
+            res = FilterResult.ABSTAIN;
         }
 
-        return matches;
+        return res;
     }
 }

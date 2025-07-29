@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,6 +91,17 @@ public interface IdentitiesClient
      * @return the number of processed groups
      */
     int processGroups(int offset, int groupBatchSize, Consumer<GroupRepresentation> groupProcessor);
+
+    /**
+     * Loads and processes a sub-groups from Keycloak using an externally specified processor.
+     *
+     * @param groupId
+     *     the ID of the parent group
+     * @param groupProcessor
+     *     the processor handling the loaded groups
+     * @return the number of processed groups
+     */
+    int processSubGroups(String groupId, Consumer<GroupRepresentation> groupProcessor);
 
     /**
      * Loads and processes a batch of users / members of a group from Keycloak using an externally specified processor.

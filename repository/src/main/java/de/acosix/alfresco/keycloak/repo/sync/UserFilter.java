@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,8 +31,8 @@ public interface UserFilter
      * Determines whether this user should be included in the synchronisation.
      *
      * @param user
-     *            the user to consider
-     * @return {@code true} if the user should be synchronised, {@code false} if not
+     *     the user to consider
+     * @return the filter result
      */
-    boolean shouldIncludeUser(UserRepresentation user);
+    FilterResult shouldIncludeUser(UserRepresentation user);
 }

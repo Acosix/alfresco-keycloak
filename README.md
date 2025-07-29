@@ -1,12 +1,14 @@
-[![Build Status](https://travis-ci.org/Acosix/alfresco-keycloak.svg?branch=master)](https://travis-ci.org/Acosix/alfresco-keycloak)
-
 # About
 
 This addon aims to provide a Keycloak-related extensions / customisations to the out-of-the-box Alfresco authentication and authorisation functionalities for the Alfresco Repository and Share tiers.
 
 ## Compatbility
 
-This module is built to be compatible with Alfresco 6.0 and above. It may be used on either Community or Enterprise Edition.
+All versions of this module prior to 1.2.0-rc1 are built to be compatible with Alfresco 6.0 up to 7.4. In Alfresco 7.4, the logging configuration included in those versions of the module will not be used due to a change from Log4j to Log4j2 in base Alfresco that is not reflected in the module itself.
+The version 1.2.0-rc1 is built to be compatible with Alfresco 23.1 and above. In the future, a refactoring of this module is planned to re-add support of Alfresco versions lower than 23.1.
+All versions of this module can be used in Alfresco Community and Enterprise.
+
+The range of compatible Keycloak versions is difficult to specify with complete confidence due to the very active release cycle of the Keycloak project since ~2020. All versions of this module should be compatible with regards to the general authentication capability with any Keycloak version released since 2020 / Keycloak 6.0.1. Specific configuration properties, like the base authentication server URL, may change between Keycloak versions or based on the specifics of the Keycloak deployment / exposure on the network. The user and group synchronisation capability of this module may have incompatibilities between specific versions of Keycloak and specific versions of this module due to changes in the ReST API payloads. Starting with version 1.2.0-rc1 of this module, this capability explicitly ignores new properties introduced in newer Keycloak versions to improve forward compatibility.
 
 ## Features
 
@@ -54,10 +56,32 @@ The configuration of both the Keycloak server and this module offer a large numb
 
 This project uses a Maven build using templates from the [Acosix Alfresco Maven](https://github.com/Acosix/alfresco-maven) project and produces module AMPs, regular Java *classes* JARs, JavaDoc and source attachment JARs, as well as installable (Simple Alfresco Module) JAR artifacts for the Alfresco Content Services and Share extensions. If the installable JAR artifacts are used for installing this module, developers / users are advised to consult the 'Dependencies' section of this README.
 
+A simple build of this project can be executed by running:
+
+```
+mvn clean install
+```
+
+Since version 1.2.0-rc1 this project includes a sub-module that - when executed - starts up a local Alfresco + Keycloak stack for running user interaction tests and (in the future) integration tests. This sub-module is optionally enabled by using a Maven profile. A build starting such a stack without installing or publishing artifacts can be executed by running:
+
+```
+mvn clean integration-test -P dockerTest
+```
+
+or just running
+
+```
+mvn integration-test
+```
+
+in the `docker-test` sub-module directly (this requires the artifacts of the other modules to be present in the local Maven repository, e.g. after a previous `mvn clean install`). The Alfresco + Keycloak stack started that way will remain up and running until the `clean` target is executed on the project while the `tareget/classes/docker-compose.yaml` file is present in the sub-module. A run with the `clean` target will only stop the stack - in order to remove all persistent data and the images built for the stack, the `clean` target must be run with the additional profile `purge`.
+
+Running the Alfresco + Keycloak stack with the `docker-test` sub-module requires the presence of a Toolchain that provides a path where the `docker` binary can be found. The locally installed Docker versions also needs to support Docker Compose v2.
+
 ## Maven toolchains
 
 By inheritance from the Acosix Alfresco Maven framework, this project uses the [Maven Toolchains plugin](http://maven.apache.org/plugins/maven-toolchains-plugin/) to allow potential cross-compilation against different Java versions. This plugin is used to avoid potentially inconsistent compiler and library versions compared to when only the source/target compiler options of the Maven compiler plugin are set, which (as an example) has caused issues with some Alfresco releases in the past where Alfresco compiled for Java 7 using the Java 8 libraries.
-In order to build the project it is necessary to provide a basic toolchain configuration via the user specific Maven configuration home (usually ~/.m2/). That file (toolchains.xml) only needs to list the path to a compatible JDK for the Java version required by this project. The following is a sample file defining a Java 8 and 11 development kit.
+In order to build the project it is necessary to provide a basic toolchain configuration via the user specific Maven configuration home (usually ~/.m2/). That file (toolchains.xml) needs to list the path to a compatible JDK for the Java version required by this project (JDK 17) and Docker CLI tools in case the sub-module `docker-test` is to be executed to run a local Alfresco + Keycloak stack. The following is a sample file defining a Java 11 and 17 development kit as well as paths to those Docker CLI tools.
 
 ```xml
 <?xml version='1.0' encoding='UTF-8'?>
@@ -65,22 +89,36 @@ In order to build the project it is necessary to provide a basic toolchain confi
   <toolchain>
     <type>jdk</type>
     <provides>
-      <version>1.8</version>
-      <vendor>oracle</vendor>
+      <version>1.11</version>
+      <vendor>eclipse</vendor>
+      <id>jdk11</id>
     </provides>
     <configuration>
-      <jdkHome>C:\Program Files\Java\jdk1.8.0_231</jdkHome>
+      <jdkHome>C:\Program Files\Eclipse Adoptium\jdk-11.0.16.101-hotspot</jdkHome>
     </configuration>
   </toolchain>
   <toolchain>
     <type>jdk</type>
     <provides>
-      <version>1.11</version>
-      <vendor>oracle</vendor>
-      <id>openjdk11</id>
+      <version>1.17</version>
+      <vendor>eclipse</vendor>
+      <id>jdk17</id>
     </provides>
     <configuration>
-      <jdkHome>C:\Program Files\Java\jdk-11.0.2</jdkHome>
+      <jdkHome>C:\Program Files\Eclipse Adoptium\jdk-17.0.4.101-hotspot</jdkHome>
+    </configuration>
+  </toolchain>
+  <toolchain>
+    <type>paths</type>
+    <provides>
+      <id>docker</id>
+    </provides>
+    <configuration>
+      <paths>
+        <path>C:\Program Files\Docker\Docker\resources\bin</path>
+        <path>C:\Program Files\Docker\Docker\resources\cli-plugins</path>
+        <path>C:\Program Files\Docker\cli-plugins</path>
+      </paths>
     </configuration>
   </toolchain>
 </toolchains>

@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,9 @@ package de.acosix.alfresco.keycloak.repo.sync;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Optional;
 
+import org.alfresco.model.ContentModel;
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.alfresco.service.namespace.QName;
 import org.keycloak.representations.idm.UserRepresentation;
@@ -28,19 +30,28 @@ import org.keycloak.representations.idm.UserRepresentation;
  *
  * @author Axel Faust
  */
-public class SimpleUserAttributeProcessor extends BaseAttributeProcessor
-        implements UserProcessor
+public class SimpleUserAttributeProcessor extends BaseAttributeProcessor implements UserProcessor
 {
 
     protected boolean enabled;
 
     /**
      * @param enabled
-     *            the enabled to set
+     *     the enabled to set
      */
     public void setEnabled(final boolean enabled)
     {
         this.enabled = enabled;
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public int getPriority()
+    {
+        return this.priority;
     }
 
     /**
@@ -64,6 +75,16 @@ public class SimpleUserAttributeProcessor extends BaseAttributeProcessor
     public Collection<QName> getMappedProperties()
     {
         return this.enabled ? new HashSet<>(this.attributePropertyQNameMappings.values()) : Collections.emptySet();
+    }
+
+    /**
+     *
+     * {@inheritDoc}
+     */
+    @Override
+    public Optional<String> mapUserName(final UserRepresentation user)
+    {
+        return this.enabled ? this.mapAuthorityName(ContentModel.PROP_USERNAME, user.getAttributes()) : Optional.empty();
     }
 
 }

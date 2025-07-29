@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 - 2021 Acosix GmbH
+ * Copyright 2019 - 2025 Acosix GmbH
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,6 +15,8 @@
  */
 package de.acosix.alfresco.keycloak.repo.sync;
 
+import java.util.Optional;
+
 import org.alfresco.repo.security.sync.NodeDescription;
 import org.keycloak.representations.idm.GroupRepresentation;
 
@@ -25,16 +27,53 @@ import org.keycloak.representations.idm.GroupRepresentation;
  *
  * @author Axel Faust
  */
-public interface GroupProcessor
+public interface GroupProcessor extends Comparable<GroupProcessor>
 {
+
+    /**
+     * Retrieves the priority of this processor. A lower value specifies a higher priority and the mapped properties / group name of
+     * processors with higher priorities may override those of lower priorities.
+     *
+     * @return the priority as an integer with {@code 50} as the default priority.
+     */
+    default int getPriority()
+    {
+        return 50;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    default int compareTo(final GroupProcessor other)
+    {
+        int res = Integer.compare(this.getPriority(), other.getPriority());
+        if (res == 0)
+        {
+            res = this.getClass().getName().compareTo(other.getClass().getName());
+        }
+        return res;
+    }
 
     /**
      * Maps data from a Keycloak group representation to a description of an Alfresco node for the authority container.
      *
      * @param group
-     *            the Keycloak group representation
+     *     the Keycloak group representation
      * @param groupNodeDescription
-     *            the Alfresco node description
+     *     the Alfresco node description
      */
     void mapGroup(GroupRepresentation group, NodeDescription groupNodeDescription);
+
+    /**
+     * Maps a Keycloak group representation to the group name to use in Alfresco.
+     *
+     * @param group
+     *     the Keycloak group representation
+     * @return the Alfresco group name
+     */
+    default Optional<String> mapGroupName(final GroupRepresentation group)
+    {
+        return Optional.empty();
+    }
 }
