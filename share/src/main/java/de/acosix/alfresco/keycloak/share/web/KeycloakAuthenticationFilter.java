@@ -46,6 +46,7 @@ import org.apache.http.Header;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpException;
 import org.apache.http.HttpHost;
+import org.apache.http.HttpRequest;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
@@ -58,6 +59,7 @@ import org.apache.http.conn.routing.HttpRoutePlanner;
 import org.apache.http.message.BasicHeader;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.params.HttpParams;
+import org.apache.http.protocol.HttpContext;
 import org.apache.http.util.EntityUtils;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.OAuth2Constants;
@@ -535,7 +537,6 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             // we need to recreate the HttpClient to configure the forced route URL
             this.keycloakDeployment.setClient(new Callable<HttpClient>()
             {
-
                 private HttpClient client;
 
                 @Override
@@ -1813,7 +1814,7 @@ public class KeycloakAuthenticationFilter implements DependencyInjectedFilter, I
             throw new IllegalStateException(
                     "Either an active security context or access token should be present in the session, or previous validations have caught their non-existence and prevented this operation form being called");
         }
-
+        
         final List<Header> headers = new LinkedList<>();
 
         ClientCredentialsProviderUtils.setClientCredentials(this.keycloakDeployment.getAdapterConfig(),

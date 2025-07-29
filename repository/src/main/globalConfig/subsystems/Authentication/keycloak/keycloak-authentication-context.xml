@@ -23,6 +23,16 @@
         <property name="subsystemChildApplicationContextManager" ref="Authentication" />
     </bean>
 
+    <!-- needed for bean emitters with dynamic properties (cannot be pre-defined in subsystem defaults) -->
+    <bean id="global-and-subsystem-properties" class="org.springframework.beans.factory.config.PropertiesFactoryBean">
+        <property name="propertiesArray">
+            <list>
+                <ref bean="global-properties" />
+                <ref bean="subsystem-properties" />
+            </list>
+        </property>
+    </bean>
+
     <bean id="keycloakAdapterConfig" class="${project.artifactId}.spring.KeycloakAdapterConfigBeanFactory">
         <property name="propertiesSource" ref="subsystem-properties" />
         <property name="configPropertyPrefix" value="keycloak.adapter" />
@@ -49,8 +59,6 @@
         <property name="allowUserNamePasswordLogin" value="${keycloak.authentication.allowUserNamePasswordLogin}" />
         <property name="allowGuestLogin" value="${keycloak.authentication.allowGuestLogin}" />
         <property name="failExpiredTicketTokens" value="${keycloak.authentication.failExpiredTicketTokens}" />
-        <property name="mapAuthorities" value="${keycloak.authentication.mapAuthorities}" />
-        <property name="mapPersonPropertiesOnLogin" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
         <property name="deployment" ref="keycloakDeployment" />
     </bean>
     
@@ -189,6 +197,17 @@
         <property name="processResourceRoles" value="${keycloak.roles.mapResourceRoles}" />
     </bean>
 
+    <bean id="tokenGrantedAuthorityProcessor" class="${project.artifactId}.authentication.KeycloakTokenGrantedAuthorityProcessor">
+        <property name="enabled" value="${keycloak.authentication.mapAuthorities}" />
+    </bean>
+
+    <bean id="tokenPersonProcessor" class="${project.artifactId}.authentication.KeycloakTokenPersonProcessor">
+        <property name="enabled" value="${keycloak.authentication.mapPersonPropertiesOnLogin}" />
+        <property name="transactionService" ref="TransactionService" />
+        <property name="nodeService" ref="NodeService" />
+        <property name="personService" ref="PersonService" />
+    </bean>
+
     <bean id="userAuthority.default" class="${project.artifactId}.authentication.DefaultAuthorityExtractor">
         <property name="adapterConfig" ref="keycloakAdapterConfig" />
         <property name="enabled" value="${keycloak.roles.mapRoles}" />
@@ -197,6 +216,14 @@
     </bean>
 
     <bean id="userToken.default" class="${project.artifactId}.authentication.DefaultPersonProcessor" />
+
+    <bean id="tokenGroupProcessor" class="${project.artifactId}.authentication.KeycloakTokenGroupSyncProcessor">
+        <property name="createMissingGroupsOnLogin" value="${keycloak.authentication.createMissingGroupsOnLogin}" />
+        <property name="syncGroupMembershipOnLogin" value="${keycloak.authentication.syncGroupMembershipOnLogin}" />
+        <property name="transactionService" ref="TransactionService" />
+        <property name="authorityService" ref="AuthorityService" />
+        <property name="authenticationService" ref="localAuthenticationService" />
+    </bean>
 
     <bean id="userFilter.containedInGroup" class="${project.artifactId}.sync.GroupContainmentUserFilter">
         <property name="identitiesClient" ref="identitiesClient" />
@@ -268,7 +295,7 @@
                 <value>userToken</value>
             </list>
         </property>
-        <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="propertiesSource" ref="global-and-subsystem-properties" />
     </bean>
 
     <bean id="${moduleId}-dynamicSynchronisationComponentsEmitter"
@@ -283,7 +310,7 @@
                 <value>groupMapper</value>
             </list>
         </property>
-        <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="propertiesSource" ref="global-and-subsystem-properties" />
     </bean>
 
     <bean id="${moduleId}-dynamicRolesComponentsEmitter"
@@ -299,6 +326,6 @@
                 <value>resourceFilter</value>
             </list>
         </property>
-        <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="propertiesSource" ref="global-and-subsystem-properties" />
     </bean>
 </beans>
