@@ -63,7 +63,7 @@ public class GroupContainmentUserFilter extends BaseGroupContainmentFilter imple
                 offset += processedGroups;
             }
 
-            if (parentGroupIds.isEmpty() || parentGroupPaths.isEmpty())
+            if (!parentGroupIds.isEmpty() || !parentGroupPaths.isEmpty())
             {
                 final boolean parentGroupsMatch = this.parentGroupsMatch(parentGroupIds, parentGroupPaths);
                 if (this.matchDenies)
