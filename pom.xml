@@ -21,7 +21,7 @@
     <parent>
         <groupId>de.acosix.alfresco.maven</groupId>
         <artifactId>de.acosix.alfresco.maven.project.parent-23.1.0</artifactId>
-        <version>1.5.0</version>
+        <version>1.6.0</version>
     </parent>
 
     <groupId>de.acosix.alfresco.keycloak</groupId>
@@ -88,8 +88,8 @@
         <!-- parent is including 6.11 erroneously -->
         <surf.version>9.0</surf.version>
 
-        <acosix.utility.version>1.4.6-SNAPSHOT</acosix.utility.version>
-        <ootbee.support-tools.version>1.2.2.0</ootbee.support-tools.version>
+        <acosix.utility.version>1.5.0</acosix.utility.version>
+        <ootbee.support-tools.version>1.2.3.0</ootbee.support-tools.version>
 
         <keycloak.docker.image>keycloak/keycloak</keycloak.docker.image>
         <keycloak.docker.version>26.0</keycloak.docker.version>
@@ -122,6 +122,27 @@
         <alfresco.aio.docker.version>5.1.5</alfresco.aio.docker.version>
         <alfresco.solr6.docker.version>2.0.12</alfresco.solr6.docker.version>
     </properties>
+
+    <repositories>
+        <repository>
+            <id>central-snapshots</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+            <snapshots>
+                <enabled>true</enabled>
+            </snapshots>
+        </repository>
+    </repositories>
+
+    <distributionManagement>
+        <repository>
+            <id>central</id>
+            <url>https://ossrh-staging-api.central.sonatype.com/service/local/staging/deploy/maven2/</url>
+        </repository>
+        <snapshotRepository>
+            <id>central</id>
+            <url>https://central.sonatype.com/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
 
     <dependencyManagement>
         <dependencies>
@@ -255,16 +276,6 @@
         </dependencies>
     </dependencyManagement>
 
-    <repositories>
-        <repository>
-            <id>ossrh</id>
-            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
-            <snapshots>
-                <enabled>true</enabled>
-            </snapshots>
-        </repository>
-    </repositories>
-
     <modules>
         <module>repository</module>
         <module>share</module>
@@ -287,6 +298,13 @@
                 </plugin>
             </plugins>
         </pluginManagement>
+
+        <plugins>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
     </build>
     
     <profiles>

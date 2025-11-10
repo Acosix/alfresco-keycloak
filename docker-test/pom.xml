@@ -30,6 +30,9 @@
     <properties>
         <maven.install.skip>true</maven.install.skip>
         <maven.deploy.skip>true</maven.deploy.skip>
+
+        <docker.tests.repository.dependency.artifactIds>de.acosix.alfresco.utility.repo,de.acosix.alfresco.keycloak.repo,support-tools-repo</docker.tests.repository.dependency.artifactIds>
+        <docker.tests.share.dependency.artifactIds>de.acosix.alfresco.utility.share,de.acosix.alfresco.keycloak.share,support-tools-share</docker.tests.share.dependency.artifactIds>
     </properties>
 
     <dependencyManagement>
@@ -161,102 +164,6 @@
     </dependencies>
 
     <build>
-        <resources>
-            <resource>
-                <directory>src/main/resources</directory>
-                <targetPath>${project.build.directory}/classes</targetPath>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
-
-        <pluginManagement>
-            <plugins>
-
-                <plugin>
-                    <artifactId>maven-toolchains-plugin</artifactId>
-                    <configuration>
-                        <paths>
-                            <id>docker</id>
-                        </paths>
-                    </configuration>
-                </plugin>
-
-                <plugin>
-                    <artifactId>maven-dependency-plugin</artifactId>
-                    <executions>
-                        <execution>
-                            <id>copy-repo-dependencies</id>
-                            <phase>process-resources</phase>
-                            <goals>
-                                <goal>copy-dependencies</goal>
-                            </goals>
-                            <configuration>
-                                <outputDirectory>${project.build.directory}/classes/repository</outputDirectory>
-                                <includeTypes>amp</includeTypes>
-                                <includeArtifactIds>activemq-broker,support-tools-repo,de.acosix.alfresco.utility.repo,de.acosix.alfresco.keycloak.repo</includeArtifactIds>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>copy-share-dependencies</id>
-                            <phase>process-resources</phase>
-                            <goals>
-                                <goal>copy-dependencies</goal>
-                            </goals>
-                            <configuration>
-                                <outputDirectory>${project.build.directory}/classes/share</outputDirectory>
-                                <includeTypes>amp</includeTypes>
-                                <includeArtifactIds>support-tools-share,de.acosix.alfresco.utility.share,de.acosix.alfresco.keycloak.share</includeArtifactIds>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-
-                <plugin>
-                    <groupId>org.codehaus.mojo</groupId>
-                    <artifactId>exec-maven-plugin</artifactId>
-                    <version>3.5.0</version>
-                    <configuration>
-                        <toolchain>docker</toolchain>
-                        <executable>docker</executable>
-                    </configuration>
-                    <executions>
-                        <execution>
-                            <id>buildDocker</id>
-                            <phase>compile</phase>
-                            <goals>
-                                <goal>exec</goal>
-                            </goals>
-                            <configuration>
-                                <arguments>
-                                    <argument>compose</argument>
-                                    <argument>-f</argument>
-                                    <argument>${project.build.directory}/classes/docker-compose.yaml</argument>
-                                    <argument>build</argument>
-                                </arguments>
-                            </configuration>
-                        </execution>
-                        <execution>
-                            <id>startDocker</id>
-                            <phase>pre-integration-test</phase>
-                            <goals>
-                                <goal>exec</goal>
-                            </goals>
-                            <configuration>
-                                <arguments>
-                                    <argument>compose</argument>
-                                    <argument>-f</argument>
-                                    <argument>${project.build.directory}/classes/docker-compose.yaml</argument>
-                                    <argument>up</argument>
-                                    <argument>-d</argument>
-                                </arguments>
-                            </configuration>
-                        </execution>
-                    </executions>
-                </plugin>
-
-            </plugins>
-        </pluginManagement>
-
         <plugins>
             <plugin>
                 <artifactId>maven-toolchains-plugin</artifactId>
@@ -271,97 +178,20 @@
             </plugin>
 
             <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>exec-maven-plugin</artifactId>
+                <artifactId>maven-surefire-plugin</artifactId>
+            </plugin>
+
+            <plugin>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>
-
-    <profiles>
-        <profile>
-            <id>clean-if-compose-present</id>
-            <activation>
-                <file>
-                    <exists>target/classes/docker-compose.yaml</exists>
-                </file>
-            </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>exec-maven-plugin</artifactId>
-                            <configuration>
-                                <toolchain>docker</toolchain>
-                                <executable>docker</executable>
-                            </configuration>
-                            <executions>
-                                <execution>
-                                    <id>cleanDocker</id>
-                                    <phase>pre-clean</phase>
-                                    <goals>
-                                        <goal>exec</goal>
-                                    </goals>
-                                    <configuration>
-                                        <arguments>
-                                            <argument>compose</argument>
-                                            <argument>-f</argument>
-                                            <argument>${project.build.directory}/classes/docker-compose.yaml</argument>
-                                            <argument>down</argument>
-                                        </arguments>
-                                    </configuration>
-                                </execution>
-                            </executions>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-            </build>
-        </profile>
-        <profile>
-            <id>purge</id>
-            <activation>
-                <file>
-                    <exists>target/classes/docker-compose.yaml</exists>
-                </file>
-                <property>
-                    <name>purge</name>
-                    <value>true</value>
-                </property>
-            </activation>
-            <build>
-                <pluginManagement>
-                    <plugins>
-                        <plugin>
-                            <groupId>org.codehaus.mojo</groupId>
-                            <artifactId>exec-maven-plugin</artifactId>
-                            <configuration>
-                                <toolchain>docker</toolchain>
-                                <executable>docker</executable>
-                            </configuration>
-                            <executions>
-                                <execution>
-                                    <id>purgeDocker</id>
-                                    <phase>pre-clean</phase>
-                                    <goals>
-                                        <goal>exec</goal>
-                                    </goals>
-                                    <configuration>
-                                        <arguments>
-                                            <argument>compose</argument>
-                                            <argument>-f</argument>
-                                            <argument>${project.build.directory}/classes/docker-compose.yaml</argument>
-                                            <argument>down</argument>
-                                            <argument>-v</argument>
-                                            <argument>--rmi</argument>
-                                            <argument>local</argument>
-                                        </arguments>
-                                    </configuration>
-                                </execution>
-                            </executions>
-                        </plugin>
-                    </plugins>
-                </pluginManagement>
-            </build>
-        </profile>
-    </profiles>
 </project>
