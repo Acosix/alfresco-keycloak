@@ -113,6 +113,8 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     protected boolean active;
 
     protected boolean allowTicketLogon;
+    
+    protected boolean prioritizeTicketLogon;
 
     protected boolean allowHttpBasicLogon;
 
@@ -191,8 +193,17 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
     {
         this.allowTicketLogon = allowTicketLogon;
     }
-
+        
     /**
+     * 
+     * @param prioritizeTicketLogon
+     * 		the prioritizeTicketLogon to set
+     */
+    public void setPrioritizeTicketLogon(boolean prioritizeTicketLogon) {
+		this.prioritizeTicketLogon = prioritizeTicketLogon;
+	}
+
+	/**
      * @param allowHttpBasicLogon
      *     the allowHttpBasicLogon to set
      */
@@ -770,6 +781,14 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
                     "Explicitly skipping processKeycloakAuthenticationAndActions as filter is configured not to handle authentication on public API servlet");
             skip = true;
         }
+        // Manage the use case of some request with both Bearer authorization and alfresco authentication ticket and
+        // prioritize the ticket instead the header https://github.com/Acosix/alfresco-keycloak/issues/56
+        else if (this.prioritizeTicketLogon && this.allowTicketLogon && this.checkForTicketParameter(context, req, res))
+        {
+            LOGGER.trace(
+            		"Skipping processKeycloakAuthenticationAndActions as user was prioritize to be authenticated by ticket URL parameter");
+            skip = true;
+        }
         else if (authHeader != null && authHeader.toLowerCase(Locale.ENGLISH).startsWith("bearer "))
         {
             // even though we provide a remote user mapper, it may not be the first in the chain, so Bearer might not be processed (yet) and
@@ -821,7 +840,7 @@ public class KeycloakAuthenticationFilter extends BaseAuthenticationFilter
             LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as non-OIDC / non-Basic authorization header is present");
             skip = true;
         }
-        else if (this.allowTicketLogon && this.checkForTicketParameter(context, req, res))
+        else if (!this.prioritizeTicketLogon && this.allowTicketLogon && this.checkForTicketParameter(context, req, res))
         {
             LOGGER.trace("Skipping processKeycloakAuthenticationAndActions as user was authenticated by ticket URL parameter");
             skip = true;
