@@ -25,6 +25,7 @@
 
     <bean id="keycloakAdapterConfig" class="${project.artifactId}.spring.KeycloakAdapterConfigBeanFactory">
         <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
         <property name="configPropertyPrefix" value="keycloak.adapter" />
     </bean>
 
@@ -269,6 +270,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
     </bean>
 
     <bean id="${moduleId}-dynamicSynchronisationComponentsEmitter"
@@ -284,6 +286,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
     </bean>
 
     <bean id="${moduleId}-dynamicRolesComponentsEmitter"
@@ -300,5 +303,6 @@
             </list>
         </property>
         <property name="propertiesSource" ref="subsystem-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
     </bean>
 </beans>

@@ -37,7 +37,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.FactoryBean;
 import org.springframework.beans.factory.InitializingBean;
-import org.springframework.beans.factory.config.PlaceholderConfigurerSupport;
 import org.springframework.util.PropertyPlaceholderHelper;
 
 /**
@@ -128,12 +127,6 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAda
 
     protected String configPropertyPrefix;
 
-    protected String placeholderPrefix = PlaceholderConfigurerSupport.DEFAULT_PLACEHOLDER_PREFIX;
-
-    protected String placeholderSuffix = PlaceholderConfigurerSupport.DEFAULT_PLACEHOLDER_SUFFIX;
-
-    protected String valueSeparator = PlaceholderConfigurerSupport.DEFAULT_VALUE_SEPARATOR;
-
     protected PropertyPlaceholderHelper placeholderHelper;
 
     /**
@@ -145,8 +138,7 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAda
     {
         PropertyCheck.mandatory(this, "propertiesSource", this.propertiesSource);
         PropertyCheck.mandatory(this, "propertyPrefix", this.configPropertyPrefix);
-
-        this.placeholderHelper = new PropertyPlaceholderHelper(this.placeholderPrefix, this.placeholderSuffix, this.valueSeparator, true);
+        PropertyCheck.mandatory(this, "placeholderHelper", this.placeholderHelper);
     }
 
     /**
@@ -168,30 +160,12 @@ public class KeycloakAdapterConfigBeanFactory implements FactoryBean<ExtendedAda
     }
 
     /**
-     * @param placeholderPrefix
-     *     the placeholderPrefix to set
+     * @param placeholderHelper
+     *     the placeholderHelper to set
      */
-    public void setPlaceholderPrefix(final String placeholderPrefix)
+    public void setPlaceholderHelper(final PropertyPlaceholderHelper placeholderHelper)
     {
-        this.placeholderPrefix = placeholderPrefix;
-    }
-
-    /**
-     * @param placeholderSuffix
-     *     the placeholderSuffix to set
-     */
-    public void setPlaceholderSuffix(final String placeholderSuffix)
-    {
-        this.placeholderSuffix = placeholderSuffix;
-    }
-
-    /**
-     * @param valueSeparator
-     *     the valueSeparator to set
-     */
-    public void setValueSeparator(final String valueSeparator)
-    {
-        this.valueSeparator = valueSeparator;
+        this.placeholderHelper = placeholderHelper;
     }
 
     /**

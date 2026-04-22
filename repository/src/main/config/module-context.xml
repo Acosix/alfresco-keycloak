@@ -23,7 +23,6 @@
     <bean id="${moduleId}-enhanceAuthenticationChildApplicationContextManager"
         class="de.acosix.alfresco.utility.common.spring.ImplementationClassReplacingBeanDefinitionRegistryPostProcessor">
         <property name="enabled" value="true" />
-        <property name="propertiesSource" ref="global-properties" />
 
         <property name="targetBeanName" value="Authentication" />
         <property name="originalClassName" value="org.alfresco.repo.management.subsystems.DefaultChildApplicationContextManager" />
@@ -35,6 +34,7 @@
         class="de.acosix.alfresco.utility.common.spring.ImplementationClassReplacingBeanDefinitionRegistryPostProcessor">
         <property name="enabledPropertyKey" value="${moduleId}.authorityServiceEnhancement.enabled" />
         <property name="propertiesSource" ref="global-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
 
         <property name="targetBeanName" value="authorityService" />
         <property name="originalClassName" value="org.alfresco.repo.security.authority.AuthorityServiceImpl" />
@@ -96,6 +96,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="global-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
         <property name="targetBeanName" value="globalAuthenticationListener" />
         <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
         <property name="propertyName" value="authenticationListeners" />
@@ -119,6 +120,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="global-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
         <property name="targetBeanName" value="webDavAuthenticationListener" />
         <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
         <property name="propertyName" value="authenticationListeners" />
@@ -142,6 +144,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="global-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
         <property name="targetBeanName" value="sharepointAuthenticationListener" />
         <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
         <!-- no longer exists in Alfresco 6.0 -->
@@ -167,6 +170,7 @@
             </list>
         </property>
         <property name="propertiesSource" ref="global-properties" />
+        <property name="placeholderHelper" ref="acosix-utility-core.nonStrictPlaceholderHelper" />
         <property name="targetBeanName" value="webScriptAuthenticationListener" />
         <property name="expectedClassName" value="de.acosix.alfresco.utility.repo.web.auth.AuthenticationListenersFacade" />
         <property name="propertyName" value="authenticationListeners" />
