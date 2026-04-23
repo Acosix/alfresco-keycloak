@@ -89,6 +89,7 @@ The following core configuration properties can be set (more extensive list in t
 | `...sso.enabled` | `true` | Flag enabling single sign-on (SSO) authentication support via this subsystem instance |
 | `...handlePublicApi` | `false` | Flag enabling inclusion of the Public ReST API in SSO handling - disabled by default as all other means of SSO handling in Alfresco typically do not (fully) cover the Public ReST API |
 | `...allowTicketLogons` | `true` | Flag enabling support of Alfresco authentication tickets in the SSO handling logic |
+| `...prioritizeTicketLogons` | `false` | Flag that enables prioritizes the use of Alfresco authentication tickets instead of SSO management logic, when the Alfresco authentication tickets are provided via the `ticket` or `alf_ticket` URL query parameters (presence of `ticket` supersedes `alf_ticket`) along with the presence of the authorization header |
 | `...allowHttpBasicLogon` | `true` | Flag enabling support of HTTP Basic authentication in the SSO handling logic, mapping to the simple user + password authentication via this subsystems `AuthenticationComponent` |
 | `...allowUserNamePasswordLogin` | `true` | Flag enabling support of user + password authentication via this subsystems `AuthenticationComponent` |
 | `...mapAuthorities` | `true` | Flag enabling mapping of authorities from access / identity tokens (supported for both SSO and user + password authentication) |
